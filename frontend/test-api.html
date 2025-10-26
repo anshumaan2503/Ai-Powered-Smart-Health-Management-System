@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Hospital Management System - API Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testAPI() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing API connection...</p>';
+            
+            try {
+                // Test login
+                const response = await fetch('http://localhost:5000/api/hospital-auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'city@hospital.com',
+                        password: 'Cityhospital123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    results.innerHTML = `
+                        <h2>✅ API Test Successful!</h2>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>User:</strong> ${data.user.first_name} ${data.user.last_name}</p>
+                        <p><strong>Hospital:</strong> ${data.hospital.name}</p>
+                        <p><strong>Token:</strong> ${data.access_token.substring(0, 20)}...</p>
+                        <h3>🎯 Login should work now!</h3>
+                        <p>Try logging in with:</p>
+                        <ul>
+                            <li><strong>Email:</strong> city@hospital.com</li>
+                            <li><strong>Password:</strong> Cityhospital123</li>
+                        </ul>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <h2>❌ API Test Failed</h2>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Error:</strong> ${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                results.innerHTML = `
+                    <h2>❌ Connection Failed</h2>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Make sure the backend is running on http://localhost:5000</p>
+                `;
+            }
+        }
+        
+        // Run test when page loads
+        testAPI();
+    </script>
+</body>
+</html>

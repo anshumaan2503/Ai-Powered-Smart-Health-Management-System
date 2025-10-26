@@ -1,0 +1,11 @@
+first_name,last_name,date_of_birth,gender,phone,email,address,blood_group
+Rajesh,Kumar,23-09-1975,Male,9853672516,rajesh.kumar@gmail.com,"11 MG Road, Delhi, Delhi, 110001",B+
+Priya,Sharma,28-02-1985,Female,9870632679,priya.sharma@mail.com,"25 Nehru St, Mumbai, Maharashtra, 400001",A+
+Amit,Singh,04-05-1992,Male,8925671449,amit.singh@mail.com,"21 Sector-9, Chandigarh, 160009",AB-
+Sunil,Yadav,10-11-1980,Male,9561145671,sunil.yadav@gmail.com,"33 Main Bazar, Lucknow, UP, 226001",O-
+Deepa,Verma,18-07-1978,Female,9081213460,deepa.verma@gmail.com,"50 Civil Line, Jaipur, Rajasthan, 302001",A+
+Suman,Gupta,25-04-1990,Female,8858443107,suman.gupta@mail.com,"29 RH Road, Kolkata, WB, 700001",AB+
+Arvind,Patel,07-08-1989,Male,8745190156,arvind.patel@mail.com,"1235 Gandhi Marg, Ahmedabad, Gujarat, 380201",B-
+Anjali,Jain,19-03-1983,Female,9015695382,anjali.jain@mail.com,"464 Raja St, Pune, Maharashtra, 411025",O+
+Suresh,Mishra,02-01-1970,Male,7825316829,suresh.mishra@mail.com,"88 Ashok Nagar, Bhopal, MP, 462001",A-
+Renu,Khan,03-09-1995,Female,7802450917,renu.khan@mail.com,"101 Tilak Road, Hyderabad, Telangana, 500001",B+

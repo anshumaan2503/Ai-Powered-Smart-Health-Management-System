@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Hospital Dashboard Cache</title>
+</head>
+<body>
+    <h1>Clear Hospital Dashboard Cache</h1>
+    <button onclick="clearCache()">Clear All Hospital Cache</button>
+    <div id="result"></div>
+
+    <script>
+        function clearCache() {
+            // Clear all possible localStorage keys
+            const keysToRemove = [
+                'user', 'hospital', 'subscription', 'access_token', 'refresh_token',
+                'hospital_user', 'hospital_data', 'hospital_subscription', 
+                'hospital_access_token', 'hospital_refresh_token'
+            ];
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('Removed:', key);
+            });
+            
+            // Clear all localStorage
+            localStorage.clear();
+            
+            document.getElementById('result').innerHTML = 
+                '<p style="color: green;">✅ All cache cleared! Please refresh the hospital dashboard.</p>';
+        }
+    </script>
+</body>
+</html>
