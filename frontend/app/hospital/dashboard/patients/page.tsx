@@ -268,6 +268,16 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
       setImporting(true)
       const token = localStorage.getItem('hospital_access_token')
       
+      if (!token) {
+        toast.error('Please login first')
+        setImportResults({
+          success: 0,
+          failed: 1,
+          errors: ['Please login first']
+        })
+        return
+      }
+      
       const formData = new FormData()
       formData.append('file', importFile)
 
@@ -279,7 +289,18 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
         body: formData
       })
 
-      const data = await response.json()
+      // Check if response is ok before trying to parse JSON
+      let data
+      try {
+        const text = await response.text()
+        if (!text) {
+          throw new Error('Empty response from server')
+        }
+        data = JSON.parse(text)
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError)
+        throw new Error(`Server error: ${response.status} ${response.statusText}. Please make sure the backend server is running.`)
+      }
 
       if (response.ok) {
         setImportResults({
@@ -287,22 +308,32 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
           failed: data.failed || 0,
           errors: data.errors || []
         })
-        toast.success(`Import completed: ${data.success} patients imported`)
+        if (data.success > 0) {
+          toast.success(`Import completed: ${data.success} patients imported`)
+          fetchPatients() // Refresh the patient list
+        } else {
+          toast(`Import completed: ${data.success} patients imported, ${data.failed} failed`, {
+            icon: '⚠️',
+            duration: 4000
+          })
+        }
       } else {
-        toast.error(data.error || 'Import failed')
+        const errorMsg = data.error || data.message || 'Import failed'
+        toast.error(errorMsg)
         setImportResults({
-          success: 0,
-          failed: 1,
-          errors: [data.error || 'Import failed']
+          success: data.success || 0,
+          failed: data.failed || 1,
+          errors: data.errors || [errorMsg]
         })
       }
     } catch (error: any) {
       console.error('Import error:', error)
-      toast.error('Import failed: ' + error.message)
+      const errorMessage = error.message || 'Failed to connect to server. Please check if the backend is running.'
+      toast.error(errorMessage)
       setImportResults({
         success: 0,
         failed: 1,
-        errors: [error.message || 'Import failed']
+        errors: [errorMessage]
       })
     } finally {
       setImporting(false)

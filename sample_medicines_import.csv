@@ -1,0 +1,12 @@
+name,quantity,mrp,cost_price,selling_price,expiry_date
+Paracetamol 500mg,100,30,15,25,2025-12-31
+Amoxicillin 250mg,50,75,45,65,2025-06-30
+Ibuprofen 400mg,75,50,30,40,2025-09-15
+Aspirin 75mg,200,25,12,20,2026-03-31
+Cetirizine 10mg,150,38,18,32,2025-11-30
+Omeprazole 20mg,80,65,40,55,2025-08-15
+Azithromycin 500mg,60,120,80,100,2025-10-20
+Metformin 500mg,120,65,35,55,2026-01-31
+Atorvastatin 20mg,90,85,50,70,2025-12-15
+Amlodipine 5mg,110,70,45,60,2026-02-28
+

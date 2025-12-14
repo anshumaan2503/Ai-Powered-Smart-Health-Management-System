@@ -15,7 +15,10 @@ import {
   ArrowTrendingDownIcon,
   EyeIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  CloudArrowUpIcon,
+  DocumentArrowDownIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
@@ -63,6 +66,14 @@ export default function PharmacyPage() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResults, setImportResults] = useState<any>(null)
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; medicine: Medicine | null }>({ show: false, medicine: null })
+  const [deleteAllModal, setDeleteAllModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -308,6 +319,177 @@ export default function PharmacyPage() {
     }).format(amount)
   }
 
+  const downloadTemplate = async () => {
+    try {
+      const token = localStorage.getItem('hospital_access_token')
+      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/import-medicines-template', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const csvContent = data.template || "name,quantity\nParacetamol 500mg,100\nAmoxicillin 250mg,50"
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'medicines_import_template.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        toast.success('Template downloaded successfully')
+      } else {
+        // Fallback template
+        const csvContent = "name,quantity\nParacetamol 500mg,100\nAmoxicillin 250mg,50\nIbuprofen 400mg,75"
+        const blob = new Blob([csvContent], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'medicines_import_template.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        toast.success('Template downloaded successfully')
+      }
+    } catch (error) {
+      console.error('Error downloading template:', error)
+      toast.error('Failed to download template')
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('Please select a file to import')
+      return
+    }
+
+    setImporting(true)
+    setImportResults(null)
+
+    try {
+      const token = localStorage.getItem('hospital_access_token')
+      if (!token) {
+        toast.error('Please login first')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('file', importFile)
+
+      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/import-medicines', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setImportResults(data)
+        toast.success(`Import completed: ${data.imported_count} medicines imported`)
+        // Reload medicines list
+        loadMedicines()
+        loadDashboardStats()
+      } else {
+        toast.error(data.error || 'Import failed')
+        setImportResults({
+          imported_count: 0,
+          errors_count: 1,
+          errors: [data.error || 'Import failed']
+        })
+      }
+    } catch (error: any) {
+      console.error('Import error:', error)
+      toast.error('Import failed: ' + error.message)
+      setImportResults({
+        imported_count: 0,
+        errors_count: 1,
+        errors: [error.message || 'Import failed']
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteModal.medicine) return
+
+    setDeleting(true)
+    try {
+      const token = localStorage.getItem('hospital_access_token')
+      if (!token) {
+        toast.error('Please login first')
+        return
+      }
+
+      const response = await fetch(`http://localhost:5000/api/hospital/pharmacy/medicines/${deleteModal.medicine.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Medicine deleted successfully')
+        setDeleteModal({ show: false, medicine: null })
+        // Reload medicines list
+        loadMedicines()
+        loadDashboardStats()
+      } else {
+        toast.error(data.error || 'Failed to delete medicine')
+      }
+    } catch (error: any) {
+      console.error('Delete error:', error)
+      toast.error('Failed to delete medicine: ' + error.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    setDeletingAll(true)
+    try {
+      const token = localStorage.getItem('hospital_access_token')
+      if (!token) {
+        toast.error('Please login first')
+        return
+      }
+
+      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/medicines/delete-all', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(data.message || `Successfully deleted ${data.deleted_count} medicine(s)`)
+        setDeleteAllModal(false)
+        // Reload medicines list
+        loadMedicines()
+        loadDashboardStats()
+      } else {
+        toast.error(data.error || 'Failed to delete all medicines')
+      }
+    } catch (error: any) {
+      console.error('Delete all error:', error)
+      toast.error('Failed to delete all medicines: ' + error.message)
+    } finally {
+      setDeletingAll(false)
+    }
+  }
+
   if (loading && medicines.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -329,13 +511,33 @@ export default function PharmacyPage() {
             Manage medicines, track stock levels, and monitor expiry dates
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Medicine
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary flex items-center"
+          >
+            <CloudArrowUpIcon className="h-5 w-5 mr-2" />
+            Import CSV
+          </button>
+          {medicines.length > 0 && (
+            <button
+              onClick={() => setDeleteAllModal(true)}
+              className="btn-secondary flex items-center bg-red-600 hover:bg-red-700 text-white"
+            >
+              <TrashIcon className="h-5 w-5 mr-2" />
+              Delete All
+            </button>
+          )}
+          <button
+            onClick={() => {
+              toast.info('Add Medicine feature coming soon. Use Import CSV to add medicines.')
+            }}
+            className="btn-primary flex items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Medicine
+          </button>
+        </div>
       </div>
 
       {/* Dashboard Stats */}
@@ -519,18 +721,20 @@ export default function PharmacyPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      <div>MRP: {formatCurrency(medicine.mrp)}</div>
-                      <div>Cost: {formatCurrency(medicine.cost_price)}</div>
-                      <div className="flex items-center">
-                        {medicine.profit_margin > 0 ? (
-                          <ArrowTrendingUpIcon className="h-3 w-3 text-green-500 mr-1" />
-                        ) : (
-                          <ArrowTrendingDownIcon className="h-3 w-3 text-red-500 mr-1" />
-                        )}
-                        <span className={medicine.profit_margin > 0 ? 'text-green-600' : 'text-red-600'}>
-                          {medicine.profit_margin.toFixed(1)}%
-                        </span>
-                      </div>
+                      <div>MRP: {medicine.mrp ? formatCurrency(medicine.mrp) : '₹0'}</div>
+                      <div>Cost: {medicine.cost_price ? formatCurrency(medicine.cost_price) : '₹0'}</div>
+                      {medicine.cost_price && medicine.selling_price && (
+                        <div className="flex items-center">
+                          {medicine.profit_margin > 0 ? (
+                            <ArrowTrendingUpIcon className="h-3 w-3 text-green-500 mr-1" />
+                          ) : (
+                            <ArrowTrendingDownIcon className="h-3 w-3 text-red-500 mr-1" />
+                          )}
+                          <span className={medicine.profit_margin > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {medicine.profit_margin.toFixed(1)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -549,13 +753,29 @@ export default function PharmacyPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
+                      <button 
+                        onClick={() => {
+                          toast.info('View medicine details feature coming soon')
+                        }}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="View details"
+                      >
                         <EyeIcon className="h-4 w-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-900">
+                      <button 
+                        onClick={() => {
+                          toast.info('Edit medicine feature coming soon')
+                        }}
+                        className="text-green-600 hover:text-green-900"
+                        title="Edit medicine"
+                      >
                         <PencilIcon className="h-4 w-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900">
+                      <button 
+                        onClick={() => setDeleteModal({ show: true, medicine })}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete medicine"
+                      >
                         <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
@@ -626,18 +846,326 @@ export default function PharmacyPage() {
               "Unable to connect to the pharmacy system. Please check your connection and try again."
             }
           </p>
-          <div className="mt-6">
+          <div className="mt-6 flex space-x-3 justify-center">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn-secondary"
+            >
+              <CloudArrowUpIcon className="h-5 w-5 mr-2" />
+              Import CSV
+            </button>
             <button
               onClick={() => {
-                console.log('Retrying to load medicines...')
-                loadMedicines()
-                loadDashboardStats()
+                if (!stats) {
+                  console.log('Retrying to load medicines...')
+                  loadMedicines()
+                  loadDashboardStats()
+                } else {
+                  toast.info('Add Medicine feature coming soon. Use Import CSV to add medicines.')
+                }
               }}
               className="btn-primary"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               {stats ? 'Add Medicine' : 'Retry'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Import Medicines Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Import Medicines from CSV</h3>
+                <button
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                    setImportResults(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              {!importResults ? (
+                <>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Upload a CSV file with medicine data.
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      <strong>Required:</strong> name, quantity<br/>
+                      <strong>Optional:</strong> mrp, cost_price, selling_price, expiry_date (format: YYYY-MM-DD or DD-MM-YYYY)
+                    </p>
+                    
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <div className="text-sm text-gray-600">
+                        <label htmlFor="csv-upload-medicines" className="cursor-pointer">
+                          <span className="text-blue-600 hover:text-blue-500">Click to upload</span>
+                          <span> or drag and drop</span>
+                          <input
+                            id="csv-upload-medicines"
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            className="sr-only"
+                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">CSV or Excel files (.csv, .xlsx, .xls)</p>
+                    </div>
+
+                    {importFile && (
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          Selected: {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <button
+                      onClick={() => downloadTemplate()}
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+                      Download CSV Template
+                    </button>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        setShowImportModal(false)
+                        setImportFile(null)
+                      }}
+                      disabled={importing}
+                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleImport}
+                      disabled={!importFile || importing}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
+                    >
+                      {importing ? (
+                        <>
+                          <LoadingSpinner size="sm" />
+                          <span className="ml-2">Importing...</span>
+                        </>
+                      ) : (
+                        'Import Medicines'
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <div className="text-center">
+                      <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                        <CloudArrowUpIcon className="h-6 w-6 text-green-600" />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Import Complete</h4>
+                      <div className="space-y-2">
+                        <p className="text-sm text-green-600">
+                          ✅ {importResults.imported_count} medicines imported successfully
+                        </p>
+                        {importResults.skipped_count > 0 && (
+                          <p className="text-sm text-yellow-600">
+                            ⚠️ {importResults.skipped_count} medicines updated (already existed)
+                          </p>
+                        )}
+                        {importResults.errors_count > 0 && (
+                          <p className="text-sm text-red-600">
+                            ❌ {importResults.errors_count} errors occurred
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {importResults.errors && importResults.errors.length > 0 && (
+                      <div className="mt-4 p-3 bg-red-50 rounded-lg max-h-40 overflow-y-auto">
+                        <h5 className="text-sm font-medium text-red-800 mb-2">Errors:</h5>
+                        <ul className="text-xs text-red-700 space-y-1">
+                          {importResults.errors.slice(0, 5).map((error: any, index: number) => (
+                            <li key={index}>• Row {error.row}: {error.error}</li>
+                          ))}
+                          {importResults.errors.length > 5 && (
+                            <li>• ... and {importResults.errors.length - 5} more errors</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {importResults.imported_medicines && importResults.imported_medicines.length > 0 && (
+                      <div className="mt-4 p-3 bg-green-50 rounded-lg max-h-40 overflow-y-auto">
+                        <h5 className="text-sm font-medium text-green-800 mb-2">Imported Medicines:</h5>
+                        <ul className="text-xs text-green-700 space-y-1">
+                          {importResults.imported_medicines.map((medicine: any, index: number) => (
+                            <li key={index}>• {medicine.name} (Qty: {medicine.quantity})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportResults(null)
+                    }}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.show && deleteModal.medicine && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Delete Medicine</h3>
+                <button
+                  onClick={() => setDeleteModal({ show: false, medicine: null })}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={deleting}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  Are you sure you want to delete this medicine?
+                </p>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="font-medium text-gray-900">{deleteModal.medicine.name}</p>
+                  {deleteModal.medicine.brand_name && (
+                    <p className="text-sm text-gray-600">{deleteModal.medicine.brand_name}</p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    Stock: {deleteModal.medicine.quantity_in_stock} {deleteModal.medicine.unit_of_measurement}
+                  </p>
+                </div>
+                <p className="text-xs text-red-600 mt-2">
+                  This action cannot be undone. The medicine will be removed from your inventory.
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setDeleteModal({ show: false, medicine: null })}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {deleting ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2">Deleting...</span>
+                    </>
+                  ) : (
+                    'Delete Medicine'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      {deleteAllModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-red-900">Delete All Medicines</h3>
+                <button
+                  onClick={() => setDeleteAllModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={deletingAll}
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+                  <div className="flex items-start">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-900 mb-1">Warning: Destructive Action</p>
+                      <p className="text-sm text-red-800">
+                        This will permanently delete <strong>all {medicines.length} medicine(s)</strong> from your inventory.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3">
+                  Are you absolutely sure you want to delete all medicines? This action:
+                </p>
+                <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 mb-4">
+                  <li>Will remove all medicines from your inventory</li>
+                  <li>Cannot be undone</li>
+                  <li>Will affect all stock records</li>
+                </ul>
+                
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Total medicines to delete:</strong> {medicines.length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setDeleteAllModal(false)}
+                  disabled={deletingAll}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={deletingAll}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {deletingAll ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2">Deleting...</span>
+                    </>
+                  ) : (
+                    'Delete All Medicines'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

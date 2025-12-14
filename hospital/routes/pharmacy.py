@@ -389,6 +389,51 @@ def delete_medicine(medicine_id):
         current_app.logger.error(f"Error deleting medicine: {str(e)}")
         return jsonify({'error': 'Failed to delete medicine'}), 500
 
+@pharmacy_bp.route('/medicines/delete-all', methods=['DELETE'])
+@jwt_required()
+def delete_all_medicines():
+    """Delete all medicines for a hospital (soft delete)"""
+    try:
+        current_user = get_jwt_identity()
+        user = User.query.get(current_user)
+        
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'Hospital not found'}), 404
+        
+        if user.role not in ['admin']:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        # Get all active medicines for this hospital
+        medicines = Medicine.query.filter_by(
+            hospital_id=user.hospital_id,
+            is_active=True
+        ).all()
+        
+        count = len(medicines)
+        
+        if count == 0:
+            return jsonify({
+                'message': 'No medicines to delete',
+                'deleted_count': 0
+            }), 200
+        
+        # Soft delete all medicines
+        for medicine in medicines:
+            medicine.is_active = False
+            medicine.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully deleted {count} medicine(s)',
+            'deleted_count': count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting all medicines: {str(e)}")
+        return jsonify({'error': 'Failed to delete medicines'}), 500
+
 @pharmacy_bp.route('/stock-movements', methods=['GET'])
 @jwt_required()
 def get_stock_movements():

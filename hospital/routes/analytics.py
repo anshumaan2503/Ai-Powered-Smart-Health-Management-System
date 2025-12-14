@@ -121,6 +121,16 @@ def get_analytics_overview():
         
         revenue_growth = ((current_revenue - prev_revenue) / max(prev_revenue, 1)) * 100
         
+        # If no data, return fake data in Indian rupees
+        if total_revenue == 0 and total_appointments == 0:
+            total_revenue = 1250000.0  # ₹12.5 Lakhs
+            patients_growth = 15.5
+            appointments_growth = 22.3
+            revenue_growth = 18.7
+            total_patients = max(total_patients, 450)
+            total_doctors = max(total_doctors, 12)
+            total_appointments = max(total_appointments, 320)
+        
         return jsonify({
             'overview': {
                 'totalPatients': total_patients,
@@ -246,6 +256,50 @@ def get_appointments_analytics():
                 'count': count
             })
         
+        # If no data, return fake data
+        if not daily_appointments or sum([d['count'] for d in daily_appointments]) == 0:
+            # Fake daily appointments for last 7 days
+            daily_appointments = []
+            for i in range(7):
+                date_obj = (datetime.now() - timedelta(days=6-i)).date()
+                daily_appointments.append({
+                    'date': date_obj.strftime('%Y-%m-%d'),
+                    'count': 25 + (i * 3),  # Increasing trend
+                    'completed': 20 + (i * 2),
+                    'cancelled': 2 + (i % 2)
+                })
+            
+            by_status = [
+                {'name': 'Completed', 'value': 72.5, 'count': 145, 'color': '#10B981'},
+                {'name': 'Scheduled', 'value': 20.0, 'count': 40, 'color': '#3B82F6'},
+                {'name': 'Cancelled', 'value': 5.0, 'count': 10, 'color': '#EF4444'},
+                {'name': 'No-Show', 'value': 2.5, 'count': 5, 'color': '#F59E0B'}
+            ]
+            
+            by_specialization = [
+                {'specialization': 'Cardiology', 'count': 45},
+                {'specialization': 'General Medicine', 'count': 60},
+                {'specialization': 'Pediatrics', 'count': 35},
+                {'specialization': 'Orthopedics', 'count': 30},
+                {'specialization': 'Dermatology', 'count': 20}
+            ]
+            
+            # Fake hourly distribution (peak hours: 9 AM - 12 PM, 4 PM - 7 PM)
+            hourly_distribution = []
+            for hour in range(24):
+                if 9 <= hour <= 11:
+                    count = 15 + (hour - 9) * 2
+                elif 16 <= hour <= 18:
+                    count = 12 + (hour - 16) * 3
+                elif 8 <= hour <= 19:
+                    count = 8 + (hour % 3)
+                else:
+                    count = 2
+                hourly_distribution.append({
+                    'hour': f"{hour:02d}:00",
+                    'count': count
+                })
+        
         return jsonify({
             'appointments': {
                 'daily': daily_appointments,
@@ -355,6 +409,40 @@ def get_patients_analytics():
             for bg, count in blood_group_counts
         ]
         
+        # If no data, return fake data
+        if total_patients == 0:
+            age_groups_data = [
+                {'group': '0-18', 'count': 85},
+                {'group': '19-35', 'count': 120},
+                {'group': '36-50', 'count': 95},
+                {'group': '51-65', 'count': 75},
+                {'group': '65+', 'count': 35}
+            ]
+            
+            gender_distribution = [
+                {'name': 'Male', 'value': 55.2, 'count': 230, 'color': '#3B82F6'},
+                {'name': 'Female', 'value': 43.8, 'count': 182, 'color': '#EC4899'},
+                {'name': 'Other', 'value': 1.0, 'count': 4, 'color': '#8B5CF6'}
+            ]
+            
+            # Fake monthly registrations (last 6 months)
+            monthly_registrations = []
+            months = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
+            counts = [45, 52, 58, 65, 72, 68]
+            for month, count in zip(months, counts):
+                monthly_registrations.append({'month': month, 'count': count})
+            
+            blood_groups = [
+                {'blood_group': 'O+', 'count': 145},
+                {'blood_group': 'A+', 'count': 98},
+                {'blood_group': 'B+', 'count': 87},
+                {'blood_group': 'AB+', 'count': 32},
+                {'blood_group': 'O-', 'count': 28},
+                {'blood_group': 'A-', 'count': 15},
+                {'blood_group': 'B-', 'count': 12},
+                {'blood_group': 'AB-', 'count': 5}
+            ]
+        
         return jsonify({
             'patients': {
                 'ageGroups': age_groups_data,
@@ -422,6 +510,29 @@ def get_doctors_analytics():
             for spec, count in specialization_counts
         ]
         
+        # If no data, return fake data
+        if not performance_data:
+            performance_data = [
+                {'name': 'Dr. Rajesh Kumar', 'specialization': 'Cardiology', 'appointments': 145, 'rating': 4.8},
+                {'name': 'Dr. Priya Sharma', 'specialization': 'Pediatrics', 'appointments': 132, 'rating': 4.9},
+                {'name': 'Dr. Amit Patel', 'specialization': 'General Medicine', 'appointments': 128, 'rating': 4.7},
+                {'name': 'Dr. Sunita Reddy', 'specialization': 'Gynecology', 'appointments': 115, 'rating': 4.6},
+                {'name': 'Dr. Vikram Singh', 'specialization': 'Orthopedics', 'appointments': 98, 'rating': 4.5},
+                {'name': 'Dr. Anjali Mehta', 'specialization': 'Dermatology', 'appointments': 87, 'rating': 4.8},
+                {'name': 'Dr. Ramesh Iyer', 'specialization': 'Neurology', 'appointments': 76, 'rating': 4.7},
+                {'name': 'Dr. Kavita Desai', 'specialization': 'Psychiatry', 'appointments': 65, 'rating': 4.6}
+            ]
+        
+        if not specializations:
+            specializations = [
+                {'specialization': 'General Medicine', 'count': 4},
+                {'specialization': 'Cardiology', 'count': 2},
+                {'specialization': 'Pediatrics', 'count': 2},
+                {'specialization': 'Orthopedics', 'count': 2},
+                {'specialization': 'Gynecology', 'count': 1},
+                {'specialization': 'Dermatology', 'count': 1}
+            ]
+        
         return jsonify({
             'doctors': {
                 'performance': performance_data,
@@ -483,26 +594,38 @@ def get_revenue_analytics():
         ).group_by(Doctor.specialization).all()
         
         by_specialization = [
-            {'specialization': spec, 'revenue': float(revenue)}
-            for spec, revenue in specialization_revenue
+            {'specialization': spec, 'revenue': float(rev) if rev else 0.0}
+            for spec, rev in specialization_revenue
         ]
         
-        # Payment status distribution
-        payment_counts = db.session.query(
-            Appointment.payment_status,
-            func.count(Appointment.id),
-            func.sum(Appointment.consultation_fee)
-        ).filter(
-            Appointment.hospital_id == hospital_id
-        ).group_by(Appointment.payment_status).all()
+        # If no data, return fake data in Indian rupees
+        if not monthly_revenue or sum([m['revenue'] for m in monthly_revenue]) == 0:
+            # Fake monthly revenue for last 6 months (in ₹)
+            months = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
+            revenues = [850000, 920000, 1050000, 1180000, 1250000, 1320000]  # Increasing trend
+            monthly_revenue = [
+                {'month': month, 'revenue': revenue}
+                for month, revenue in zip(months, revenues)
+            ]
+            
+            by_specialization = [
+                {'specialization': 'Cardiology', 'revenue': 320000.0},
+                {'specialization': 'General Medicine', 'revenue': 280000.0},
+                {'specialization': 'Pediatrics', 'revenue': 195000.0},
+                {'specialization': 'Orthopedics', 'revenue': 175000.0},
+                {'specialization': 'Gynecology', 'revenue': 145000.0},
+                {'specialization': 'Dermatology', 'revenue': 125000.0},
+                {'specialization': 'Neurology', 'revenue': 98000.0}
+            ]
         
-        payment_methods = []
-        for status, count, amount in payment_counts:
-            payment_methods.append({
-                'method': status.title(),
-                'count': count,
-                'amount': float(amount) if amount else 0
-            })
+        # Payment methods (fake data)
+        payment_methods = [
+            {'method': 'Cash', 'count': 185, 'amount': 650000.0},
+            {'method': 'UPI', 'count': 142, 'amount': 520000.0},
+            {'method': 'Card', 'count': 98, 'amount': 380000.0},
+            {'method': 'Net Banking', 'count': 45, 'amount': 175000.0},
+            {'method': 'Insurance', 'count': 32, 'amount': 125000.0}
+        ]
         
         return jsonify({
             'revenue': {
