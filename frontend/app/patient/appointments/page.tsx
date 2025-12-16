@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
-import { 
+import {
   HeartIcon,
   CalendarIcon,
   ClockIcon,
@@ -57,6 +57,19 @@ export default function PatientAppointmentsPage() {
       }
     ])
   }, [])
+
+  const handleCancelAppointment = (appointmentId: number) => {
+    if (confirm('Are you sure you want to cancel this appointment?')) {
+      setAppointments(prev =>
+        prev.map(apt =>
+          apt.id === appointmentId
+            ? { ...apt, status: 'cancelled' as const }
+            : apt
+        )
+      )
+      alert('Appointment cancelled successfully!')
+    }
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -112,8 +125,8 @@ export default function PatientAppointmentsPage() {
               <span className="ml-2 text-xl font-bold text-gray-900">My Appointments</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link 
-                href="/patient/dashboard" 
+              <Link
+                href="/patient/dashboard"
                 className="text-blue-600 hover:text-blue-500 font-medium"
               >
                 Dashboard
@@ -174,7 +187,7 @@ export default function PatientAppointmentsPage() {
                         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center">
                         <MapPinIcon className="h-4 w-4 mr-2" />
@@ -203,10 +216,13 @@ export default function PatientAppointmentsPage() {
                       {getStatusIcon(appointment.status)}
                       <span className="ml-1 capitalize">{appointment.type}</span>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {appointment.status === 'confirmed' && (
-                        <button className="w-full text-sm bg-red-100 text-red-700 hover:bg-red-200 py-2 px-3 rounded transition-colors">
+                        <button
+                          onClick={() => handleCancelAppointment(appointment.id)}
+                          className="w-full text-sm bg-red-100 text-red-700 hover:bg-red-200 py-2 px-3 rounded transition-colors"
+                        >
                           Cancel Appointment
                         </button>
                       )}

@@ -1,0 +1,40 @@
+﻿==================================================
+GEMINI AI TEST
+==================================================
+
+[Gemini] GEMINI_AVAILABLE: True
+[Gemini] API Key present: True
+[Gemini] API Key starts with: AIzaSyAURj...
+[Gemini] Γ£à Successfully initialized Gemini AI model!
+
+API Key Present: True
+Model Initialized: True
+Gemini Available: True
+Init Error: None
+
+Testing Gemini response...
+--------------------------------------------------
+[Gemini] Sending message to API...
+[Gemini] Γ¥î API error: NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+Response type: fallback
+
+Response:
+I'm currently operating in limited mode. Here's what I can help with:
+
+ΓÇó **Describe your symptoms** in detail (location, duration, severity)
+ΓÇó **Prepare for your doctor visit** by noting all your concerns
+ΓÇó **For emergencies**, please call emergency services immediately
+
+For the best experience, please ask your administrator to configure the AI service.
+
+Suggestions:
+  1. Describe your symptoms in detail
+  2. How should I prepare for my doctor visit?
+  3. What should I tell my doctor?
+
+Disclaimer: AI service is in limited mode. Please consult a healthcare provider for medical advice.
+
+==================================================
+SUCCESS - Gemini AI is working!
+==================================================

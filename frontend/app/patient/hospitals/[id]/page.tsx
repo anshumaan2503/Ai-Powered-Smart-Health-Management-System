@@ -143,8 +143,10 @@ export default function HospitalDetailsPage() {
               >
                 <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
               </button>
-              <HeartIcon className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">MediCare Pro</span>
+              <Link href="/" className="flex items-center hover:opacity-80 transition">
+                <HeartIcon className="h-8 w-8 text-blue-600" />
+                <span className="ml-2 text-xl font-bold text-gray-900">MediCare Pro</span>
+              </Link>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Welcome, {user.first_name}!</span>

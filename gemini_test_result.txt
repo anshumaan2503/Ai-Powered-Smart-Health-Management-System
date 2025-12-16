@@ -1,0 +1,9 @@
+==================================================
+GEMINI AI TEST
+==================================================
+
+API Key Present: True
+Model Initialized: True
+Gemini Available: True
+Init Error: None
+

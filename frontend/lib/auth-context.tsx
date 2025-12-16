@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) {
         token = sessionStorage.getItem('access_token')
       }
-      
+
       if (!token) {
         setIsLoading(false)
         return
@@ -75,10 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (loginIdentifier: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {
       // Send either email or username based on the input
-      const loginData = loginIdentifier.includes('@') 
+      const loginData = loginIdentifier.includes('@')
         ? { email: loginIdentifier, password }
         : { username: loginIdentifier, password }
-      
+
       const response = await api.post('/auth/login', loginData)
       const { access_token, refresh_token, user: userData } = response.data
 
@@ -87,20 +87,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Store in localStorage for persistent login
         localStorage.setItem('access_token', access_token)
         localStorage.setItem('refresh_token', refresh_token)
+        localStorage.setItem('user', JSON.stringify(userData))
         // Clear any session storage
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('user')
       } else {
         // Store in sessionStorage for session-only login
         sessionStorage.setItem('access_token', access_token)
         sessionStorage.setItem('refresh_token', refresh_token)
+        sessionStorage.setItem('user', JSON.stringify(userData))
         // Clear any localStorage
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
       }
-      
+
       setUser(userData)
-      
+
       toast.success(`Welcome back, ${userData.first_name}!`)
       return true
     } catch (error: any) {

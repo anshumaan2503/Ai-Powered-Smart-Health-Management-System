@@ -229,3 +229,104 @@ class SimpleTreatmentRecommendations:
         recommendations['lifestyle'] = list(set(recommendations['lifestyle']))
         
         return recommendations
+
+
+class SimpleHealthChatbot:
+    """Lightweight rule-based health assistant (non-diagnostic)."""
+
+    def __init__(self):
+        # Basic intent keywords
+        self.greetings = {'hi', 'hello', 'hey', 'good morning', 'good evening'}
+        self.urgent_keywords = {
+            'chest pain', 'shortness of breath', 'difficulty breathing',
+            'loss of consciousness', 'severe headache', 'slurred speech',
+            'numbness', 'bleeding', 'vision loss'
+        }
+        self.symptom_keywords = {
+            'fever', 'cough', 'cold', 'headache', 'nausea', 'vomit',
+            'diarrhea', 'pain', 'dizzy', 'fatigue', 'rash'
+        }
+
+    def respond(self, user_message: str, context=None):
+        """Return a safe, helpful response with minimal rules."""
+        context = context or []
+        message = user_message.lower().strip()
+
+        # Check for urgent symptoms first
+        if any(k in message for k in self.urgent_keywords):
+            return {
+                'reply': (
+                    "I detected possible urgent symptoms. Please seek immediate "
+                    "medical attention or contact emergency services right away."
+                ),
+                'type': 'safety_alert',
+                'suggestions': [
+                    'Call local emergency services',
+                    'Notify nearby staff or family',
+                    'Do not delay urgent care'
+                ],
+                'disclaimer': self._disclaimer()
+            }
+
+        # Greetings / rapport
+        if any(message.startswith(greet) for greet in self.greetings):
+            return {
+                'reply': "Hello! I can help with basic health guidance or symptom check info.",
+                'type': 'greeting',
+                'suggestions': [
+                    'Describe your symptoms',
+                    'Ask how to prepare for a doctor visit',
+                    'Ask for general wellness tips'
+                ],
+                'disclaimer': self._disclaimer()
+            }
+
+        # Symptom guidance
+        if any(k in message for k in self.symptom_keywords):
+            return {
+                'reply': (
+                    "I can offer general guidance. For a quick check, you can run the "
+                    "symptom checker with details like duration, severity, and any tests done."
+                ),
+                'type': 'symptom_support',
+                'suggestions': [
+                    'Include onset time and severity (mild/medium/severe)',
+                    'Mention meds taken and existing conditions',
+                    'List accompanying symptoms (fever, rash, dizziness)'
+                ],
+                'disclaimer': self._disclaimer()
+            }
+
+        # Appointment / logistics cues
+        if 'appointment' in message or 'book' in message or 'schedule' in message:
+            return {
+                'reply': "To schedule, pick a date/time and preferred doctor; include reason for visit.",
+                'type': 'logistics',
+                'suggestions': [
+                    'Share availability and preferred doctor specialty',
+                    'Mention if this is a follow-up or new visit',
+                    'Provide contact details for confirmations'
+                ],
+                'disclaimer': self._disclaimer()
+            }
+
+        # Default fallback
+        return {
+            'reply': (
+                "I can help with general health guidance, symptom check inputs, "
+                "and visit preparation tips. Tell me your symptoms or question."
+            ),
+            'type': 'general',
+            'suggestions': [
+                'Describe your symptoms and duration',
+                'Ask how to prepare for a consultation',
+                'Request wellness tips (sleep, hydration, activity)'
+            ],
+            'disclaimer': self._disclaimer()
+        }
+
+    def _disclaimer(self):
+        return (
+            "I am not a medical professional. For emergencies or definitive medical "
+            "advice, contact a licensed clinician."
+        )

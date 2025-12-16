@@ -1,0 +1,7 @@
+﻿============================================================
+UPDATE GEMINI API KEY
+============================================================
+
+Paste your NEW API key here:
+(The one that's DIFFERENT from AIzaSyBuQveq...)
+

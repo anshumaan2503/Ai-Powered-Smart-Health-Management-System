@@ -13,8 +13,11 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Check both localStorage and sessionStorage for token
+    // Check for patient token first, then hospital token, then sessionStorage
     let token = localStorage.getItem('access_token')
+    if (!token) {
+      token = localStorage.getItem('hospital_access_token')
+    }
     if (!token) {
       token = sessionStorage.getItem('access_token')
     }
@@ -43,7 +46,7 @@ api.interceptors.response.use(
         if (!refreshToken) {
           refreshToken = sessionStorage.getItem('refresh_token')
         }
-        
+
         if (!refreshToken) {
           throw new Error('No refresh token')
         }
@@ -55,7 +58,7 @@ api.interceptors.response.use(
         })
 
         const { access_token } = response.data
-        
+
         // Store new token in the same storage as the refresh token
         if (localStorage.getItem('refresh_token')) {
           localStorage.setItem('access_token', access_token)
@@ -90,65 +93,67 @@ api.interceptors.response.use(
 
 // API endpoints
 export const authAPI = {
-  login: (email: string, password: string) => 
+  login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
-  register: (userData: any) => 
+  register: (userData: any) =>
     api.post('/auth/register', userData),
-  getProfile: () => 
+  getProfile: () =>
     api.get('/auth/profile'),
-  refreshToken: () => 
+  refreshToken: () =>
     api.post('/auth/refresh'),
 }
 
 export const patientsAPI = {
-  getAll: (params?: any) => 
+  getAll: (params?: any) =>
     api.get('/patients/', { params }),
-  getById: (id: number) => 
+  getById: (id: number) =>
     api.get(`/patients/${id}`),
-  create: (data: any) => 
+  create: (data: any) =>
     api.post('/patients/', data),
-  update: (id: number, data: any) => 
+  update: (id: number, data: any) =>
     api.put(`/patients/${id}`, data),
-  delete: (id: number) => 
+  delete: (id: number) =>
     api.delete(`/patients/${id}`),
 }
 
 export const doctorsAPI = {
-  getAll: (params?: any) => 
+  getAll: (params?: any) =>
     api.get('/doctors/', { params }),
-  getById: (id: number) => 
+  getById: (id: number) =>
     api.get(`/doctors/${id}`),
-  getSpecializations: () => 
+  getSpecializations: () =>
     api.get('/doctors/specializations'),
 }
 
 export const appointmentsAPI = {
-  getAll: (params?: any) => 
+  getAll: (params?: any) =>
     api.get('/appointments/', { params }),
-  create: (data: any) => 
+  create: (data: any) =>
     api.post('/appointments/', data),
-  update: (id: number, data: any) => 
+  update: (id: number, data: any) =>
     api.put(`/appointments/${id}`, data),
 }
 
 export const aiAPI = {
-  symptomChecker: (data: any) => 
+  symptomChecker: (data: any) =>
     api.post('/ai/symptom-checker', data),
-  riskAssessment: (patientId: number) => 
+  chatbot: (data: { message: string; context?: any[] }) =>
+    api.post('/ai/chatbot', data),
+  riskAssessment: (patientId: number) =>
     api.post('/ai/risk-assessment', { patient_id: patientId }),
-  treatmentRecommendations: (diagnosisId: number) => 
+  treatmentRecommendations: (diagnosisId: number) =>
     api.post('/ai/treatment-recommendations', { diagnosis_id: diagnosisId }),
-  getDiagnoses: (patientId: number) => 
+  getDiagnoses: (patientId: number) =>
     api.get(`/ai/diagnoses/${patientId}`),
-  verifyDiagnosis: (diagnosisId: number, data: any) => 
+  verifyDiagnosis: (diagnosisId: number, data: any) =>
     api.put(`/ai/verify-diagnosis/${diagnosisId}`, data),
 }
 
 export const adminAPI = {
-  getDashboard: () => 
+  getDashboard: () =>
     api.get('/admin/dashboard'),
-  getUsers: (params?: any) => 
+  getUsers: (params?: any) =>
     api.get('/admin/users', { params }),
-  toggleUserStatus: (userId: number) => 
+  toggleUserStatus: (userId: number) =>
     api.put(`/admin/users/${userId}/toggle-status`),
 }

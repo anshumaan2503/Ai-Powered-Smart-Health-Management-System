@@ -3,9 +3,33 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from hospital import db
 from hospital.models.ai_diagnosis import AIDiagnosis
 # from hospital.models.patient import Patient  # Disabled for now
-from hospital.services.simple_ai import SimpleSymptomChecker, SimpleRiskAssessment, SimpleTreatmentRecommendations
+from hospital.services.simple_ai import (
+    SimpleSymptomChecker,
+    SimpleRiskAssessment,
+    SimpleTreatmentRecommendations,
+    SimpleHealthChatbot
+)
+from hospital.services.gemini_ai import GeminiHealthChatbot
 
 ai_bp = Blueprint('ai', __name__)
+
+@ai_bp.route('/test-gemini', methods=['GET'])
+def test_gemini():
+    """Test endpoint to check if Gemini AI is properly configured."""
+    try:
+        bot = GeminiHealthChatbot()
+        return jsonify({
+            'gemini_available': bot.is_available(),
+            'api_key_present': bool(bot.api_key),
+            'model_initialized': bot.model is not None,
+            'init_error': bot.init_error,
+            'message': 'Gemini is working!' if bot.is_available() else 'Gemini is NOT available - using fallback'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'gemini_available': False
+        }), 500
 
 @ai_bp.route('/symptom-checker', methods=['POST'])
 @jwt_required()
@@ -57,6 +81,34 @@ def symptom_checker():
         
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/chatbot', methods=['POST'])
+def ai_chatbot():
+    """AI-powered chatbot for health guidance using Gemini AI with fallback."""
+    try:
+        data = request.get_json() or {}
+        message = data.get('message', '').strip()
+        context = data.get('context', [])
+
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+
+        # Try Gemini AI first, fallback to simple chatbot if not available
+        gemini_bot = GeminiHealthChatbot()
+        if gemini_bot.is_available():
+            result = gemini_bot.respond(message, context)
+        else:
+            # Fallback to simple rule-based chatbot
+            simple_bot = SimpleHealthChatbot()
+            result = simple_bot.respond(message, context)
+
+        return jsonify({
+            'success': True,
+            'response': result
+        }), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @ai_bp.route('/risk-assessment', methods=['POST'])

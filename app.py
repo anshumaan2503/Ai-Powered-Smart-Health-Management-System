@@ -34,6 +34,14 @@ def check_requirements():
 
 def setup_environment():
     """Set up environment variables"""
+    # Load .env file if it exists
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        print("✅ Environment variables loaded from .env")
+    except ImportError:
+        print("⚠️  python-dotenv not installed, using system environment only")
+    
     if not os.path.exists('.env'):
         print("⚠️  No .env file found. Using default settings.")
         print("💡 Copy .env.example to .env and customize for production.")

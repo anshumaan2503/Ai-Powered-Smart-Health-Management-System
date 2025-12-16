@@ -40,11 +40,11 @@ export default function HospitalLoginPage() {
         localStorage.setItem('hospital_refresh_token', data.refresh_token)
         localStorage.setItem('hospital_user', JSON.stringify(data.user))
         localStorage.setItem('hospital_data', JSON.stringify(data.hospital))
-        
-        toast.success('Login successful!')
-        
-        // Redirect to hospital dashboard
-        router.push('/hospital/dashboard')
+
+        toast.success('Login successful! Choose where you want to go.')
+
+        // Redirect to home page so user can choose where to go
+        router.push('/')
       } else {
         throw new Error(data.error || 'Login failed')
       }

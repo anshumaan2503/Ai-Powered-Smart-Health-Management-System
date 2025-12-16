@@ -49,10 +49,10 @@ export default function RegistrationSuccessPage() {
             <CheckCircleIcon className="h-12 w-12 text-green-600" />
           </div>
           
-          <div className="flex items-center justify-center mb-4">
+          <Link href="/" className="flex items-center justify-center mb-4 hover:opacity-80 transition">
             <HeartIcon className="h-8 w-8 text-blue-600" />
             <span className="ml-2 text-xl font-bold text-gray-900">MediCare Pro</span>
-          </div>
+          </Link>
           
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome to MediCare Pro!

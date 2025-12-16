@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
@@ -22,14 +21,13 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const success = await login(email, password, rememberMe)
+      // Always remember the user (save to localStorage)
+      const success = await login(email, password, true)
       if (success) {
-        // The login function in auth context will handle token storage and user state
-        // Redirect will be handled by the auth context or we can do it here
+        toast.success('Login successful!')
         router.push('/patient/dashboard')
       }
     } catch (error: any) {
-      // Error handling is done in the auth context
       console.error('Login error:', error)
     } finally {
       setIsLoading(false)
@@ -103,21 +101,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-
+            <div className="flex items-center justify-end">
               <div className="text-sm">
                 <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
                   Forgot your password?
