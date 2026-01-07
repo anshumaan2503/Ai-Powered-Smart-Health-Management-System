@@ -61,12 +61,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await api.get('/auth/profile')
       setUser(response.data.user)
-    } catch (error) {
-      // Clear tokens from both storages
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      sessionStorage.removeItem('access_token')
-      sessionStorage.removeItem('refresh_token')
+    } catch (error: any) {
+      // Handle 422 (Unprocessable Entity) and other auth errors
+      if (error.response?.status === 422 || error.response?.status === 401 || error.response?.status === 403) {
+        // Token is invalid or expired, clear it
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('user')
+      }
+      // Silently fail for other errors (network issues, etc.)
     } finally {
       setIsLoading(false)
     }

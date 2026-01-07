@@ -77,7 +77,8 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         if not self.active_provider and GEMINI_AVAILABLE and self.gemini_key:
             try:
                 genai.configure(api_key=self.gemini_key)
-                self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                # Use the stable Gemini model
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
                 self.active_provider = "gemini"
                 print("[AI] ✅ Successfully initialized Gemini AI!")
             except Exception as e:
@@ -221,7 +222,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             'reply': reply_text,
             'type': 'ai_response',
             'provider': 'gemini',
-            'model': 'gemini-2.0-flash-exp',
+            'model': 'gemini-1.5-flash',
             'suggestions': suggestions,
             'disclaimer': 'I am an AI assistant, not a medical professional. For medical advice, please consult a healthcare provider.'
         }

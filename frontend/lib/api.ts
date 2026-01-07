@@ -13,17 +13,26 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Check for patient token first, then hospital token, then sessionStorage
-    let token = localStorage.getItem('access_token')
-    if (!token) {
-      token = localStorage.getItem('hospital_access_token')
+    // Determine which token to use based on the endpoint
+    const url = config.url || ''
+    
+    // For hospital endpoints, use hospital token
+    if (url.includes('/hospital-auth/') || url.includes('/hospital/')) {
+      const hospitalToken = localStorage.getItem('hospital_access_token')
+      if (hospitalToken) {
+        config.headers.Authorization = `Bearer ${hospitalToken}`
+      }
+    } else {
+      // For patient/auth endpoints, use patient token
+      let token = localStorage.getItem('access_token')
+      if (!token) {
+        token = sessionStorage.getItem('access_token')
+      }
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
     }
-    if (!token) {
-      token = sessionStorage.getItem('access_token')
-    }
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    
     return config
   },
   (error) => {

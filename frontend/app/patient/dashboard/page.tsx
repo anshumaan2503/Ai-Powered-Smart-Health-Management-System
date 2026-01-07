@@ -47,7 +47,7 @@ export default function PatientDashboard() {
         fetchHospitals()
     }, [])
 
-    const checkAuth = () => {
+    const checkAuth = async () => {
         // Check for token
         const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
         if (!token) {
@@ -55,16 +55,28 @@ export default function PatientDashboard() {
             return
         }
 
-        // Get user data
+        // Validate token by fetching profile
         try {
-            const userData = localStorage.getItem('user') || sessionStorage.getItem('user')
-            if (userData) {
-                setUser(JSON.parse(userData))
+            const response = await api.get('/auth/profile')
+            if (response.data.user) {
+                setUser(response.data.user)
+                // Update stored user data
+                const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage
+                storage.setItem('user', JSON.stringify(response.data.user))
             }
-        } catch (e) {
-            console.error('Error parsing user data:', e)
+        } catch (error: any) {
+            // Token is invalid, clear it
+            console.error('Auth check failed:', error)
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('user')
+            sessionStorage.removeItem('access_token')
+            sessionStorage.removeItem('refresh_token')
+            sessionStorage.removeItem('user')
+            setUser(null)
+        } finally {
+            setIsAuthChecking(false)
         }
-        setIsAuthChecking(false)
     }
 
     const fetchHospitals = async () => {

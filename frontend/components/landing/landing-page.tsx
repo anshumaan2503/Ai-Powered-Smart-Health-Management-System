@@ -12,6 +12,7 @@ import {
   ClockIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 export function LandingPage() {
   const accessSectionRef = useRef<HTMLDivElement>(null);
@@ -21,39 +22,99 @@ export function LandingPage() {
   const [hospitalName, setHospitalName] = useState('');
 
   useEffect(() => {
-    const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (patientToken) {
-      setIsPatientLoggedIn(true);
-      try {
-        const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setPatientName(user.first_name || 'Patient');
-        }
-      } catch (e) {
-        setPatientName('Patient');
-      }
-      // Redirect patient to dashboard
-      window.location.href = '/patient/dashboard';
-      return;
-    }
+    const checkAndRedirect = async () => {
+      // Check patient token
+      const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (patientToken) {
+        try {
+          // Validate token by making a test request
+          const response = await fetch('http://localhost:5000/api/auth/profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${patientToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-    const hospitalToken = localStorage.getItem('hospital_access_token');
-    if (hospitalToken) {
-      setIsHospitalLoggedIn(true);
-      try {
-        const hospitalData = localStorage.getItem('hospital_data');
-        if (hospitalData) {
-          const hospital = JSON.parse(hospitalData);
-          setHospitalName(hospital.name || 'Hospital');
+          if (response.ok) {
+            setIsPatientLoggedIn(true);
+            try {
+              const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+              if (userData) {
+                const user = JSON.parse(userData);
+                setPatientName(user.first_name || 'Patient');
+              }
+            } catch (e) {
+              setPatientName('Patient');
+            }
+            // Only redirect if token is valid
+            window.location.href = '/patient/dashboard';
+            return;
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('access_token');
+            sessionStorage.removeItem('refresh_token');
+            sessionStorage.removeItem('user');
+          }
+        } catch (error) {
+          // Token validation failed, clear it
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('user');
         }
-      } catch (e) {
-        setHospitalName('Hospital');
       }
-      // Redirect hospital to dashboard
-      window.location.href = '/hospital/dashboard';
-      return;
-    }
+
+      // Check hospital token
+      const hospitalToken = localStorage.getItem('hospital_access_token');
+      if (hospitalToken) {
+        try {
+          // Validate token by making a test request
+          const response = await fetch('http://localhost:5000/api/hospital-auth/hospital-profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${hospitalToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            setIsHospitalLoggedIn(true);
+            try {
+              const hospitalData = localStorage.getItem('hospital_data');
+              if (hospitalData) {
+                const hospital = JSON.parse(hospitalData);
+                setHospitalName(hospital.name || 'Hospital');
+              }
+            } catch (e) {
+              setHospitalName('Hospital');
+            }
+            // Only redirect if token is valid
+            window.location.href = '/hospital/dashboard';
+            return;
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('hospital_access_token');
+            localStorage.removeItem('hospital_refresh_token');
+            localStorage.removeItem('hospital_user');
+            localStorage.removeItem('hospital_data');
+          }
+        } catch (error) {
+          // Token validation failed, clear it
+          localStorage.removeItem('hospital_access_token');
+          localStorage.removeItem('hospital_refresh_token');
+          localStorage.removeItem('hospital_user');
+          localStorage.removeItem('hospital_data');
+        }
+      }
+    };
+
+    checkAndRedirect();
   }, []);
 
   const handleLogout = (type: 'patient' | 'hospital') => {
@@ -80,7 +141,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden transition-colors duration-300">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
@@ -88,38 +149,40 @@ export function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="bg-white/70 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50 shadow-lg">
+      <nav className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-b border-white/20 dark:border-gray-700/20 sticky top-0 z-50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-18">
             <Link href="/" className="flex items-center group">
               <div className="relative">
-                <HeartIcon className="h-9 w-9 text-blue-600 group-hover:scale-110 transition-transform" />
+                <HeartIcon className="h-9 w-9 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
               </div>
-              <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 MediCare Pro
               </span>
             </Link>
 
             <div className="flex items-center space-x-4">
+              <ThemeToggleButton />
+              
               {isPatientLoggedIn && (
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">Hi, {patientName}!</span>
-                  <Link href="/patient/dashboard" className="text-blue-600 hover:text-blue-700 font-semibold">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Hi, {patientName}!</span>
+                  <Link href="/patient/dashboard" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold">
                     Dashboard
                   </Link>
-                  <button onClick={() => handleLogout('patient')} className="text-gray-500 hover:text-red-600 text-sm">
+                  <button onClick={() => handleLogout('patient')} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 text-sm">
                     Logout
                   </button>
                 </div>
               )}
 
               {isHospitalLoggedIn && (
-                <div className="flex items-center space-x-3 border-l border-gray-300 pl-4">
-                  <span className="text-sm text-gray-600">{hospitalName}</span>
-                  <Link href="/hospital/dashboard" className="text-green-600 hover:text-green-700 font-semibold">
+                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{hospitalName}</span>
+                  <Link href="/hospital/dashboard" className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-semibold">
                     Dashboard
                   </Link>
-                  <button onClick={() => handleLogout('hospital')} className="text-gray-500 hover:text-red-600 text-sm">
+                  <button onClick={() => handleLogout('hospital')} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 text-sm">
                     Logout
                   </button>
                 </div>
@@ -166,6 +229,18 @@ export function LandingPage() {
               <ArrowRightIcon className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </span>
           </button>
+
+          {/* AI Chatbot Quick Access */}
+          <div className="mt-8 mb-12">
+            <Link
+              href="/aichatbot"
+              className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-semibold text-blue-600 border-2 border-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-105"
+            >
+              <SparklesIcon className="h-5 w-5 mr-2" />
+              Try AI Health Assistant - No Login Required
+              <ArrowRightIcon className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 max-w-6xl mx-auto">

@@ -29,6 +29,27 @@ def create_app(config_name='default'):
     
     mail.init_app(app)
     
+    # JWT Error Handlers
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return {'error': 'Token has expired', 'code': 'token_expired'}, 401
+    
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return {'error': 'Invalid token', 'code': 'invalid_token'}, 422
+    
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return {'error': 'Authorization token is required', 'code': 'missing_token'}, 401
+    
+    @jwt.needs_fresh_token_loader
+    def token_not_fresh_callback(jwt_header, jwt_payload):
+        return {'error': 'Fresh token required', 'code': 'fresh_token_required'}, 401
+    
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        return {'error': 'Token has been revoked', 'code': 'token_revoked'}, 401
+    
     # Register blueprints
     from hospital.routes.auth import auth_bp
     from hospital.routes.hospital_auth import hospital_auth_bp
@@ -42,11 +63,13 @@ def create_app(config_name='default'):
     from hospital.routes.import_doctors import import_doctors_bp
     from hospital.routes.import_medicines import import_medicines_bp
     from hospital.routes.patient_import import patient_import_bp
-    # from hospital.routes.hospital_appointments import hospital_appointments_bp  # Disabled for now
+    from hospital.routes.hospital_appointments import hospital_appointments_bp
     from hospital.routes.analytics import analytics_bp
     # from hospital.routes.subscription import subscription_bp  # Disabled for now
     from hospital.routes.admin_settings import admin_settings_bp
     from hospital.routes.pharmacy import pharmacy_bp
+    from hospital.routes.prescription_analyzer import prescription_bp
+    from hospital.routes.public_ai import public_ai_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(hospital_auth_bp, url_prefix='/api/hospital-auth')
@@ -61,9 +84,11 @@ def create_app(config_name='default'):
     app.register_blueprint(import_doctors_bp, url_prefix='/api/hospital')
     app.register_blueprint(import_medicines_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(patient_import_bp, url_prefix='/api/hospital')
-    # app.register_blueprint(hospital_appointments_bp, url_prefix='/api/hospital')  # Disabled for now
+    app.register_blueprint(hospital_appointments_bp, url_prefix='/api/hospital')
     app.register_blueprint(analytics_bp, url_prefix='/api/hospital')
     # app.register_blueprint(subscription_bp, url_prefix='/api/hospital')  # Disabled for now
     app.register_blueprint(pharmacy_bp, url_prefix='/api/hospital/pharmacy')
+    app.register_blueprint(prescription_bp, url_prefix='/api/prescription')
+    app.register_blueprint(public_ai_bp, url_prefix='/api/public')
     
     return app

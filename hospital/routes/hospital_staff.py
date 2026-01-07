@@ -77,35 +77,73 @@ def add_staff_member():
         print(f"DEBUG: Received data: {data}")
         
         # Auto-generate email and password for all staff if not provided
-        if not data.get('email'):
+        if not data.get('email') or not data.get('email', '').strip():
             hospital = Hospital.query.get(user.hospital_id)
-            hospital_domain = hospital.name.lower().replace(' ', '').replace('-', '') if hospital else 'hospital'
-            first_name = data.get('first_name', '').lower().replace(' ', '')
-            last_name = data.get('last_name', '').lower().replace(' ', '')
+            hospital_domain = hospital.name.lower().replace(' ', '').replace('-', '').replace('_', '') if hospital else 'hospital'
+            first_name = data.get('first_name', '').lower().strip().replace(' ', '')
+            last_name = data.get('last_name', '').lower().strip().replace(' ', '')
+            
+            if not first_name or not last_name:
+                return jsonify({'error': 'First name and last name are required for email generation'}), 422
             
             # Create email: firstname.lastname@hospitaldomain.com
             base_email = f"{first_name}.{last_name}@{hospital_domain}.com"
             
-            # Check if email exists, if so add number
+            # Check if email exists (case-insensitive), if so add number
             counter = 1
             generated_email = base_email
-            while User.query.filter_by(email=generated_email).first():
+            max_attempts = 100  # Prevent infinite loop
+            attempts = 0
+            
+            while attempts < max_attempts:
+                # Check case-insensitively if email exists
+                existing = User.query.filter(User.email.ilike(generated_email)).first()
+                if not existing:
+                    break
                 generated_email = f"{first_name}.{last_name}{counter}@{hospital_domain}.com"
                 counter += 1
+                attempts += 1
+            
+            if attempts >= max_attempts:
+                return jsonify({'error': 'Unable to generate unique email. Please try with a different name or set email manually.'}), 422
             
             data['email'] = generated_email
+            print(f"DEBUG: Auto-generated email: {generated_email}")
+        else:
+            # Clean and validate manually provided email
+            provided_email = data.get('email', '').strip().lower()
+            if not provided_email:
+                return jsonify({'error': 'Email address is required when manually set'}), 400
+            
+            # Validate email format
+            if not validate_email(provided_email):
+                return jsonify({'error': 'Invalid email format'}), 400
+            
+            # Check if manually provided email already exists (case-insensitive)
+            existing_user = User.query.filter(User.email.ilike(provided_email)).first()
+            if existing_user:
+                return jsonify({
+                    'error': f'Email address "{provided_email}" already exists in database. Please use a different email or uncheck "Set email manually" to auto-generate one.'
+                }), 422
+            
+            # Update data with cleaned email
+            data['email'] = provided_email
         
         # Auto-generate simple password if not provided
         if not data.get('password'):
             # Set default password to 123 for all staff
             data['password'] = "123"
         
-        # Validate required fields
-        required_fields = ['first_name', 'last_name', 'email', 'role', 'password']
+        # Validate required fields (email will be auto-generated if not provided)
+        required_fields = ['first_name', 'last_name', 'role', 'password']
         for field in required_fields:
             if not data.get(field):
                 print(f"DEBUG: Missing required field: {field}")
                 return jsonify({'error': f'{field} is required'}), 422
+        
+        # Ensure email exists (either provided or auto-generated above)
+        if not data.get('email'):
+            return jsonify({'error': 'Email is required'}), 422
         
         # Check subscription limits
         subscription = HospitalSubscription.query.filter_by(
@@ -120,21 +158,22 @@ def add_staff_member():
                     'error': f'Staff limit reached. Current plan allows {subscription.max_staff} staff members. Please upgrade your subscription.'
                 }), 403
         
-        # Validate email format
-        if not validate_email(data['email']):
-            print(f"DEBUG: Invalid email format: {data['email']}")
+        # Final email validation and cleanup (email should already be validated/cleaned above)
+        final_email = data.get('email', '').strip().lower()
+        if not final_email or not validate_email(final_email):
+            print(f"DEBUG: Invalid email format: {final_email}")
             return jsonify({'error': 'Invalid email format'}), 422
+        data['email'] = final_email
+        
+        # Note: Email uniqueness is already checked above:
+        # - For manual emails: checked at line 110 with case-insensitive search
+        # - For auto-generated emails: handled in the generation loop (line 92-95)
+        # So we don't need to check again here to avoid false positives
         
         # Skip password validation for now - will add restrictions later
         # if not validate_password(data['password']):
         #     print(f"DEBUG: Invalid password: {data['password']}")
         #     return jsonify({'error': 'Password must be at least 8 characters with uppercase, lowercase, and number'}), 422
-        
-        # Check if email already exists
-        existing_user = User.query.filter_by(email=data['email']).first()
-        if existing_user:
-            print(f"DEBUG: Email already exists: {data['email']}")
-            return jsonify({'error': 'Email already registered'}), 422
         
         # Create new staff member
         print(f"DEBUG: Creating user with data: {data}")
