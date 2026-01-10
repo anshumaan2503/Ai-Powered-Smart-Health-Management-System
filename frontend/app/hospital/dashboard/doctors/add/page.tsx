@@ -305,10 +305,10 @@ export default function AddDoctorPage() {
                         setUseManualEmail(isChecked)
                         // Clear email when disabling manual mode
                         if (!isChecked) {
-                          setFormData(prev => {
-                            const { email, ...rest } = prev
-                            return rest
-                          })
+                          setFormData(prev => ({
+                            ...prev,
+                            email: ''
+                          }))
                           setError('') // Clear any email-related errors
                         }
                       }}

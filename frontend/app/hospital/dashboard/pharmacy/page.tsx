@@ -530,7 +530,7 @@ export default function PharmacyPage() {
           )}
           <button
             onClick={() => {
-              toast.info('Add Medicine feature coming soon. Use Import CSV to add medicines.')
+              toast('Add Medicine feature coming soon. Use Import CSV to add medicines.')
             }}
             className="btn-primary flex items-center"
           >
@@ -755,7 +755,7 @@ export default function PharmacyPage() {
                     <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => {
-                          toast.info('View medicine details feature coming soon')
+                          toast('View medicine details feature coming soon')
                         }}
                         className="text-blue-600 hover:text-blue-900"
                         title="View details"
@@ -764,7 +764,7 @@ export default function PharmacyPage() {
                       </button>
                       <button 
                         onClick={() => {
-                          toast.info('Edit medicine feature coming soon')
+                          toast('Edit medicine feature coming soon')
                         }}
                         className="text-green-600 hover:text-green-900"
                         title="Edit medicine"
@@ -861,7 +861,7 @@ export default function PharmacyPage() {
                   loadMedicines()
                   loadDashboardStats()
                 } else {
-                  toast.info('Add Medicine feature coming soon. Use Import CSV to add medicines.')
+                  toast('Add Medicine feature coming soon. Use Import CSV to add medicines.')
                 }
               }}
               className="btn-primary"

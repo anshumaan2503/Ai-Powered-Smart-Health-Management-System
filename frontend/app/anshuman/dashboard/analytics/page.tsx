@@ -7,8 +7,8 @@ import {
   CurrencyRupeeIcon,
   BuildingOffice2Icon,
   UserGroupIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
   CalendarIcon,
   CreditCardIcon,
   ArrowUpIcon,
@@ -16,6 +16,7 @@ import {
   EyeIcon,
   ClockIcon
 } from '@heroicons/react/24/outline'
+
 
 export default function AdminAnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<any>(null)

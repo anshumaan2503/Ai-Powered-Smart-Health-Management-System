@@ -71,20 +71,14 @@ export const hospitalSettingsSchema = z.object({
   two_factor_auth: z.boolean(),
 
   // Billing Settings
-  currency: z.enum(['INR', 'USD', 'EUR', 'GBP'], {
-    errorMap: () => ({ message: 'Please select a valid currency' })
-  }),
+  currency: z.enum(['INR', 'USD', 'EUR', 'GBP']).default('INR'),
   tax_rate: z.number().min(0, 'Tax rate cannot be negative').max(100, 'Tax rate cannot exceed 100%'),
   payment_methods: z.array(z.string()).min(1, 'At least one payment method is required'),
 
   // System Settings
   timezone: z.string().min(1, 'Timezone is required'),
-  date_format: z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'], {
-    errorMap: () => ({ message: 'Please select a valid date format' })
-  }),
-  time_format: z.enum(['12h', '24h'], {
-    errorMap: () => ({ message: 'Please select a valid time format' })
-  }),
+  date_format: z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).default('DD/MM/YYYY'),
+  time_format: z.enum(['12h', '24h']).default('24h'),
   language: z.string().min(1, 'Language is required')
 })
 
@@ -111,7 +105,7 @@ export function validateField(
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: ValidationErrors = {}
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.length > 0 ? err.path.join('.') : fieldPath
         errors[path] = err.message
       })
@@ -129,7 +123,7 @@ export function validateSettings(settings: any): ValidationResult {
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: ValidationErrors = {}
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.join('.')
         errors[path] = err.message
       })
@@ -240,7 +234,7 @@ export function useFormValidation<T>(
       if (error instanceof z.ZodError) {
         setErrors(prev => ({
           ...prev,
-          [field]: error.errors[0]?.message || 'Validation error'
+          [field]: error.issues[0]?.message || 'Validation error'
         }))
       }
     }
