@@ -24,6 +24,7 @@ export default function AddDoctorPage() {
     first_name: '',
     last_name: '',
     phone: '',
+    email: '', // Manual email option
     // Doctor specific fields
     specialization: '',
     qualification: '',
@@ -32,12 +33,13 @@ export default function AddDoctorPage() {
     license_number: ''
   })
   
+  const [useManualEmail, setUseManualEmail] = useState(false)
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
 
   // Check authentication on page load
   useEffect(() => {
     const token = localStorage.getItem('hospital_access_token')
-    const user = localStorage.getItem('user')
+    const user = localStorage.getItem('hospital_user') // Fixed: use hospital_user instead of user
     
     if (!token || !user) {
       setError('Please login first to access this page')
@@ -55,7 +57,10 @@ export default function AddDoctorPage() {
         setTimeout(() => {
           router.push('/hospital/dashboard')
         }, 2000)
+        return
       }
+      // Clear error if user is admin
+      setError('')
     } catch (err) {
       setError('Invalid user data. Please login again.')
       setTimeout(() => {
@@ -94,11 +99,49 @@ export default function AddDoctorPage() {
         return
       }
 
-      const submitData = {
-        ...formData,
+      // Validate email if manual email is enabled
+      if (useManualEmail && !formData.email) {
+        setError('Please enter an email address or disable manual email option')
+        return
+      }
+
+      // Validate email format if provided manually
+      if (useManualEmail && formData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        const trimmedEmail = formData.email.trim()
+        if (!trimmedEmail) {
+          setError('Please enter an email address or disable manual email option')
+          return
+        }
+        if (!emailRegex.test(trimmedEmail)) {
+          setError('Please enter a valid email address')
+          return
+        }
+        // Update formData with trimmed email
+        setFormData(prev => ({ ...prev, email: trimmedEmail }))
+      }
+
+      // Build submit data - completely exclude email if not manually set
+      const submitData: any = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone || undefined,
         role: 'doctor', // Always set role as doctor
+        specialization: formData.specialization,
+        qualification: formData.qualification,
         experience_years: Number(formData.experience_years) || 0,
-        consultation_fee: Number(formData.consultation_fee) || 0
+        consultation_fee: Number(formData.consultation_fee) || 0,
+        license_number: formData.license_number || undefined
+      }
+      
+      // Only include email if manually provided and toggle is ON
+      if (useManualEmail && formData.email && formData.email.trim()) {
+        submitData.email = formData.email.trim()
+      }
+      
+      // Explicitly ensure email is NOT in submitData if manual mode is off
+      if (!useManualEmail) {
+        delete submitData.email
       }
 
       console.log('Sending data to backend:', submitData)
@@ -127,6 +170,13 @@ export default function AddDoctorPage() {
         if (response.status === 422) {
           if (data.error && data.error.includes('limit')) {
             throw new Error('Staff limit reached. Please upgrade your subscription to add more doctors.')
+          } else if (data.error && data.error.includes('email') && data.error.includes('exists')) {
+            // Email already exists error
+            if (useManualEmail) {
+              throw new Error(data.error || 'This email address is already in use. Please use a different email or uncheck "Set email manually" to auto-generate one.')
+            } else {
+              throw new Error('Unable to generate unique email. Please try with a different name or enable "Set email manually" to specify an email.')
+            }
           } else {
             throw new Error(data.error || 'Validation error: Please check all fields are filled correctly.')
           }
@@ -241,14 +291,56 @@ export default function AddDoctorPage() {
               </div>
 
               <div className="md:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <EyeIcon className="h-5 w-5 text-blue-600 mr-2" />
-                  <h4 className="text-sm font-medium text-blue-900">Login Credentials</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <EyeIcon className="h-5 w-5 text-blue-600 mr-2" />
+                    <h4 className="text-sm font-medium text-blue-900">Login Credentials</h4>
+                  </div>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useManualEmail}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked
+                        setUseManualEmail(isChecked)
+                        // Clear email when disabling manual mode
+                        if (!isChecked) {
+                          setFormData(prev => ({
+                            ...prev,
+                            email: ''
+                          }))
+                          setError('') // Clear any email-related errors
+                        }
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-blue-700 font-medium">Set email manually</span>
+                  </label>
                 </div>
-                <p className="text-sm text-blue-700">
-                  Email and password will be automatically generated. You can set and view the login credentials 
-                  by editing the doctor's profile after registration.
-                </p>
+                {useManualEmail ? (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-blue-900 mb-2">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required={useManualEmail}
+                      className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="doctor@hospital.com"
+                    />
+                    <p className="mt-1 text-xs text-blue-600">
+                      Password will be automatically set to "123". Doctor can change it after first login.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-blue-700">
+                    Email and password will be automatically generated. You can set and view the login credentials 
+                    by editing the doctor's profile after registration.
+                  </p>
+                )}
               </div>
             </div>
           </div>

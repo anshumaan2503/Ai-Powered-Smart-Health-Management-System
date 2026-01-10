@@ -6,6 +6,13 @@ Supports both Gemini and GROQ with automatic fallback
 import os
 from typing import List, Dict, Optional
 
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Try to import both AI libraries
 try:
     import google.generativeai as genai
@@ -77,7 +84,8 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         if not self.active_provider and GEMINI_AVAILABLE and self.gemini_key:
             try:
                 genai.configure(api_key=self.gemini_key)
-                self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                # Use the stable Gemini model
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
                 self.active_provider = "gemini"
                 print("[AI] ✅ Successfully initialized Gemini AI!")
             except Exception as e:
@@ -221,7 +229,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             'reply': reply_text,
             'type': 'ai_response',
             'provider': 'gemini',
-            'model': 'gemini-2.0-flash-exp',
+            'model': 'gemini-1.5-flash',
             'suggestions': suggestions,
             'disclaimer': 'I am an AI assistant, not a medical professional. For medical advice, please consult a healthcare provider.'
         }
@@ -262,11 +270,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         """Provide a helpful response when AI is not available."""
         return {
             'reply': (
-                "I'm currently operating in limited mode. Here's what I can help with:\n\n"
-                "• **Describe your symptoms** in detail (location, duration, severity)\n"
-                "• **Prepare for your doctor visit** by noting all your concerns\n"
-                "• **For emergencies**, please call emergency services immediately\n\n"
-                "For the best experience, please ask your administrator to configure the AI service."
+                "The AI health assistant is currently unavailable. Please contact your administrator to configure the service."
             ),
             'type': 'fallback',
             'provider': 'none',

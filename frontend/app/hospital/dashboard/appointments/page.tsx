@@ -53,9 +53,11 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
+      setError('')
       const token = localStorage.getItem('hospital_access_token')
       if (!token) {
-        setError('No access token found')
+        setError('No access token found. Please login again.')
+        setLoading(false)
         return
       }
 
@@ -72,13 +74,20 @@ export default function AppointmentsPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch appointments')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Failed to fetch appointments (${response.status})`)
       }
 
       const data = await response.json()
       setAppointments(data.appointments || [])
+      setError('') // Clear any previous errors
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load appointments')
+      console.error('Error fetching appointments:', err)
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Network error: Could not connect to server. Please check if the backend is running.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load appointments')
+      }
     } finally {
       setLoading(false)
     }

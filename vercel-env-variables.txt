@@ -1,0 +1,61 @@
+# Vercel Environment Variables for AI Smart Health Management System
+# Copy and paste these into your Vercel project settings under Environment Variables
+
+# ===== SINGLE VERCEL DEPLOYMENT =====
+# Deploy both frontend and backend on the same Vercel project
+
+# Flask Configuration
+FLASK_CONFIG=production
+SECRET_KEY=your-super-secure-secret-key-here-change-this
+JWT_SECRET_KEY=your-super-secure-jwt-secret-key-here-change-this
+
+# Frontend API URL (use relative path for same domain)
+NEXT_PUBLIC_API_URL=/api
+
+# Database Configuration (MUST use PostgreSQL for production)
+DATABASE_URL=postgresql://username:password@hostname:port/database_name
+
+# AI API Keys
+GEMINI_API_KEY=your-gemini-api-key
+GROQ_API_KEY=your-groq-api-key
+
+# Email Configuration (optional)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+
+# AI Model Configuration
+AI_MODEL_PATH=models/
+MAX_CONTENT_LENGTH=16777216
+
+# SaaS Configuration (optional - if using Stripe)
+STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_publishable_key
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
+
+# ===== RECOMMENDED DATABASE PROVIDERS =====
+# Choose one of these for your DATABASE_URL:
+
+# Supabase (Free tier available)
+# DATABASE_URL=postgresql://postgres:password@db.supabase.co:5432/postgres
+
+# Neon (Serverless PostgreSQL)
+# DATABASE_URL=postgresql://username:password@ep-xxx.us-east-1.aws.neon.tech/neondb
+
+# Railway
+# DATABASE_URL=postgresql://postgres:password@containers-us-west-xxx.railway.app:5432/railway
+
+# ===== SECURITY NOTES =====
+# 1. Generate strong secret keys:
+#    python -c "import secrets; print(secrets.token_urlsafe(32))"
+# 2. Never commit these values to Git
+# 3. Use different keys for development and production
+# 4. Rotate keys periodically
+
+# ===== DEPLOYMENT NOTES =====
+# 1. Use the root directory (not frontend folder) when importing to Vercel
+# 2. Vercel will automatically detect vercel.json configuration
+# 3. Frontend will be available at: https://your-app.vercel.app
+# 4. Backend API will be available at: https://your-app.vercel.app/api/*
+# 5. No CORS issues since both are on the same domain

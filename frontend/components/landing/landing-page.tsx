@@ -21,39 +21,99 @@ export function LandingPage() {
   const [hospitalName, setHospitalName] = useState('');
 
   useEffect(() => {
-    const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (patientToken) {
-      setIsPatientLoggedIn(true);
-      try {
-        const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setPatientName(user.first_name || 'Patient');
-        }
-      } catch (e) {
-        setPatientName('Patient');
-      }
-      // Redirect patient to dashboard
-      window.location.href = '/patient/dashboard';
-      return;
-    }
+    const checkAndRedirect = async () => {
+      // Check patient token
+      const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      if (patientToken) {
+        try {
+          // Validate token by making a test request
+          const response = await fetch('http://localhost:5000/api/auth/profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${patientToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-    const hospitalToken = localStorage.getItem('hospital_access_token');
-    if (hospitalToken) {
-      setIsHospitalLoggedIn(true);
-      try {
-        const hospitalData = localStorage.getItem('hospital_data');
-        if (hospitalData) {
-          const hospital = JSON.parse(hospitalData);
-          setHospitalName(hospital.name || 'Hospital');
+          if (response.ok) {
+            setIsPatientLoggedIn(true);
+            try {
+              const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+              if (userData) {
+                const user = JSON.parse(userData);
+                setPatientName(user.first_name || 'Patient');
+              }
+            } catch (e) {
+              setPatientName('Patient');
+            }
+            // Only redirect if token is valid
+            window.location.href = '/patient/dashboard';
+            return;
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('access_token');
+            sessionStorage.removeItem('refresh_token');
+            sessionStorage.removeItem('user');
+          }
+        } catch (error) {
+          // Token validation failed, clear it
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('user');
         }
-      } catch (e) {
-        setHospitalName('Hospital');
       }
-      // Redirect hospital to dashboard
-      window.location.href = '/hospital/dashboard';
-      return;
-    }
+
+      // Check hospital token
+      const hospitalToken = localStorage.getItem('hospital_access_token');
+      if (hospitalToken) {
+        try {
+          // Validate token by making a test request
+          const response = await fetch('http://localhost:5000/api/hospital-auth/hospital-profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${hospitalToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            setIsHospitalLoggedIn(true);
+            try {
+              const hospitalData = localStorage.getItem('hospital_data');
+              if (hospitalData) {
+                const hospital = JSON.parse(hospitalData);
+                setHospitalName(hospital.name || 'Hospital');
+              }
+            } catch (e) {
+              setHospitalName('Hospital');
+            }
+            // Only redirect if token is valid
+            window.location.href = '/hospital/dashboard';
+            return;
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('hospital_access_token');
+            localStorage.removeItem('hospital_refresh_token');
+            localStorage.removeItem('hospital_user');
+            localStorage.removeItem('hospital_data');
+          }
+        } catch (error) {
+          // Token validation failed, clear it
+          localStorage.removeItem('hospital_access_token');
+          localStorage.removeItem('hospital_refresh_token');
+          localStorage.removeItem('hospital_user');
+          localStorage.removeItem('hospital_data');
+        }
+      }
+    };
+
+    checkAndRedirect();
   }, []);
 
   const handleLogout = (type: 'patient' | 'hospital') => {
@@ -101,6 +161,7 @@ export function LandingPage() {
             </Link>
 
             <div className="flex items-center space-x-4">
+              
               {isPatientLoggedIn && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600">Hi, {patientName}!</span>
@@ -166,6 +227,18 @@ export function LandingPage() {
               <ArrowRightIcon className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </span>
           </button>
+
+          {/* AI Chatbot Quick Access */}
+          <div className="mt-8 mb-12">
+            <Link
+              href="/aichatbot"
+              className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-semibold text-blue-600 border-2 border-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 hover:scale-105"
+            >
+              <SparklesIcon className="h-5 w-5 mr-2" />
+              Try AI Health Assistant - No Login Required
+              <ArrowRightIcon className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 max-w-6xl mx-auto">

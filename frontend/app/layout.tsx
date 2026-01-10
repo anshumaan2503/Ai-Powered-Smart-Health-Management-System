@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
-import { Toaster } from 'react-hot-toast'
+import { ClientThemeProvider } from '@/components/ui/ClientThemeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,23 +20,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#fff',
-                color: '#374151',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                border: '1px solid #e5e7eb',
-              },
-            }}
-          />
-        </Providers>
+    <html lang="en">
+      <body className={`${inter.className} bg-white text-gray-900`}>
+        <ClientThemeProvider>
+          <Providers>
+            {children}
+          </Providers>
+        </ClientThemeProvider>
       </body>
     </html>
   )

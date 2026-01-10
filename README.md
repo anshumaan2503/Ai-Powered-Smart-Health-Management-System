@@ -117,9 +117,6 @@ python scripts/setup_utilities.py status
 
 # Test backend functionality
 python scripts/setup_utilities.py backend-test
-
-# Quick fix common issues
-python scripts/quick_fix.py
 ```
 
 ## API Endpoints

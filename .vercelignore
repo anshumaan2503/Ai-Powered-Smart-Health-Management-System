@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+.pytest_cache
+.venv
+venv
+
+# Node
+node_modules
+.npm
+.next
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Development
+.env.local
+.env.development
+logs
+*.log
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Documentation
+docs/
+.md
+
+# Uploads (can be large)
+uploads/
+instance/
+
+# Scripts (dev only)
+scripts/
+
+# Backups
+backups/
+*.bak
+
+# Cache
+.cache
+.pytest_cache
+instance/
+
+# Database files
+*.db
+instance/
+
+# Misc
+tmp/
+temp/
+.kiro/
