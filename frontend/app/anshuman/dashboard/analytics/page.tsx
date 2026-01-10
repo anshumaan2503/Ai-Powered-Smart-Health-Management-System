@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import {
-  ChartBarIcon,
-  CurrencyRupeeIcon,
-  BuildingOffice2Icon,
-  UserGroupIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  CalendarIcon,
-  CreditCardIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  EyeIcon,
-  ClockIcon
-} from '@heroicons/react/24/outline'
+import * as HeroIcons from '@heroicons/react/24/outline'
+
+// Fallbacks to support both @heroicons/react v1 (TrendingUpIcon) and v2 (ArrowTrendingUpIcon)
+const ArrowTrendingUpIcon = (HeroIcons as any).ArrowTrendingUpIcon || (HeroIcons as any).TrendingUpIcon || (HeroIcons as any).ArrowUpIcon
+const ArrowTrendingDownIcon = (HeroIcons as any).ArrowTrendingDownIcon || (HeroIcons as any).TrendingDownIcon || (HeroIcons as any).ArrowDownIcon
+const ChartBarIcon = (HeroIcons as any).ChartBarIcon
+const CurrencyRupeeIcon = (HeroIcons as any).CurrencyRupeeIcon
+const BuildingOffice2Icon = (HeroIcons as any).BuildingOffice2Icon
+const UserGroupIcon = (HeroIcons as any).UserGroupIcon
+const CalendarIcon = (HeroIcons as any).CalendarIcon
+const CreditCardIcon = (HeroIcons as any).CreditCardIcon
+const ArrowUpIcon = (HeroIcons as any).ArrowUpIcon
+const ArrowDownIcon = (HeroIcons as any).ArrowDownIcon
+const EyeIcon = (HeroIcons as any).EyeIcon
+const ClockIcon = (HeroIcons as any).ClockIcon
 
 
 export default function AdminAnalyticsPage() {
