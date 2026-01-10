@@ -1,0 +1,59 @@
+{
+  "env": [
+    {
+      "key": "FLASK_CONFIG",
+      "value": "production",
+      "target": "production"
+    },
+    {
+      "key": "SECRET_KEY",
+      "value": "your-generated-secret-key-min-32-chars",
+      "target": "production"
+    },
+    {
+      "key": "JWT_SECRET_KEY",
+      "value": "your-generated-jwt-secret-key-min-32-chars",
+      "target": "production"
+    },
+    {
+      "key": "GEMINI_API_KEY",
+      "value": "your-gemini-api-key-from-aistudio",
+      "target": "production"
+    },
+    {
+      "key": "GROQ_API_KEY",
+      "value": "your-groq-api-key-from-console",
+      "target": "production"
+    },
+    {
+      "key": "NEXT_PUBLIC_API_URL",
+      "value": "/api",
+      "target": "production"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "postgresql://user:password@host:port/database",
+      "target": "production"
+    },
+    {
+      "key": "MAIL_SERVER",
+      "value": "smtp.gmail.com",
+      "target": "production"
+    },
+    {
+      "key": "MAIL_PORT",
+      "value": "587",
+      "target": "production"
+    },
+    {
+      "key": "MAIL_USE_TLS",
+      "value": "true",
+      "target": "production"
+    },
+    {
+      "key": "MAX_CONTENT_LENGTH",
+      "value": "16777216",
+      "target": "production"
+    }
+  ]
+}
