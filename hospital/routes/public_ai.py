@@ -6,7 +6,7 @@ Provides public access to AI chatbot functionality with file analysis
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from hospital.services.simple_ai import SimpleHealthChatbot
-from hospital.services.gemini_ai import GeminiHealthChatbot
+from hospital.services.gemini_ai import MultiAIHealthChatbot
 from hospital.services.lab_report_analyzer import LabReportAnalyzer
 import time
 import os
@@ -73,7 +73,7 @@ def public_ai_chatbot():
             return jsonify({'error': 'Message too long. Maximum 1000 characters.'}), 400
 
         # Try Gemini AI first, fallback to simple chatbot
-        gemini_bot = GeminiHealthChatbot()
+        gemini_bot = MultiAIHealthChatbot()
         if gemini_bot.is_available():
             result = gemini_bot.respond(message, context)
             ai_type = 'gemini'
@@ -192,7 +192,7 @@ def analyze_files():
         }
 
         # Generate AI response based on file analysis
-        gemini_bot = GeminiHealthChatbot()
+        gemini_bot = MultiAIHealthChatbot()
         
         # Create a comprehensive summary of the analysis
         analysis_summary = []
