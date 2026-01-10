@@ -3,12 +3,12 @@
 # Then paste each line into the environment variables form (one by one)
 
 FLASK_CONFIG=production
-SECRET_KEY=your-generated-secret-key-min-32-chars
-JWT_SECRET_KEY=your-generated-jwt-secret-key-min-32-chars
-GEMINI_API_KEY=your-gemini-api-key-from-aistudio
-GROQ_API_KEY=your-groq-api-key-from-console
+SECRET_KEY=your-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
+GEMINI_API_KEY=your-gemini-key-here
+GROQ_API_KEY=your-groq-key-here
 NEXT_PUBLIC_API_URL=/api
-DATABASE_URL=postgresql://user:password@host:port/database
+DATABASE_URL=sqlite:///hospital.db
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USE_TLS=true

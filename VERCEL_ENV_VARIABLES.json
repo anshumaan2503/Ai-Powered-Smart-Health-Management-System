@@ -7,22 +7,22 @@
     },
     {
       "key": "SECRET_KEY",
-      "value": "your-generated-secret-key-min-32-chars",
+      "value": "your-secret-key-here",
       "target": "production"
     },
     {
       "key": "JWT_SECRET_KEY",
-      "value": "your-generated-jwt-secret-key-min-32-chars",
+      "value": "your-jwt-secret-key-here",
       "target": "production"
     },
     {
       "key": "GEMINI_API_KEY",
-      "value": "your-gemini-api-key-from-aistudio",
+      "value": "your-gemini-key-here",
       "target": "production"
     },
     {
       "key": "GROQ_API_KEY",
-      "value": "your-groq-api-key-from-console",
+      "value": "your-groq-key-here",
       "target": "production"
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "key": "DATABASE_URL",
-      "value": "postgresql://user:password@host:port/database",
+      "value": "sqlite:///hospital.db",
       "target": "production"
     },
     {
