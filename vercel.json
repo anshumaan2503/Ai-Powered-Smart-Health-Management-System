@@ -3,14 +3,11 @@
   "builds": [
     {
       "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": ".next"
-      }
+      "use": "@vercel/next@latest"
     },
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python@latest"
     }
   ],
   "routes": [
@@ -25,10 +22,22 @@
   ],
   "functions": {
     "api/index.py": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "env": {
     "PYTHONPATH": "."
-  }
+  },
+  "ignore": [
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    "node_modules",
+    "uploads",
+    "logs",
+    "backups",
+    "scripts",
+    "tests"
+  ]
 }
