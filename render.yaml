@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: hospital-management-frontend
+    env: node
+    dir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: /api
+      - key: NODE_ENV
+        value: production
