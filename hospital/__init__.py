@@ -22,19 +22,22 @@ def create_app(config_name='default'):
     
     # Configure CORS to allow frontend requests
     CORS(app, 
-         origins=[
-             # Local development
-             'http://localhost:3000',
-             'http://localhost:3001',
-             'http://127.0.0.1:3000',
-             'http://127.0.0.1:3001',
-             # Render deployment
-             'https://hospital-management-frontend-6kel.onrender.com',
-             'https://ai-powered-smart-health-management.onrender.com'
-         ],
-         allow_headers=['Content-Type', 'Authorization'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         supports_credentials=True)
+         resources={
+             r"/api/*": {
+                 "origins": [
+                     "http://localhost:3000",
+                     "http://localhost:3001",
+                     "http://127.0.0.1:3000",
+                     "http://127.0.0.1:3001",
+                     "https://hospital-management-frontend-6kel.onrender.com",
+                     "https://ai-powered-smart-health-management.onrender.com",
+                     "*"
+                 ],
+                 "allow_headers": ["Content-Type", "Authorization"],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "supports_credentials": True
+             }
+         })
     
     mail.init_app(app)
     
