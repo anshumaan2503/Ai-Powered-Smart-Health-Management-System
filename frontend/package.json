@@ -41,6 +41,7 @@
     "zustand": "^4.4.6"
   },
   "devDependencies": {
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "^8.53.0",
     "eslint-config-next": "14.0.3"
   }
