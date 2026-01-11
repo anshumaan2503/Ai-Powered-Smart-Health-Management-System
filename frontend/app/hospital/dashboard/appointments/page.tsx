@@ -61,7 +61,8 @@ export default function AppointmentsPage() {
         return
       }
 
-      const url = new URL('http://localhost:5000/api/hospital/appointments')
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+      const url = new URL(`${backendUrl}/api/hospital/appointments`)
       if (dateFilter) url.searchParams.append('date', dateFilter)
       if (statusFilter) url.searchParams.append('status', statusFilter)
       if (doctorFilter) url.searchParams.append('doctor_id', doctorFilter)
@@ -95,8 +96,9 @@ export default function AppointmentsPage() {
 
   const updateAppointmentStatus = async (appointmentId: number, newStatus: string) => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/appointments/${appointmentId}`, {
+      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -122,8 +124,9 @@ export default function AppointmentsPage() {
     }
 
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/appointments/${appointmentId}/cancel`, {
+      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}/cancel`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -148,8 +151,9 @@ export default function AppointmentsPage() {
     }
 
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/appointments/${appointmentId}`, {
+      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

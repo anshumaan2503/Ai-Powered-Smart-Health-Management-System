@@ -146,7 +146,8 @@ export default function AddDoctorPage() {
 
       console.log('Sending data to backend:', submitData)
       
-      const response = await fetch('http://localhost:5000/api/hospital/staff', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+      const response = await fetch(`${backendUrl}/api/hospital/staff`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

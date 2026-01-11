@@ -59,13 +59,14 @@ export default function ImportDoctorsPage() {
 
   const downloadTemplate = async () => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
       if (!token) {
         setError('Please login first')
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-template', {
+      const response = await fetch(`${backendUrl}/api/hospital/import-template`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -124,7 +125,8 @@ export default function ImportDoctorsPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-doctors', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+      const response = await fetch(`${backendUrl}/api/hospital/import-doctors`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

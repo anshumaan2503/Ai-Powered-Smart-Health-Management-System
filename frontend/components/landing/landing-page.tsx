@@ -27,7 +27,8 @@ export function LandingPage() {
       if (patientToken) {
         try {
           // Validate token by making a test request
-          const response = await fetch('http://localhost:5000/api/auth/profile', {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+          const response = await fetch(`${backendUrl}/api/auth/profile`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${patientToken}`,
@@ -74,7 +75,8 @@ export function LandingPage() {
       if (hospitalToken) {
         try {
           // Validate token by making a test request
-          const response = await fetch('http://localhost:5000/api/hospital-auth/hospital-profile', {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+          const response = await fetch(`${backendUrl}/api/hospital-auth/hospital-profile`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${hospitalToken}`,

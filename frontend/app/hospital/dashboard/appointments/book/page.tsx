@@ -87,8 +87,9 @@ export default function BookAppointmentPage() {
 
   const fetchDoctors = async () => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch('http://localhost:5000/api/hospital/doctors/available', {
+      const response = await fetch(`${backendUrl}/api/hospital/doctors/available`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -106,8 +107,9 @@ export default function BookAppointmentPage() {
 
   const searchPatients = async () => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/patients/search?q=${encodeURIComponent(searchTerm)}`, {
+      const response = await fetch(`${backendUrl}/api/hospital/patients/search?q=${encodeURIComponent(searchTerm)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -129,8 +131,9 @@ export default function BookAppointmentPage() {
     setError('')
 
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch('http://localhost:5000/api/hospital/quick-patient', {
+      const response = await fetch(`${backendUrl}/api/hospital/quick-patient`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,8 +164,9 @@ export default function BookAppointmentPage() {
     setError('')
 
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch('http://localhost:5000/api/hospital/appointments', {
+      const response = await fetch(`${backendUrl}/api/hospital/appointments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

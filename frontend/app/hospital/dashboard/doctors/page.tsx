@@ -48,13 +48,14 @@ export default function DoctorsManagementPage() {
 
   const fetchDoctors = async () => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
       if (!token) {
         setError('No access token found')
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/hospital/staff?role=doctor', {
+      const response = await fetch(`${backendUrl}/api/hospital/staff?role=doctor`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -76,8 +77,9 @@ export default function DoctorsManagementPage() {
 
   const toggleDoctorStatus = async (doctorId: number) => {
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${doctorId}/toggle-status`, {
+      const response = await fetch(`${backendUrl}/api/hospital/staff/${doctorId}/toggle-status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
