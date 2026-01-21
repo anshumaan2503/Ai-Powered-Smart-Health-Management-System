@@ -42,6 +42,24 @@ def create_app(config_name='default'):
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
         return response
     
+    # Debug endpoints - Health check
+    @app.route('/')
+    @app.route('/health')
+    def health_check():
+        return {'status': 'ok', 'message': 'Backend is running!'}, 200
+    
+    # Debug endpoint - List all routes
+    @app.route('/debug/routes')
+    def list_routes():
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': list(rule.methods),
+                'path': str(rule)
+            })
+        return {'total_routes': len(routes), 'routes': routes}, 200
+    
     mail.init_app(app)
     
     # JWT Error Handlers
