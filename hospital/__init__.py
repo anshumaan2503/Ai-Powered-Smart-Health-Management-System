@@ -12,13 +12,17 @@ mail = Mail()
 
 def create_app(config_name='default'):
     app = Flask(__name__)
+
+    # ✅ DEBUG: confirm which file is actually loaded in Render
+    print("🔥 create_app() LOADED FROM hospital/__init__.py", __file__)
+
     app.config.from_object(config[config_name])
-    
+
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    
+
     # CORS Configuration - Manual implementation only (no Flask-CORS to avoid conflicts)
     @app.before_request
     def handle_preflight():
@@ -29,20 +33,20 @@ def create_app(config_name='default'):
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
             response.headers['Access-Control-Max-Age'] = '3600'
             return response
-    
+
     @app.after_request
     def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
         return response
-    
+
     # Health check endpoint
     @app.route('/')
     @app.route('/health')
     def health_check():
         return {'status': 'ok', 'message': 'Backend is running!'}, 200
-    
+
     # Debug endpoint - List all routes
     @app.route('/debug/routes')
     def list_routes():
@@ -54,30 +58,30 @@ def create_app(config_name='default'):
                 'path': str(rule)
             })
         return {'total_routes': len(routes), 'routes': routes}, 200
-    
+
     mail.init_app(app)
-    
+
     # JWT Error Handlers
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
         return {'error': 'Token has expired', 'code': 'token_expired'}, 401
-    
+
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
         return {'error': 'Invalid token', 'code': 'invalid_token'}, 422
-    
+
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         return {'error': 'Authorization token is required', 'code': 'missing_token'}, 401
-    
+
     @jwt.needs_fresh_token_loader
     def token_not_fresh_callback(jwt_header, jwt_payload):
         return {'error': 'Fresh token required', 'code': 'fresh_token_required'}, 401
-    
+
     @jwt.revoked_token_loader
     def revoked_token_callback(jwt_header, jwt_payload):
         return {'error': 'Token has been revoked', 'code': 'token_revoked'}, 401
-    
+
     # Register blueprints
     from hospital.routes.auth import auth_bp
     from hospital.routes.hospital_auth import hospital_auth_bp
@@ -98,7 +102,7 @@ def create_app(config_name='default'):
     from hospital.routes.pharmacy import pharmacy_bp
     from hospital.routes.prescription_analyzer import prescription_bp
     from hospital.routes.public_ai import public_ai_bp
-    
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(hospital_auth_bp, url_prefix='/api/hospital-auth')
     app.register_blueprint(hospital_staff_bp, url_prefix='/api/hospital')
@@ -118,5 +122,5 @@ def create_app(config_name='default'):
     app.register_blueprint(pharmacy_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(prescription_bp, url_prefix='/api/prescription')
     app.register_blueprint(public_ai_bp, url_prefix='/api/public')
-    
+
     return app
