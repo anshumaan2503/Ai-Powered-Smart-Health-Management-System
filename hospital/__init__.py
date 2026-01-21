@@ -20,14 +20,27 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # Configure CORS - Simplified direct approach
-    # Allow all origins temporarily to fix deployment issues
-    CORS(app, 
-         resources={r"/*": {"origins": "*"}},
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-         supports_credentials=False,
-         max_age=3600)
+    # Configure CORS - Aggressive approach with manual headers
+    CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    # Add CORS headers manually to EVERY response (backup method)
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
+        response.headers.add('Access-Control-Max-Age', '3600')
+        return response
+    
+    # Handle OPTIONS requests explicitly
+    @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    def handle_options(path):
+        response = app.make_response('')
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
+        return response
     
     mail.init_app(app)
     
