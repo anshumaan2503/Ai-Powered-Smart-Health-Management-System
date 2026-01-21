@@ -28,7 +28,8 @@ def create_app(config_name='default'):
         if request.method == "OPTIONS":
             origin = request.headers.get("Origin")
 
-            response = app.make_response("", 200)
+            response = app.make_response("")
+            response.status_code = 200
 
             # Only allow known origins (safe)
             if origin in ALLOWED_ORIGINS:
