@@ -21,21 +21,24 @@ def create_app(config_name='default'):
     jwt.init_app(app)
     
     # Configure CORS to allow frontend requests
+    # Get allowed origins from config (environment variables)
+    cors_origins = app.config.get('CORS_ORIGINS', '').split(',')
+    # Add the fixed frontend URL
+    cors_origins.extend([
+        "https://hospital-management-frontend-dkel.onrender.com",
+        "https://ai-powered-smart-health-management.onrender.com"
+    ])
+    # Remove duplicates and empty strings
+    cors_origins = list(set(filter(None, [origin.strip() for origin in cors_origins])))
+    
     CORS(app, 
          resources={
              r"/api/*": {
-                 "origins": [
-                     "http://localhost:3000",
-                     "http://localhost:3001",
-                     "http://127.0.0.1:3000",
-                     "http://127.0.0.1:3001",
-                     "https://hospital-management-frontend-6kel.onrender.com",
-                     "https://ai-powered-smart-health-management.onrender.com",
-                     "*"
-                 ],
-                 "allow_headers": ["Content-Type", "Authorization"],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                 "supports_credentials": True
+                 "origins": cors_origins,
+                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+                 "supports_credentials": True,
+                 "expose_headers": ["Content-Type", "Authorization"]
              }
          })
     
