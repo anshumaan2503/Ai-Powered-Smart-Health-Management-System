@@ -1,8 +1,9 @@
-from flask import Flask, request
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
+from flask_cors import CORS
 from config import config
 
 db = SQLAlchemy()
@@ -12,42 +13,30 @@ mail = Mail()
 
 def create_app(config_name='default'):
     app = Flask(__name__)
-
-    # ✅ DEBUG: confirm which file is actually loaded in Render
-    print("🔥 create_app() LOADED FROM hospital/__init__.py", __file__)
-
     app.config.from_object(config[config_name])
+
+    # ✅ CORS FIX (Production Safe)
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": [
+            "https://hospital-management-frontend-0421.onrender.com"
+        ]}},
+        supports_credentials=False
+    )
 
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    mail.init_app(app)
 
-    # CORS Configuration - Manual implementation only (no Flask-CORS to avoid conflicts)
-    @app.before_request
-    def handle_preflight():
-        if request.method == 'OPTIONS':
-            response = app.make_response('')
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-            response.headers['Access-Control-Max-Age'] = '3600'
-            return response
-
-    @app.after_request
-    def add_cors_headers(response):
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-        return response
-
-    # Health check endpoint
+    # ✅ Health check endpoint
     @app.route('/')
     @app.route('/health')
     def health_check():
         return {'status': 'ok', 'message': 'Backend is running!'}, 200
 
-    # Debug endpoint - List all routes
+    # ✅ Debug endpoint - List all routes
     @app.route('/debug/routes')
     def list_routes():
         routes = []
@@ -58,8 +47,6 @@ def create_app(config_name='default'):
                 'path': str(rule)
             })
         return {'total_routes': len(routes), 'routes': routes}, 200
-
-    mail.init_app(app)
 
     # JWT Error Handlers
     @jwt.expired_token_loader
@@ -113,12 +100,15 @@ def create_app(config_name='default'):
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_settings_bp)
+
     app.register_blueprint(import_doctors_bp, url_prefix='/api/hospital')
     app.register_blueprint(import_medicines_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(patient_import_bp, url_prefix='/api/hospital')
     app.register_blueprint(hospital_appointments_bp, url_prefix='/api/hospital')
     app.register_blueprint(analytics_bp, url_prefix='/api/hospital')
+
     # app.register_blueprint(subscription_bp, url_prefix='/api/hospital')  # Disabled for now
+
     app.register_blueprint(pharmacy_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(prescription_bp, url_prefix='/api/prescription')
     app.register_blueprint(public_ai_bp, url_prefix='/api/public')
