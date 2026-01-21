@@ -17,12 +17,15 @@ def create_app(config_name='default'):
 
     # ✅ CORS FIX (Production Safe)
     CORS(
-        app,
-        resources={r"/api/*": {"origins": [
-            "https://hospital-management-frontend-0421.onrender.com"
-        ]}},
-        supports_credentials=False
-    )
+    app,
+    resources={r"/api/*": {"origins": [
+        "https://hospital-management-frontend-0421.onrender.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]}},
+    supports_credentials=True
+)
+
 
     # Initialize extensions
     db.init_app(app)
