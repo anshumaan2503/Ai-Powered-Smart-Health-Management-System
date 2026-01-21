@@ -15,6 +15,9 @@ def create_app(config_name='default'):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
+    print("✅ FRONTEND_URL:", app.config.get("FRONTEND_URL"))
+    print("✅ CORS_ORIGINS:", app.config.get("CORS_ORIGINS"))
+    
     # ✅ CORS FIX (Production Safe)
     CORS(
     app,
