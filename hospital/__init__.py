@@ -1,9 +1,8 @@
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
-from flask_cors import CORS
 from config import config
 
 db = SQLAlchemy()
@@ -15,19 +14,44 @@ def create_app(config_name='default'):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
-    print("✅ FRONTEND_URL:", app.config.get("FRONTEND_URL"))
-    print("✅ CORS_ORIGINS:", app.config.get("CORS_ORIGINS"))
-    
-    # ✅ CORS FIX (Production Safe)
-    CORS(
-    app,
-    resources={r"/*": {"origins": [
-        "https://hospital-management-frontend-0421.onrender.com"
-    ]}},
-    supports_credentials=True
-)
+    # ✅ Allowed frontend origins (add both old & new)
+    ALLOWED_ORIGINS = {
+        "https://hospital-management-frontend-0421.onrender.com",
+        "https://hospital-management-frontend-6kel.onrender.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    }
 
+    # ✅ Handle OPTIONS preflight properly
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            origin = request.headers.get("Origin")
 
+            response = app.make_response("", 200)
+
+            # Only allow known origins (safe)
+            if origin in ALLOWED_ORIGINS:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Access-Control-Max-Age"] = "3600"
+            return response
+
+    # ✅ Add CORS headers on every response (guaranteed)
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get("Origin")
+
+        if origin in ALLOWED_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        return response
 
     # Initialize extensions
     db.init_app(app)
@@ -89,7 +113,6 @@ def create_app(config_name='default'):
     from hospital.routes.patient_import import patient_import_bp
     from hospital.routes.hospital_appointments import hospital_appointments_bp
     from hospital.routes.analytics import analytics_bp
-    # from hospital.routes.subscription import subscription_bp  # Disabled for now
     from hospital.routes.admin_settings import admin_settings_bp
     from hospital.routes.pharmacy import pharmacy_bp
     from hospital.routes.prescription_analyzer import prescription_bp
@@ -105,15 +128,11 @@ def create_app(config_name='default'):
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(admin_settings_bp)
-
     app.register_blueprint(import_doctors_bp, url_prefix='/api/hospital')
     app.register_blueprint(import_medicines_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(patient_import_bp, url_prefix='/api/hospital')
     app.register_blueprint(hospital_appointments_bp, url_prefix='/api/hospital')
     app.register_blueprint(analytics_bp, url_prefix='/api/hospital')
-
-    # app.register_blueprint(subscription_bp, url_prefix='/api/hospital')  # Disabled for now
-
     app.register_blueprint(pharmacy_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(prescription_bp, url_prefix='/api/prescription')
     app.register_blueprint(public_ai_bp, url_prefix='/api/public')
