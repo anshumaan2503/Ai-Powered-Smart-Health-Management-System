@@ -20,27 +20,14 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # Configure CORS to allow frontend requests
-    # Get allowed origins from config (environment variables)
-    cors_origins = app.config.get('CORS_ORIGINS', '').split(',')
-    # Add the fixed frontend URL
-    cors_origins.extend([
-        "https://hospital-management-frontend-dkel.onrender.com",
-        "https://ai-powered-smart-health-management.onrender.com"
-    ])
-    # Remove duplicates and empty strings
-    cors_origins = list(set(filter(None, [origin.strip() for origin in cors_origins])))
-    
+    # Configure CORS - Simplified direct approach
+    # Allow all origins temporarily to fix deployment issues
     CORS(app, 
-         resources={
-             r"/api/*": {
-                 "origins": cors_origins,
-                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-                 "supports_credentials": True,
-                 "expose_headers": ["Content-Type", "Authorization"]
-             }
-         })
+         resources={r"/*": {"origins": "*"}},
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         supports_credentials=False,
+         max_age=3600)
     
     mail.init_app(app)
     
