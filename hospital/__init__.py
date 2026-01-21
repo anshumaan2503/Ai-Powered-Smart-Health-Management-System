@@ -1,8 +1,7 @@
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
-from flask_cors import CORS
 from flask_mail import Mail
 from config import config
 
@@ -20,29 +19,25 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # Configure CORS - Aggressive approach with manual headers
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    # CORS Configuration - Manual implementation only (no Flask-CORS to avoid conflicts)
+    @app.before_request
+    def handle_preflight():
+        if request.method == 'OPTIONS':
+            response = app.make_response('')
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Max-Age'] = '3600'
+            return response
     
-    # Add CORS headers manually to EVERY response (backup method)
     @app.after_request
-    def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-        response.headers.add('Access-Control-Max-Age', '3600')
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
         return response
     
-    # Handle OPTIONS requests explicitly
-    @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
-    @app.route('/<path:path>', methods=['OPTIONS'])
-    def handle_options(path):
-        response = app.make_response('')
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-        return response
-    
-    # Debug endpoints - Health check
+    # Health check endpoint
     @app.route('/')
     @app.route('/health')
     def health_check():
