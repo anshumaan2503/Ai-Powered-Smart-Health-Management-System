@@ -84,8 +84,9 @@ def login():
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 401
         
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Convert user.id to string as required by Flask-JWT-Extended
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'access_token': access_token,
@@ -101,7 +102,8 @@ def login():
 def refresh():
     try:
         current_user_id = get_jwt_identity()
-        new_token = create_access_token(identity=current_user_id)
+        # Ensure identity is string
+        new_token = create_access_token(identity=str(current_user_id))
         return jsonify({'access_token': new_token}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -116,7 +118,8 @@ def get_profile():
         if not current_user_id:
             return jsonify({'error': 'Invalid token - no user identity'}), 422
         
-        user = User.query.get(current_user_id)
+        # Convert string identity back to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'error': 'User not found'}), 404

@@ -209,6 +209,7 @@ def verify_diagnosis(diagnosis_id):
         # Update verification status
         ai_diagnosis.doctor_verified = data.get('verified', False)
         ai_diagnosis.doctor_notes = data.get('notes', '')
+        # current_user_id is a string from JWT, which is fine for storage
         ai_diagnosis.doctor_id = current_user_id
         
         db.session.commit()
