@@ -47,7 +47,7 @@ export default function HospitalLoginPage() {
       }
 
       toast.success('Hospital login successful!')
-      router.push('/')
+      router.push('/hospital/dashboard')
     } catch (error: any) {
       console.error('Hospital login error:', error)
 
