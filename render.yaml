@@ -7,7 +7,9 @@ services:
     startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: https://hospital-management-backend.onrender.com/api
+        value: https://ai-powered-smart-health-management.onrender.com/api
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://ai-powered-smart-health-management.onrender.com
       - key: NODE_ENV
         value: production
 
