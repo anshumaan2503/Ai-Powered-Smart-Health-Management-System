@@ -68,12 +68,6 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         if GROQ_AVAILABLE and self.groq_key:
             try:
                 self.groq_client = Groq(api_key=self.groq_key)
-                # Test with a simple request
-                test_response = self.groq_client.chat.completions.create(
-                    messages=[{"role": "user", "content": "Hi"}],
-                    model="llama-3.3-70b-versatile",
-                    max_tokens=10
-                )
                 self.active_provider = "groq"
                 print("[AI] ✅ Successfully initialized GROQ!")
             except Exception as e:
