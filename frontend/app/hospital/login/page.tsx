@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EyeIcon, EyeSlashIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 export default function HospitalLoginPage() {
@@ -19,42 +20,45 @@ export default function HospitalLoginPage() {
     setIsLoading(true)
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-
-      // ✅ NO silent localhost fallback in production
-      if (!backendUrl) {
-        throw new Error('NEXT_PUBLIC_BACKEND_URL is missing. Fix Render env + redeploy frontend.')
-      }
-
-      const response = await fetch(`${backendUrl}/api/hospital-auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await api.post('/hospital-auth/login', {
+        email,
+        password,
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Login failed')
-      }
+      const data = response.data
 
       if (!data?.access_token) {
-        throw new Error('No access_token received from backend')
+        throw new Error('No access token received from server')
       }
 
-      // Store tokens and data
+      // ✅ Store tokens + hospital info
       localStorage.setItem('hospital_access_token', data.access_token)
-      if (data.refresh_token) localStorage.setItem('hospital_refresh_token', data.refresh_token)
-      if (data.user) localStorage.setItem('hospital_user', JSON.stringify(data.user))
-      if (data.hospital) localStorage.setItem('hospital_data', JSON.stringify(data.hospital))
 
-      toast.success('Login successful!')
+      if (data.refresh_token) {
+        localStorage.setItem('hospital_refresh_token', data.refresh_token)
+      }
+
+      if (data.user) {
+        localStorage.setItem('hospital_user', JSON.stringify(data.user))
+      }
+
+      if (data.hospital) {
+        localStorage.setItem('hospital_data', JSON.stringify(data.hospital))
+      }
+
+      toast.success('Hospital login successful!')
       router.push('/')
     } catch (error: any) {
       console.error('Hospital login error:', error)
-      toast.error(error?.message || 'Login failed. Please try again.')
+
+      // ✅ Better error message extraction
+      const msg =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Login failed. Please try again.'
+
+      toast.error(msg)
     } finally {
       setIsLoading(false)
     }
@@ -63,6 +67,7 @@ export default function HospitalLoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center">
             <BuildingOfficeIcon className="h-12 w-12 text-green-600" />
@@ -72,6 +77,7 @@ export default function HospitalLoginPage() {
           <p className="mt-2 text-sm text-gray-600">Sign in to your hospital management system</p>
         </div>
 
+        {/* Login Form */}
         <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -144,12 +150,44 @@ export default function HospitalLoginPage() {
             >
               👤 Patient Login
             </Link>
+
             <Link
               href="/hospital/register"
               className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200"
             >
               Register New Hospital
             </Link>
+          </div>
+        </div>
+
+        {/* Demo Credentials */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-green-800 mb-2">Demo Hospital Credentials</h3>
+          <div className="text-xs text-green-700 space-y-2">
+            <div className="font-medium">Hospital Admin Login:</div>
+            <div className="ml-2">
+              <div>
+                <strong>Email:</strong> admin@hospital.com
+              </div>
+              <div>
+                <strong>Password:</strong> 123
+              </div>
+            </div>
+            <div className="font-medium mt-2">Other Hospital Admins:</div>
+            <div className="ml-2">
+              <div>
+                <strong>City Hospital:</strong> city@hospital.com
+              </div>
+              <div>
+                <strong>Apollo:</strong> apollo@hospital.com
+              </div>
+              <div>
+                <strong>Fortis:</strong> fortis@hospital.com
+              </div>
+              <div>
+                <strong>Password:</strong> 123 (for all)
+              </div>
+            </div>
           </div>
         </div>
       </div>
