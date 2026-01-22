@@ -118,6 +118,7 @@ def create_app(config_name='default'):
     from hospital.routes.pharmacy import pharmacy_bp
     from hospital.routes.prescription_analyzer import prescription_bp
     from hospital.routes.public_ai import public_ai_bp
+    from hospital.routes.db_reset import db_reset_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(hospital_auth_bp, url_prefix='/api/hospital-auth')
@@ -137,5 +138,6 @@ def create_app(config_name='default'):
     app.register_blueprint(pharmacy_bp, url_prefix='/api/hospital/pharmacy')
     app.register_blueprint(prescription_bp, url_prefix='/api/prescription')
     app.register_blueprint(public_ai_bp, url_prefix='/api/public')
+    app.register_blueprint(db_reset_bp, url_prefix='/api/setup')
 
     return app
