@@ -1,19 +1,20 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// ✅ Strict API URL resolution (no silent localhost fallback)
+// ✅ Base domain only (NO /api here)
 const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
 const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
-const API_BASE_URL =
-  NEXT_PUBLIC_API_URL ||
-  (NEXT_PUBLIC_BACKEND_URL ? `${NEXT_PUBLIC_BACKEND_URL}/api` : '')
+const BASE_DOMAIN = NEXT_PUBLIC_API_URL || NEXT_PUBLIC_BACKEND_URL
 
-if (!API_BASE_URL) {
+if (!BASE_DOMAIN) {
   throw new Error(
-    '❌ Missing API base URL. Set NEXT_PUBLIC_API_URL or NEXT_PUBLIC_BACKEND_URL in Render and redeploy frontend.'
+    '❌ Missing API base URL. Set NEXT_PUBLIC_API_URL (recommended) or NEXT_PUBLIC_BACKEND_URL.'
   )
 }
+
+// ✅ Always add /api once here
+const API_BASE_URL = `${BASE_DOMAIN.replace(/\/$/, '')}/api`
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -53,7 +54,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    // Refresh only for patient tokens (your refresh endpoint is /auth/refresh)
+    // Refresh only for patient tokens
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
@@ -65,6 +66,7 @@ api.interceptors.response.use(
           throw new Error('No refresh token')
         }
 
+        // ✅ refresh endpoint is /api/auth/refresh (baseURL already has /api)
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           {},
@@ -112,7 +114,7 @@ api.interceptors.response.use(
   }
 )
 
-// API endpoints
+// ✅ API endpoints (notice: no /api prefix here)
 export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
