@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 from flask_cors import CORS
 from config import config
+import logging
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -16,23 +17,27 @@ def create_app(config_name="default"):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
+    # ✅ Logging (so Render logs show real errors)
+    logging.basicConfig(level=logging.INFO)
+    app.logger.setLevel(logging.INFO)
+
     # ✅ Proper CORS (NO manual before_request/after_request hacks)
     CORS(
-    app,
-    resources={
-        r"/api/*": {
-            "origins": [
-                "https://hospital-management-frontend-0421.onrender.com",
-                "https://hospital-management-frontend-6kel.onrender.com",
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-            ]
-        }
-    },
-    supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization"],
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-)
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "https://hospital-management-frontend-0421.onrender.com",
+                    "https://hospital-management-frontend-6kel.onrender.com",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                ]
+            }
+        },
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    )
 
     # ✅ Initialize extensions
     db.init_app(app)
@@ -121,5 +126,11 @@ def create_app(config_name="default"):
     app.register_blueprint(prescription_bp, url_prefix="/api/prescription")
     app.register_blueprint(public_ai_bp, url_prefix="/api/public")
     app.register_blueprint(db_reset_bp, url_prefix="/api/setup")
+
+    # ✅ Catch ALL backend exceptions and show them in Render logs
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        app.logger.exception("🔥 UNHANDLED EXCEPTION")
+        return {"error": str(e)}, 500
 
     return app
