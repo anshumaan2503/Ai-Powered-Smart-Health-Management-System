@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { api } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -43,15 +44,15 @@ export default function ImportDoctorsPage() {
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       ]
-      
-      if (!allowedTypes.includes(selectedFile.type) && 
-          !selectedFile.name.toLowerCase().endsWith('.csv') &&
-          !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
-          !selectedFile.name.toLowerCase().endsWith('.xls')) {
+
+      if (!allowedTypes.includes(selectedFile.type) &&
+        !selectedFile.name.toLowerCase().endsWith('.csv') &&
+        !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
+        !selectedFile.name.toLowerCase().endsWith('.xls')) {
         setError('Please select a CSV or Excel file (.csv, .xlsx, .xls)')
         return
       }
-      
+
       setFile(selectedFile)
       setError('')
     }
@@ -59,31 +60,14 @@ export default function ImportDoctorsPage() {
 
   const downloadTemplate = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('Please login first')
-        return
-      }
+      const response = await api.get('/hospital/import-template')
+      const data = response.data
 
-      const response = await fetch(`${backendUrl}/api/hospital/import-template`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to get template')
-      }
-
-      const data = await response.json()
-      
       // Create CSV content
       const headers = ['first_name', 'last_name', 'specialization', 'qualification', 'phone', 'experience_years', 'consultation_fee', 'license_number']
       const csvContent = [
         headers.join(','),
-        ...data.template.first_name.map((_: any, index: number) => 
+        ...data.template.first_name.map((_: any, index: number) =>
           headers.map(header => data.template[header][index] || '').join(',')
         )
       ].join('\n')
@@ -125,20 +109,14 @@ export default function ImportDoctorsPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const response = await fetch(`${backendUrl}/api/hospital/import-doctors`, {
-        method: 'POST',
+      const response = await api.post('/hospital/import-doctors', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       })
+      const data = response.data
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import doctors')
-      }
+      // Axios throws on non-2xx, so if we are here, it is ok.
 
       setImportResult(data)
       setSuccess(data.message)
@@ -157,11 +135,11 @@ export default function ImportDoctorsPage() {
 
   const copyAllCredentials = () => {
     if (!importResult) return
-    
-    const allCredentials = importResult.imported_doctors.map(doctor => 
+
+    const allCredentials = importResult.imported_doctors.map(doctor =>
       `Name: ${doctor.name}\nEmail: ${doctor.email}\nPassword: ${doctor.password}\nSpecialization: ${doctor.specialization}`
     ).join('\n\n')
-    
+
     navigator.clipboard.writeText(allCredentials)
   }
 
@@ -220,7 +198,7 @@ export default function ImportDoctorsPage() {
         </div>
         <div className="mt-4 p-3 bg-blue-100 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Email and password will be automatically generated for each doctor. 
+            <strong>Note:</strong> Email and password will be automatically generated for each doctor.
             You can modify them later from the doctor's profile page.
           </p>
         </div>

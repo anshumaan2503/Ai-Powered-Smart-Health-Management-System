@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -87,17 +88,9 @@ export default function BookAppointmentPage() {
 
   const fetchDoctors = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/doctors/available`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
+      const response = await api.get('/hospital/doctors/available')
+      if (true) {
+        const data = response.data
         setDoctors(data.doctors || [])
       }
     } catch (err) {
@@ -107,17 +100,9 @@ export default function BookAppointmentPage() {
 
   const searchPatients = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/patients/search?q=${encodeURIComponent(searchTerm)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
+      const response = await api.get(`/hospital/patients/search?q=${encodeURIComponent(searchTerm)}`)
+      if (true) {
+        const data = response.data
         setSearchResults(data.patients || [])
       }
     } catch (err) {
@@ -131,22 +116,11 @@ export default function BookAppointmentPage() {
     setError('')
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/quick-patient`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newPatientData)
-      })
+      const response = await api.post('/hospital/quick-patient', newPatientData)
 
-      const data = await response.json()
+      const data = response.data
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create patient')
-      }
+      if (false) { }
 
       setSelectedPatient(data.patient)
       setShowNewPatientForm(false)
@@ -164,25 +138,14 @@ export default function BookAppointmentPage() {
     setError('')
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/appointments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...appointmentData,
-          patient_id: selectedPatient?.id
-        })
+      const response = await api.post('/hospital/appointments', {
+        ...appointmentData,
+        patient_id: selectedPatient?.id
       })
 
-      const data = await response.json()
+      const data = response.data
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to book appointment')
-      }
+      if (false) { }
 
       setSuccess('Appointment booked successfully!')
       setTimeout(() => {
@@ -256,7 +219,7 @@ export default function BookAppointmentPage() {
       {step === 1 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Patient</h3>
-          
+
           {!showNewPatientForm ? (
             <div className="space-y-4">
               {/* Search Patients */}
@@ -410,11 +373,10 @@ export default function BookAppointmentPage() {
                           key={gender.value}
                           type="button"
                           onClick={() => setNewPatientData(prev => ({ ...prev, gender: gender.value }))}
-                          className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
-                            newPatientData.gender === gender.value
+                          className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${newPatientData.gender === gender.value
                               ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
                               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                          }`}
+                            }`}
                         >
                           {gender.label}
                         </button>
@@ -460,7 +422,7 @@ export default function BookAppointmentPage() {
       {step === 2 && selectedPatient && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Book Appointment</h3>
-          
+
           {/* Selected Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h4 className="font-medium text-gray-900 mb-2">Selected Patient</h4>
@@ -532,11 +494,10 @@ export default function BookAppointmentPage() {
                         key={type.value}
                         type="button"
                         onClick={() => setAppointmentData(prev => ({ ...prev, appointment_type: type.value }))}
-                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
-                          appointmentData.appointment_type === type.value
+                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${appointmentData.appointment_type === type.value
                             ? `border-${type.color}-400 bg-${type.color}-50 text-${type.color}-700`
                             : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                        }`}
+                          }`}
                       >
                         {type.label}
                       </button>

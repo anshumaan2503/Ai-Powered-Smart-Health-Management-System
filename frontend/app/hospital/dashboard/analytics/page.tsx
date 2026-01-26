@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { hospitalAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   ChartBarIcon,
   UserGroupIcon,
   CalendarIcon,
@@ -89,33 +90,18 @@ export default function HospitalAnalyticsPage() {
   const loadAnalyticsData = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        router.push('/hospital/login')
-        return
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
 
       // Load all analytics data
       const [overviewRes, appointmentsRes, patientsRes, doctorsRes, revenueRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/hospital/analytics/overview?period=${selectedPeriod}`, { headers }).catch(() => null),
-        fetch(`http://localhost:5000/api/hospital/analytics/appointments`, { headers }).catch(() => null),
-        fetch(`http://localhost:5000/api/hospital/analytics/patients`, { headers }).catch(() => null),
-        fetch(`http://localhost:5000/api/hospital/analytics/doctors`, { headers }).catch(() => null),
-        fetch(`http://localhost:5000/api/hospital/analytics/revenue`, { headers }).catch(() => null)
+        hospitalAPI.getAnalyticsOverview(selectedPeriod).catch(() => null),
+        hospitalAPI.getAnalyticsAppointments().catch(() => null),
+        hospitalAPI.getAnalyticsPatients().catch(() => null),
+        hospitalAPI.getAnalyticsDoctors().catch(() => null),
+        hospitalAPI.getAnalyticsRevenue().catch(() => null)
       ])
 
-      if (overviewRes && overviewRes.ok) {
-        try {
-          const data = await overviewRes.json()
-          setOverviewData(data.overview)
-        } catch (e) {
-          console.error('Error parsing overview data:', e)
-        }
+      if (overviewRes) {
+        setOverviewData(overviewRes.data.overview)
       } else {
         // Set fake overview data
         setOverviewData({
@@ -131,13 +117,8 @@ export default function HospitalAnalyticsPage() {
         })
       }
 
-      if (appointmentsRes && appointmentsRes.ok) {
-        try {
-          const data = await appointmentsRes.json()
-          setAppointmentData(data.appointments)
-        } catch (e) {
-          console.error('Error parsing appointments data:', e)
-        }
+      if (appointmentsRes) {
+        setAppointmentData(appointmentsRes.data.appointments)
       } else {
         // Set fake appointment data
         const daily = []
@@ -173,13 +154,8 @@ export default function HospitalAnalyticsPage() {
         })
       }
 
-      if (patientsRes && patientsRes.ok) {
-        try {
-          const data = await patientsRes.json()
-          setPatientData(data.patients)
-        } catch (e) {
-          console.error('Error parsing patients data:', e)
-        }
+      if (patientsRes) {
+        setPatientData(patientsRes.data.patients)
       } else {
         // Set fake patient data
         setPatientData({
@@ -216,13 +192,8 @@ export default function HospitalAnalyticsPage() {
         })
       }
 
-      if (doctorsRes && doctorsRes.ok) {
-        try {
-          const data = await doctorsRes.json()
-          setDoctorData(data.doctors)
-        } catch (e) {
-          console.error('Error parsing doctors data:', e)
-        }
+      if (doctorsRes) {
+        setDoctorData(doctorsRes.data.doctors)
       } else {
         // Set fake doctor data
         setDoctorData({
@@ -244,13 +215,8 @@ export default function HospitalAnalyticsPage() {
         })
       }
 
-      if (revenueRes && revenueRes.ok) {
-        try {
-          const data = await revenueRes.json()
-          setRevenueData(data.revenue)
-        } catch (e) {
-          console.error('Error parsing revenue data:', e)
-        }
+      if (revenueRes) {
+        setRevenueData(revenueRes.data.revenue)
       } else {
         // Set fake revenue data
         setRevenueData({
@@ -478,11 +444,10 @@ export default function HospitalAnalyticsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
-                activeTab === tab.id
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               <tab.icon className="h-5 w-5 mr-2" />
               {tab.name}

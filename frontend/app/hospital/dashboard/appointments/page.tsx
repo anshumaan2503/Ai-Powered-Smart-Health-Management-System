@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
 import {
   CalendarIcon,
   PlusIcon,
@@ -61,25 +62,15 @@ export default function AppointmentsPage() {
         return
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const url = new URL(`${backendUrl}/api/hospital/appointments`)
-      if (dateFilter) url.searchParams.append('date', dateFilter)
-      if (statusFilter) url.searchParams.append('status', statusFilter)
-      if (doctorFilter) url.searchParams.append('doctor_id', doctorFilter)
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await api.get('/hospital/appointments', {
+        params: {
+          date: dateFilter || undefined,
+          status: statusFilter || undefined,
+          doctor_id: doctorFilter || undefined
         }
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `Failed to fetch appointments (${response.status})`)
-      }
-
-      const data = await response.json()
+      const data = response.data
       setAppointments(data.appointments || [])
       setError('') // Clear any previous errors
     } catch (err) {
@@ -96,20 +87,7 @@ export default function AppointmentsPage() {
 
   const updateAppointmentStatus = async (appointmentId: number, newStatus: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update appointment')
-      }
+      await api.put(`/hospital/appointments/${appointmentId}`, { status: newStatus })
 
       // Refresh appointments
       fetchAppointments()
@@ -124,19 +102,7 @@ export default function AppointmentsPage() {
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}/cancel`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to cancel appointment')
-      }
+      await api.put(`/hospital/appointments/${appointmentId}/cancel`)
 
       // Refresh appointments
       fetchAppointments()
@@ -151,20 +117,7 @@ export default function AppointmentsPage() {
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/appointments/${appointmentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete appointment')
-      }
+      await api.delete(`/hospital/appointments/${appointmentId}`)
 
       // Refresh appointments
       fetchAppointments()

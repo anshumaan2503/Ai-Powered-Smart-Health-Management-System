@@ -204,6 +204,7 @@ export const hospitalAPI = {
   // Staff/Doctors
   getStaff: () => api.get('/hospital/staff'),
   getStaffById: (id: number) => api.get(`/hospital/staff/${id}`),
+  createStaff: (data: any) => api.post('/hospital/staff', data),
   updateStaff: (id: number, data: any) => api.put(`/hospital/staff/${id}`, data),
   deleteStaff: (id: number) => api.delete(`/hospital/staff/${id}`),
   downloadStaffTemplate: () => api.get('/hospital/import-staff-template', { responseType: 'blob' }),
