@@ -29,6 +29,8 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
+import { api } from '@/lib/api'
+
 export default function SubscriptionPage() {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null)
   const [hospitalData, setHospitalData] = useState<any>(null)
@@ -124,7 +126,7 @@ export default function SubscriptionPage() {
       // Load from localStorage first
       const hospital = localStorage.getItem('hospital')
       const subscription = localStorage.getItem('subscription')
-      
+
       if (hospital) setHospitalData(JSON.parse(hospital))
       if (subscription) setCurrentSubscription(JSON.parse(subscription))
 
@@ -132,15 +134,14 @@ export default function SubscriptionPage() {
       const token = localStorage.getItem('hospital_access_token')
       if (token) {
         const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
 
-        // Get usage stats from backend
+        // Get usage stats from backend using API client
         const [patientsRes, doctorsRes, staffRes] = await Promise.all([
-          fetch('http://localhost:5000/api/hospital/patients?per_page=1', { headers }),
-          fetch('http://localhost:5000/api/hospital/staff?role=doctor', { headers }),
-          fetch('http://localhost:5000/api/hospital/staff', { headers })
+          api.get('/hospital/patients?per_page=1', { headers }).catch(() => null),
+          api.get('/hospital/staff?role=doctor', { headers }).catch(() => null),
+          api.get('/hospital/staff', { headers }).catch(() => null)
         ])
 
         const usage = {
@@ -149,19 +150,16 @@ export default function SubscriptionPage() {
           staff: 0
         }
 
-        if (patientsRes.ok) {
-          const patientsData = await patientsRes.json()
-          usage.patients = patientsData.total || 0
+        if (patientsRes?.data) {
+          usage.patients = patientsRes.data.total || 0
         }
 
-        if (doctorsRes.ok) {
-          const doctorsData = await doctorsRes.json()
-          usage.doctors = doctorsData.staff?.length || 0
+        if (doctorsRes?.data) {
+          usage.doctors = doctorsRes.data.staff?.length || 0
         }
 
-        if (staffRes.ok) {
-          const staffData = await staffRes.json()
-          usage.staff = staffData.staff?.length || 0
+        if (staffRes?.data) {
+          usage.staff = staffRes.data.staff?.length || 0
         }
 
         setUsageStats(usage)
@@ -262,7 +260,7 @@ export default function SubscriptionPage() {
           {/* Usage Statistics */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900">Usage Statistics</h4>
-            
+
             {usageStats && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Patients Usage */}
@@ -276,20 +274,18 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.patients !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 70 
-                                ? 'bg-yellow-500' 
-                                : 'bg-green-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 90
+                            ? 'bg-red-500'
+                            : getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                            }`}
                           style={{ width: `${getUsagePercentage(usageStats.patients, currentPlan.limits.patients)}%` }}
                         />
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        getUsageColor(getUsagePercentage(usageStats.patients, currentPlan.limits.patients))
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getUsageColor(getUsagePercentage(usageStats.patients, currentPlan.limits.patients))
+                        }`}>
                         {getUsagePercentage(usageStats.patients, currentPlan.limits.patients).toFixed(0)}% used
                       </span>
                     </>
@@ -307,20 +303,18 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.doctors !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 70 
-                                ? 'bg-yellow-500' 
-                                : 'bg-green-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 90
+                            ? 'bg-red-500'
+                            : getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                            }`}
                           style={{ width: `${getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors)}%` }}
                         />
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        getUsageColor(getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors))
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getUsageColor(getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors))
+                        }`}>
                         {getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors).toFixed(0)}% used
                       </span>
                     </>
@@ -338,7 +332,7 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.storage !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
+                        <div
                           className="h-2 rounded-full bg-blue-500"
                           style={{ width: `${(2.3 / currentPlan.limits.storage) * 100}%` }}
                         />
@@ -411,7 +405,7 @@ export default function SubscriptionPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <Link 
+              <Link
                 href="/pricing"
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-center block"
               >
@@ -436,7 +430,7 @@ export default function SubscriptionPage() {
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Available Plans</h2>
           <p className="text-gray-600">Choose the plan that best fits your hospital's needs</p>
-          
+
           {/* Annual/Monthly Toggle */}
           <div className="flex items-center justify-center mt-6">
             <span className={`text-sm ${!isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
@@ -444,14 +438,12 @@ export default function SubscriptionPage() {
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
-              className={`mx-3 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isAnnual ? 'bg-blue-600' : 'bg-gray-200'
-              }`}
+              className={`mx-3 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAnnual ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isAnnual ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className={`text-sm ${isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
@@ -469,20 +461,19 @@ export default function SubscriptionPage() {
           {plans.map((plan, index) => {
             const isCurrentPlan = plan.id === currentPlan.id
             const price = isAnnual ? plan.annualPrice : plan.monthlyPrice
-            
+
             return (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`relative bg-white rounded-xl border-2 p-6 ${
-                  isCurrentPlan 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : plan.popular 
-                      ? 'border-purple-200 shadow-lg' 
-                      : 'border-gray-200'
-                } hover:shadow-lg transition-all`}
+                className={`relative bg-white rounded-xl border-2 p-6 ${isCurrentPlan
+                  ? 'border-blue-500 bg-blue-50'
+                  : plan.popular
+                    ? 'border-purple-200 shadow-lg'
+                    : 'border-gray-200'
+                  } hover:shadow-lg transition-all`}
               >
                 {plan.popular && !isCurrentPlan && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -505,7 +496,7 @@ export default function SubscriptionPage() {
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                   <p className="text-sm text-gray-600 mb-4">{plan.subtitle}</p>
-                  
+
                   <div className="mb-4">
                     <div className="text-3xl font-bold text-gray-900">
                       {formatPrice(price)}
@@ -536,11 +527,10 @@ export default function SubscriptionPage() {
                   <ul className="space-y-2">
                     {plan.features.slice(0, 5).map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center text-sm">
-                        <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mr-3 ${
-                          feature.included 
-                            ? 'bg-green-100 text-green-600' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mr-3 ${feature.included
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-gray-100 text-gray-400'
+                          }`}>
                           {feature.included ? (
                             <CheckIcon className="h-3 w-3" />
                           ) : (
@@ -564,13 +554,12 @@ export default function SubscriptionPage() {
                 <button
                   onClick={() => handleUpgrade(plan.id)}
                   disabled={isCurrentPlan}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${
-                    isCurrentPlan
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : plan.popular
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
-                  }`}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${isCurrentPlan
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : plan.popular
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
+                    }`}
                 >
                   {isCurrentPlan ? 'Current Plan' : 'Upgrade to ' + plan.name}
                 </button>

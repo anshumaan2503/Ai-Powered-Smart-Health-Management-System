@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   UserGroupIcon,
   PlusIcon,
   MagnifyingGlassIcon,
@@ -13,6 +13,7 @@ import {
   CloudArrowUpIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { api } from '@/lib/api'
 
 interface StaffMember {
   id: number
@@ -50,25 +51,23 @@ export default function StaffManagementPage() {
         return
       }
 
-      const url = new URL('http://localhost:5000/api/hospital/staff')
-      url.searchParams.append('per_page', '100') // Get more results
+      const params = new URLSearchParams({ per_page: '100' })
       if (roleFilter) {
-        url.searchParams.append('role', roleFilter)
+        params.append('role', roleFilter)
       }
 
-      const response = await fetch(url.toString(), {
+      const response = await api.get(`/hospital/staff?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       })
 
-      if (!response.ok) {
+      if (!response?.data) {
         throw new Error('Failed to fetch staff')
       }
 
-      const data = await response.json()
-      
+      const data = response.data
+
       // Filter out doctors since they have their own management section (case-insensitive)
       // Also exclude the main hospital admin account
       const nonDoctorStaff = (data.staff || []).filter((member: StaffMember) => {
@@ -77,7 +76,7 @@ export default function StaffManagementPage() {
         const isMainAdmin = member.email === 'city@hospital.com' // Exclude main hospital admin
         return !isDoctor && !isMainAdmin
       })
-      
+
       setStaff(nonDoctorStaff)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load staff')
@@ -89,15 +88,13 @@ export default function StaffManagementPage() {
   const toggleStaffStatus = async (staffId: number) => {
     try {
       const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${staffId}/toggle-status`, {
-        method: 'PUT',
+      const response = await api.put(`/hospital/staff/${staffId}/toggle-status`, {}, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       })
 
-      if (!response.ok) {
+      if (!response?.data) {
         throw new Error('Failed to update staff status')
       }
 
@@ -109,10 +106,10 @@ export default function StaffManagementPage() {
   }
 
   const filteredStaff = staff.filter(member => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     return matchesSearch
   })
 
@@ -279,11 +276,10 @@ export default function StaffManagementPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        member.is_active 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.is_active
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
-                      }`}>
+                        }`}>
                         {member.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -291,11 +287,10 @@ export default function StaffManagementPage() {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => toggleStaffStatus(member.id)}
-                          className={`px-3 py-1 rounded text-xs font-medium ${
-                            member.is_active
+                          className={`px-3 py-1 rounded text-xs font-medium ${member.is_active
                               ? 'bg-red-100 text-red-700 hover:bg-red-200'
                               : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
+                            }`}
                         >
                           {member.is_active ? 'Deactivate' : 'Activate'}
                         </button>

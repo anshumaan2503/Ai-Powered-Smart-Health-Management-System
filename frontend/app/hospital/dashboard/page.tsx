@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  BuildingOfficeIcon, 
-  UserGroupIcon, 
-  CalendarIcon, 
+import {
+  BuildingOfficeIcon,
+  UserGroupIcon,
+  CalendarIcon,
   ChartBarIcon,
   CogIcon,
   ArrowRightOnRectangleIcon
@@ -46,7 +46,7 @@ export default function HospitalDashboard() {
     try {
       const token = localStorage.getItem('hospital_access_token')
       const userData = localStorage.getItem('hospital_user')
-      
+
       if (!token || !userData) {
         router.push('/hospital/login')
         return
@@ -55,18 +55,15 @@ export default function HospitalDashboard() {
       const parsedUser = JSON.parse(userData)
       setUser(parsedUser)
 
-      // Fetch hospital profile using fetch to avoid patient token interference
-      const response = await fetch('http://localhost:5000/api/hospital-auth/hospital-profile', {
-        method: 'GET',
+      // Fetch hospital profile using API client
+      const response = await api.get('/hospital-auth/hospital-profile', {
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setHospital(data.hospital)
+      if (response?.data?.hospital) {
+        setHospital(response.data.hospital)
       } else {
         throw new Error('Failed to fetch hospital profile')
       }
