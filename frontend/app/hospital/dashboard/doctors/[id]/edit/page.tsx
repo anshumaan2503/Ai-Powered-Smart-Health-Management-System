@@ -161,7 +161,7 @@ export default function DoctorEditPage() {
       setError(err.response?.data?.error || err.message || 'Failed to delete doctor')
     } finally {
       setDeleting(false)
-      setShowDelete Confirm(false)
+      setShowDeleteConfirm(false)
     }
   }
 
