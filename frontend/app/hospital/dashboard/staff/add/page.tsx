@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
+import {
   UserPlusIcon,
   ArrowLeftIcon,
   EyeIcon,
   EyeSlashIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { api } from '@/lib/api'
 
 interface Role {
   value: string
@@ -69,23 +70,19 @@ export default function AddStaffPage() {
         throw new Error('No access token found')
       }
 
-      const response = await fetch('http://localhost:5000/api/hospital/staff', {
-        method: 'POST',
+      const response = await api.post('/hospital/staff', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+          'Authorization': `Bearer ${token}`
+        }
       })
 
-      const data = await response.json()
-      
-      console.log('Response status:', response.status)
+      const data = response.data
+
       console.log('Response data:', data)
 
-      if (!response.ok) {
+      if (!data || data.error) {
         console.error('API Error:', data)
-        throw new Error(data.error || 'Failed to add staff member')
+        throw new Error(data?.error || 'Failed to add staff member')
       }
 
       setSuccess('Staff member added successfully!')
@@ -205,7 +202,7 @@ export default function AddStaffPage() {
                   <h4 className="text-sm font-medium text-blue-900">Auto-Generated Credentials</h4>
                 </div>
                 <p className="text-sm text-blue-700">
-                  Email and password will be automatically generated based on the staff member's name and hospital domain. 
+                  Email and password will be automatically generated based on the staff member's name and hospital domain.
                   You can set and view the login credentials by editing the staff member's profile after registration.
                 </p>
               </div>
