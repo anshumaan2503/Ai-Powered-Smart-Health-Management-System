@@ -1,5 +1,6 @@
 'use client'
 
+import { api } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -48,29 +49,31 @@ export default function HospitalsManagementPage() {
   }, [hospitals, searchTerm, filterStatus, filterPlan])
 
   const loadHospitals = async () => {
+    setLoading(true)
+
     try {
       const token = localStorage.getItem('admin_token')
-      if (!token) return
+      if (!token) {
+        setHospitals([])
+        return
+      }
 
       const headers = {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
 
-      // Fetch real hospitals data from backend
-      const response = await fetch('http://localhost:5000/api/admin/hospitals', { headers })
+      // ✅ FIXED: use api client (no localhost)
+      const response = await api.get('/admin/hospitals', { headers })
 
-      if (response.ok) {
-        const data = await response.json()
-        setHospitals(data.hospitals)
+      if (response?.data?.hospitals) {
+        setHospitals(response.data.hospitals)
       } else {
-        // Fallback to empty array if API fails
-        console.error('Failed to load hospitals:', response.status)
+        console.error('Failed to load hospitals:', response)
         setHospitals([])
       }
     } catch (error) {
       console.error('Error loading hospitals:', error)
-      // Fallback to empty array on error
       setHospitals([])
     } finally {
       setLoading(false)
@@ -253,13 +256,10 @@ export default function HospitalsManagementPage() {
       })
 
       if (response.ok) {
-        // Remove hospital from local state
         setHospitals(prev => prev.filter(h => h.id !== selectedHospital.id))
         setShowDeleteModal(false)
         setSelectedHospital(null)
         setDeleteConfirmation('')
-        
-        // Show success message (you could use a toast library)
         alert(`${selectedHospital.name} has been successfully deactivated.`)
       } else {
         const errorData = await response.json()
@@ -371,7 +371,7 @@ export default function HospitalsManagementPage() {
                   <p className="text-sm text-gray-600">ID: #{hospital.id}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(hospital.subscription.status)}`}>
                   {hospital.subscription.status}
@@ -433,7 +433,7 @@ export default function HospitalsManagementPage() {
               <div className="text-xs text-gray-500">
                 Last login: {new Date(hospital.lastLogin).toLocaleDateString()}
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Link
                   href={`/anshuman/dashboard/hospitals/${hospital.id}`}
@@ -442,7 +442,7 @@ export default function HospitalsManagementPage() {
                 >
                   <EyeIcon className="h-4 w-4" />
                 </Link>
-                
+
                 <Link
                   href={`/anshuman/dashboard/subscriptions?hospital=${hospital.id}`}
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -450,7 +450,7 @@ export default function HospitalsManagementPage() {
                 >
                   <CreditCardIcon className="h-4 w-4" />
                 </Link>
-                
+
                 <Link
                   href={`/anshuman/dashboard/hospitals/${hospital.id}/edit`}
                   className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
@@ -458,7 +458,7 @@ export default function HospitalsManagementPage() {
                 >
                   <PencilIcon className="h-4 w-4" />
                 </Link>
-                
+
                 <button
                   onClick={() => handlePasswordClick(hospital)}
                   className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
@@ -466,7 +466,7 @@ export default function HospitalsManagementPage() {
                 >
                   <KeyIcon className="h-4 w-4" />
                 </button>
-                
+
                 <button
                   onClick={() => handlePasswordReset(hospital)}
                   className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
@@ -474,7 +474,7 @@ export default function HospitalsManagementPage() {
                 >
                   <LockClosedIcon className="h-4 w-4" />
                 </button>
-                
+
                 <button
                   onClick={() => handleDeleteClick(hospital)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -535,10 +535,10 @@ export default function HospitalsManagementPage() {
             {/* Hospital Info */}
             <div className="mb-6">
               <p className="text-gray-700 mb-4">
-                You are about to delete <strong>{selectedHospital.name}</strong>. 
+                You are about to delete <strong>{selectedHospital.name}</strong>.
                 This will deactivate the hospital and all its associated data.
               </p>
-              
+
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -632,7 +632,6 @@ export default function HospitalsManagementPage() {
               </button>
             </div>
 
-            {/* Additional Warning */}
             <div className="mt-4 text-center">
               <p className="text-xs text-gray-500">
                 This action is irreversible. Please be absolutely sure.
@@ -650,7 +649,6 @@ export default function HospitalsManagementPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
           >
-            {/* Header */}
             <div className="flex items-center mb-4">
               <div className="p-3 rounded-full bg-orange-100 mr-4">
                 <KeyIcon className="h-6 w-6 text-orange-600" />
@@ -661,7 +659,6 @@ export default function HospitalsManagementPage() {
               </div>
             </div>
 
-            {/* Hospital Info */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <div className="flex items-center">
                 <BuildingOffice2Icon className="h-5 w-5 text-gray-400 mr-2" />
@@ -672,7 +669,6 @@ export default function HospitalsManagementPage() {
               </div>
             </div>
 
-            {/* Password Form */}
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -686,7 +682,7 @@ export default function HospitalsManagementPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Confirm Password
@@ -715,7 +711,6 @@ export default function HospitalsManagementPage() {
                 )}
               </div>
 
-              {/* Password Requirements */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="text-blue-800 text-sm">
                   <p className="font-medium mb-1">Password Requirements:</p>
@@ -731,7 +726,6 @@ export default function HospitalsManagementPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex items-center justify-end space-x-3">
               <button
                 onClick={() => {
@@ -767,7 +761,6 @@ export default function HospitalsManagementPage() {
               </button>
             </div>
 
-            {/* Quick Reset Option */}
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-2">

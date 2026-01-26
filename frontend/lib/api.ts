@@ -35,13 +35,22 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${hospitalToken}`
       }
     } else {
-      // Patient/auth endpoints -> patient token
-      let token = localStorage.getItem('access_token')
-      if (!token) token = sessionStorage.getItem('access_token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
+  // ✅ Admin endpoints -> admin token
+  if (url.includes('/admin/')) {
+    const adminToken = localStorage.getItem('admin_token')
+    if (adminToken) {
+      config.headers.Authorization = `Bearer ${adminToken}`
     }
+    return config
+  }
+
+  // ✅ Patient/auth endpoints -> patient token
+  let token = localStorage.getItem('access_token')
+  if (!token) token = sessionStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+}
 
     return config
   },
