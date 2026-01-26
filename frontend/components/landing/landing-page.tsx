@@ -21,7 +21,7 @@ export function LandingPage() {
   const [hospitalName, setHospitalName] = useState('');
 
   useEffect(() => {
-    const checkAndRedirect = async () => {
+    const checkTokens = async () => {
       // Check patient token
       const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (patientToken) {
@@ -47,9 +47,7 @@ export function LandingPage() {
             } catch (e) {
               setPatientName('Patient');
             }
-            // Only redirect if token is valid
-            window.location.href = '/patient/dashboard';
-            return;
+            // No redirect - allow users to view homepage even when logged in
           } else {
             // Token is invalid, clear it
             localStorage.removeItem('access_token');
@@ -95,9 +93,7 @@ export function LandingPage() {
             } catch (e) {
               setHospitalName('Hospital');
             }
-            // Only redirect if token is valid
-            window.location.href = '/hospital/dashboard';
-            return;
+            // No redirect - allow users to view homepage even when logged in
           } else {
             // Token is invalid, clear it
             localStorage.removeItem('hospital_access_token');
@@ -115,7 +111,7 @@ export function LandingPage() {
       }
     };
 
-    checkAndRedirect();
+    checkTokens();
   }, []);
 
   const handleLogout = (type: 'patient' | 'hospital') => {
@@ -163,7 +159,7 @@ export function LandingPage() {
             </Link>
 
             <div className="flex items-center space-x-4">
-              
+
               {isPatientLoggedIn && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600">Hi, {patientName}!</span>
