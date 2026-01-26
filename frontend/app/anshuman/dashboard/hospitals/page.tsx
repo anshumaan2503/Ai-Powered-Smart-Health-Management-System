@@ -1,6 +1,6 @@
 'use client'
 
-import { api } from '@/lib/api'
+import { api, adminAPI } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -163,37 +163,21 @@ export default function HospitalsManagementPage() {
     setChangingPassword(true)
 
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
+      const response = await adminAPI.changeHospitalPassword(
+        selectedHospital.id,
+        newPassword,
+        confirmPassword
+      )
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${selectedHospital.id}/change-password`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          newPassword,
-          confirmPassword
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setShowPasswordModal(false)
-        setSelectedHospital(null)
-        setNewPassword('')
-        setConfirmPassword('')
-        alert(`Password successfully updated for ${data.hospitalName}`)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Failed to change password'}`)
-      }
-    } catch (error) {
+      setShowPasswordModal(false)
+      setSelectedHospital(null)
+      setNewPassword('')
+      setConfirmPassword('')
+      alert(`Password successfully updated for ${response.data.hospitalName}`)
+    } catch (error: any) {
       console.error('Error changing password:', error)
-      alert('Error changing password. Please try again.')
+      const errorMsg = error.response?.data?.error || 'Failed to change password'
+      alert(`Error: ${errorMsg}`)
     } finally {
       setChangingPassword(false)
     }
@@ -205,29 +189,12 @@ export default function HospitalsManagementPage() {
     }
 
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${hospital.id}/reset-password`, {
-        method: 'POST',
-        headers
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        alert(`Password reset to "${data.newPassword}" for ${data.hospitalName}`)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Failed to reset password'}`)
-      }
-    } catch (error) {
+      const response = await adminAPI.resetHospitalPassword(hospital.id)
+      alert(`Password reset to "${response.data.newPassword}" for ${response.data.hospitalName}`)
+    } catch (error: any) {
       console.error('Error resetting password:', error)
-      alert('Error resetting password. Please try again.')
+      const errorMsg = error.response?.data?.error || 'Failed to reset password'
+      alert(`Error: ${errorMsg}`)
     }
   }
 
@@ -239,35 +206,17 @@ export default function HospitalsManagementPage() {
     setDeleting(true)
 
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
+      await adminAPI.deleteHospital(selectedHospital.id, deleteConfirmation)
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${selectedHospital.id}/delete`, {
-        method: 'DELETE',
-        headers,
-        body: JSON.stringify({
-          confirmationName: deleteConfirmation
-        })
-      })
-
-      if (response.ok) {
-        setHospitals(prev => prev.filter(h => h.id !== selectedHospital.id))
-        setShowDeleteModal(false)
-        setSelectedHospital(null)
-        setDeleteConfirmation('')
-        alert(`${selectedHospital.name} has been successfully deactivated.`)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Failed to delete hospital'}`)
-      }
-    } catch (error) {
+      setHospitals(prev => prev.filter(h => h.id !== selectedHospital.id))
+      setShowDeleteModal(false)
+      setSelectedHospital(null)
+      setDeleteConfirmation('')
+      alert(`${selectedHospital.name} has been successfully deactivated.`)
+    } catch (error: any) {
       console.error('Error deleting hospital:', error)
-      alert('Error deleting hospital. Please try again.')
+      const errorMsg = error.response?.data?.error || 'Failed to delete hospital'
+      alert(`Error: ${errorMsg}`)
     } finally {
       setDeleting(false)
     }
@@ -576,13 +525,12 @@ export default function HospitalsManagementPage() {
                 value={deleteConfirmation}
                 onChange={(e) => setDeleteConfirmation(e.target.value)}
                 placeholder="Type hospital name here..."
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${
-                  deleteConfirmation && !isDeleteConfirmationValid
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${deleteConfirmation && !isDeleteConfirmationValid
                     ? 'border-red-300 focus:ring-red-500 bg-red-50'
                     : isDeleteConfirmationValid
                       ? 'border-green-300 focus:ring-green-500 bg-green-50'
                       : 'border-gray-300 focus:ring-red-500'
-                }`}
+                  }`}
               />
               {deleteConfirmation && !isDeleteConfirmationValid && (
                 <p className="text-red-600 text-xs mt-1">
@@ -612,11 +560,10 @@ export default function HospitalsManagementPage() {
               <button
                 onClick={handleDeleteConfirm}
                 disabled={!isDeleteConfirmationValid || deleting}
-                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
-                  isDeleteConfirmationValid && !deleting
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${isDeleteConfirmationValid && !deleting
                     ? 'bg-red-600 hover:bg-red-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {deleting ? (
                   <>
@@ -692,13 +639,12 @@ export default function HospitalsManagementPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${
-                    confirmPassword && newPassword !== confirmPassword
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${confirmPassword && newPassword !== confirmPassword
                       ? 'border-red-300 focus:ring-red-500 bg-red-50'
                       : confirmPassword && newPassword === confirmPassword
                         ? 'border-green-300 focus:ring-green-500 bg-green-50'
                         : 'border-gray-300 focus:ring-orange-500'
-                  }`}
+                    }`}
                 />
                 {confirmPassword && newPassword !== confirmPassword && (
                   <p className="text-red-600 text-xs mt-1">Passwords do not match</p>
@@ -741,11 +687,10 @@ export default function HospitalsManagementPage() {
               <button
                 onClick={handlePasswordChange}
                 disabled={!newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6 || changingPassword}
-                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
-                  newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 6 && !changingPassword
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 6 && !changingPassword
                     ? 'bg-orange-600 hover:bg-orange-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 {changingPassword ? (
                   <>

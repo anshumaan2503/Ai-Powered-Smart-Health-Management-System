@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { adminAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   CreditCardIcon,
@@ -81,24 +82,8 @@ export default function SubscriptionManagementPage() {
 
   const loadSubscriptions = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Fetch real subscriptions data from backend
-      const response = await fetch('http://localhost:5000/api/admin/subscriptions', { headers })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSubscriptions(data.subscriptions)
-      } else {
-        console.error('Failed to load subscriptions:', response.status)
-        setSubscriptions([])
-      }
+      const response = await adminAPI.getSubscriptions()
+      setSubscriptions(response.data.subscriptions)
     } catch (error) {
       console.error('Error loading subscriptions:', error)
       setSubscriptions([])
@@ -170,58 +155,38 @@ export default function SubscriptionManagementPage() {
 
   const submitUpgrade = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
+      await adminAPI.upgradeSubscription(selectedSubscription.id, upgradeData)
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Call the real API to upgrade subscription
-      const response = await fetch(`http://localhost:5000/api/admin/subscriptions/${selectedSubscription.id}/upgrade`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(upgradeData)
+      // Update local state
+      const updatedSubscriptions = subscriptions.map(sub => {
+        if (sub.id === selectedSubscription.id) {
+          const newPlanData = plans[upgradeData.newPlan as keyof typeof plans]
+          if (!newPlanData) {
+            console.error('Plan not found:', upgradeData.newPlan)
+            return sub // Return unchanged if plan not found
+          }
+          return {
+            ...sub,
+            currentPlan: upgradeData.newPlan,
+            billingCycle: upgradeData.billingCycle,
+            monthlyFee: upgradeData.billingCycle === 'annual'
+              ? newPlanData.annualPrice / 12
+              : newPlanData.monthlyPrice,
+            limits: newPlanData.limits
+          }
+        }
+        return sub
       })
 
-      if (response.ok) {
-        const result = await response.json()
-        
-        // Update local state
-        const updatedSubscriptions = subscriptions.map(sub => {
-          if (sub.id === selectedSubscription.id) {
-            const newPlanData = plans[upgradeData.newPlan as keyof typeof plans]
-            if (!newPlanData) {
-              console.error('Plan not found:', upgradeData.newPlan)
-              return sub // Return unchanged if plan not found
-            }
-            return {
-              ...sub,
-              currentPlan: upgradeData.newPlan,
-              billingCycle: upgradeData.billingCycle,
-              monthlyFee: upgradeData.billingCycle === 'annual' 
-                ? newPlanData.annualPrice / 12 
-                : newPlanData.monthlyPrice,
-              limits: newPlanData.limits
-            }
-          }
-          return sub
-        })
+      setSubscriptions(updatedSubscriptions)
+      setShowUpgradeModal(false)
+      setSelectedSubscription(null)
 
-        setSubscriptions(updatedSubscriptions)
-        setShowUpgradeModal(false)
-        setSelectedSubscription(null)
-
-        alert(`Successfully updated ${selectedSubscription.hospitalName} to ${upgradeData.newPlan} plan!`)
-      } else {
-        const error = await response.json()
-        alert(`Error updating subscription: ${error.error}`)
-      }
-
-    } catch (error) {
+      alert(`Successfully updated ${selectedSubscription.hospitalName} to ${upgradeData.newPlan} plan!`)
+    } catch (error: any) {
       console.error('Error upgrading subscription:', error)
-      alert('Error updating subscription. Please try again.')
+      const errorMsg = error.response?.data?.error || 'Error updating subscription. Please try again.'
+      alert(`Error: ${errorMsg}`)
     }
   }
 
@@ -317,7 +282,7 @@ export default function SubscriptionManagementPage() {
                     <p className="text-sm text-gray-600">ID: #{subscription.hospitalId}</p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Status:</span>
@@ -373,14 +338,13 @@ export default function SubscriptionManagementPage() {
                     </div>
                     {subscription.limits.patients !== -1 && (
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 70 
-                                ? 'bg-yellow-500' 
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 90
+                              ? 'bg-red-500'
+                              : getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 70
+                                ? 'bg-yellow-500'
                                 : 'bg-green-500'
-                          }`}
+                            }`}
                           style={{ width: `${getUsagePercentage(subscription.usage.patients, subscription.limits.patients)}%` }}
                         />
                       </div>
@@ -397,14 +361,13 @@ export default function SubscriptionManagementPage() {
                     </div>
                     {subscription.limits.doctors !== -1 && (
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 70 
-                                ? 'bg-yellow-500' 
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 90
+                              ? 'bg-red-500'
+                              : getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 70
+                                ? 'bg-yellow-500'
                                 : 'bg-green-500'
-                          }`}
+                            }`}
                           style={{ width: `${getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors)}%` }}
                         />
                       </div>
@@ -421,7 +384,7 @@ export default function SubscriptionManagementPage() {
                     </div>
                     {subscription.limits.storage !== -1 && (
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className="h-2 rounded-full bg-blue-500"
                           style={{ width: `${(subscription.usage.storage / subscription.limits.storage) * 100}%` }}
                         />
@@ -442,14 +405,14 @@ export default function SubscriptionManagementPage() {
                     <PencilIcon className="h-4 w-4 mr-2" />
                     Modify Plan
                   </button>
-                  
+
                   {subscription.status === 'expired' && (
                     <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">
                       <CheckCircleIcon className="h-4 w-4 mr-2" />
                       Reactivate
                     </button>
                   )}
-                  
+
                   <button className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Extend Date
@@ -499,11 +462,10 @@ export default function SubscriptionManagementPage() {
                   {Object.entries(plans).map(([planKey, plan]) => (
                     <div
                       key={planKey}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                        upgradeData.newPlan === planKey
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.newPlan === planKey
                           ? 'border-red-500 bg-red-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                       onClick={() => setUpgradeData(prev => ({ ...prev, newPlan: planKey }))}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -531,22 +493,20 @@ export default function SubscriptionManagementPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      upgradeData.billingCycle === 'monthly'
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.billingCycle === 'monthly'
                         ? 'border-red-500 bg-red-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                      }`}
                     onClick={() => setUpgradeData(prev => ({ ...prev, billingCycle: 'monthly' }))}
                   >
                     <h4 className="font-medium text-gray-900">Monthly</h4>
                     <p className="text-sm text-gray-600">Billed every month</p>
                   </div>
                   <div
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      upgradeData.billingCycle === 'annual'
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.billingCycle === 'annual'
                         ? 'border-red-500 bg-red-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                      }`}
                     onClick={() => setUpgradeData(prev => ({ ...prev, billingCycle: 'annual' }))}
                   >
                     <h4 className="font-medium text-gray-900">Annual</h4>

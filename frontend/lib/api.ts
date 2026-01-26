@@ -35,22 +35,22 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${hospitalToken}`
       }
     } else {
-  // ✅ Admin endpoints -> admin token
-  if (url.includes('/admin/')) {
-    const adminToken = localStorage.getItem('admin_token')
-    if (adminToken) {
-      config.headers.Authorization = `Bearer ${adminToken}`
-    }
-    return config
-  }
+      // ✅ Admin endpoints -> admin token
+      if (url.includes('/admin/')) {
+        const adminToken = localStorage.getItem('admin_token')
+        if (adminToken) {
+          config.headers.Authorization = `Bearer ${adminToken}`
+        }
+        return config
+      }
 
-  // ✅ Patient/auth endpoints -> patient token
-  let token = localStorage.getItem('access_token')
-  if (!token) token = sessionStorage.getItem('access_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-}
+      // ✅ Patient/auth endpoints -> patient token
+      let token = localStorage.getItem('access_token')
+      if (!token) token = sessionStorage.getItem('access_token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    }
 
     return config
   },
@@ -176,4 +176,57 @@ export const adminAPI = {
   getUsers: (params?: any) => api.get('/admin/users', { params }),
   toggleUserStatus: (userId: number) =>
     api.put(`/admin/users/${userId}/toggle-status`),
+
+  // Hospital management
+  getHospitals: () => api.get('/admin/hospitals'),
+  getHospitalById: (id: number) => api.get(`/admin/hospitals/${id}`),
+  updateHospital: (id: number, data: any) => api.put(`/admin/hospitals/${id}/edit`, data),
+  deleteHospital: (id: number, confirmationName: string) =>
+    api.delete(`/admin/hospitals/${id}/delete`, { data: { confirmationName } }),
+  changeHospitalPassword: (id: number, newPassword: string, confirmPassword: string) =>
+    api.post(`/admin/hospitals/${id}/change-password`, { newPassword, confirmPassword }),
+  resetHospitalPassword: (id: number) =>
+    api.post(`/admin/hospitals/${id}/reset-password`),
+
+  // Subscriptions
+  getSubscriptions: () => api.get('/admin/subscriptions'),
+  upgradeSubscription: (id: number, data: any) =>
+    api.put(`/admin/subscriptions/${id}/upgrade`, data),
+
+  // Settings
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data: any) => api.put('/admin/settings', data),
+}
+
+export const hospitalAPI = {
+  // Staff/Doctors
+  getStaff: () => api.get('/hospital/staff'),
+  getStaffById: (id: number) => api.get(`/hospital/staff/${id}`),
+  updateStaff: (id: number, data: any) => api.put(`/hospital/staff/${id}`, data),
+  deleteStaff: (id: number) => api.delete(`/hospital/staff/${id}`),
+  downloadStaffTemplate: () => api.get('/hospital/import-staff-template', { responseType: 'blob' }),
+  importStaff: (data: FormData) => api.post('/hospital/import-staff', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  // Pharmacy
+  getMedicines: () => api.get('/hospital/pharmacy/medicines'),
+  downloadMedicinesTemplate: () => api.get('/hospital/pharmacy/import-medicines-template', { responseType: 'blob' }),
+  importMedicines: (data: FormData) => api.post('/hospital/pharmacy/import-medicines', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteMedicine: (id: number) => api.delete(`/hospital/pharmacy/medicines/${id}`),
+  deleteAllMedicines: () => api.delete('/hospital/pharmacy/medicines/delete-all'),
+
+  // Analytics
+  getAnalyticsOverview: (period: string) => api.get(`/hospital/analytics/overview?period=${period}`),
+  getAnalyticsAppointments: () => api.get('/hospital/analytics/appointments'),
+  getAnalyticsPatients: () => api.get('/hospital/analytics/patients'),
+  getAnalyticsDoctors: () => api.get('/hospital/analytics/doctors'),
+  getAnalyticsRevenue: () => api.get('/hospital/analytics/revenue'),
+
+  // Patients (hospital-specific imports)
+  importPatients: (data: FormData) => api.post('/hospital/patients/import', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 }
