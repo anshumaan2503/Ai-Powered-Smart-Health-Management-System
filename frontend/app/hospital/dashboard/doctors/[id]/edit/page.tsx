@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { hospitalAPI } from '@/lib/api'
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -55,7 +56,7 @@ export default function DoctorEditPage() {
       available_hours: ''
     }
   })
-  
+
   const [showPassword, setShowPassword] = useState(false)
   const [changePassword, setChangePassword] = useState(false)
 
@@ -67,26 +68,9 @@ export default function DoctorEditPage() {
 
   const fetchDoctor = async () => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('No access token found')
-        return
-      }
+      const response = await hospitalAPI.getStaff()
+      const foundDoctor = response.data.staff.find((s: Doctor) => s.id === parseInt(params.id as string))
 
-      const response = await fetch(`http://localhost:5000/api/hospital/staff`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch doctor')
-      }
-
-      const data = await response.json()
-      const foundDoctor = data.staff.find((s: Doctor) => s.id === parseInt(params.id as string))
-      
       if (!foundDoctor) {
         setError('Doctor not found')
         return
@@ -108,8 +92,9 @@ export default function DoctorEditPage() {
           available_hours: foundDoctor.doctor_profile?.available_hours || ''
         }
       })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load doctor')
+    } catch (err: any) {
+      console.error('Fetch error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to load doctor')
     } finally {
       setLoading(false)
     }
@@ -117,15 +102,15 @@ export default function DoctorEditPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    
+
     if (name.startsWith('doctor_profile.')) {
       const profileField = name.replace('doctor_profile.', '')
       setFormData(prev => ({
         ...prev,
         doctor_profile: {
           ...prev.doctor_profile,
-          [profileField]: profileField.includes('years') || profileField.includes('fee') 
-            ? parseInt(value) || 0 
+          [profileField]: profileField.includes('years') || profileField.includes('fee')
+            ? parseInt(value) || 0
             : value
         }
       }))
@@ -144,39 +129,20 @@ export default function DoctorEditPage() {
     setSuccess('')
 
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        throw new Error('No access token found')
-      }
-
-      // Prepare data - only include password if it's being changed
       const updateData = { ...formData }
       if (!changePassword || !formData.password) {
         delete updateData.password
       }
 
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${params.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update doctor')
-      }
-
+      await hospitalAPI.updateStaff(Number(params.id), updateData)
       setSuccess('Doctor updated successfully!')
       setTimeout(() => {
         router.push(`/hospital/dashboard/doctors/${params.id}`)
       }, 2000)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update doctor')
+    } catch (err: any) {
+      console.error('Update error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to update doctor')
     } finally {
       setSaving(false)
     }
@@ -187,32 +153,15 @@ export default function DoctorEditPage() {
     setError('')
 
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        throw new Error('No access token found')
-      }
-
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${params.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete doctor')
-      }
-
+      await hospitalAPI.deleteStaff(Number(params.id))
       router.push('/hospital/dashboard/doctors')
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete doctor')
+    } catch (err: any) {
+      console.error('Delete error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to delete doctor')
     } finally {
       setDeleting(false)
-      setShowDeleteConfirm(false)
+      setShowDelete Confirm(false)
     }
   }
 
@@ -507,7 +456,7 @@ export default function DoctorEditPage() {
             >
               <span>Delete Doctor</span>
             </button>
-            
+
             <div className="flex space-x-4">
               <Link
                 href={`/hospital/dashboard/doctors/${params.id}`}
@@ -540,7 +489,7 @@ export default function DoctorEditPage() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Doctor</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete Dr. {doctor?.first_name} {doctor?.last_name}? 
+              Are you sure you want to delete Dr. {doctor?.first_name} {doctor?.last_name}?
               This action cannot be undone and will permanently remove all their data.
             </p>
             <div className="flex justify-end space-x-4">

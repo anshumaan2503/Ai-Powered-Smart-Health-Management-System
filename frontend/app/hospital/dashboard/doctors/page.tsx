@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import { hospitalAPI } from '@/lib/api'
+import {
   UserIcon,
   PlusIcon,
   MagnifyingGlassIcon,
@@ -48,28 +49,15 @@ export default function DoctorsManagementPage() {
 
   const fetchDoctors = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('No access token found')
-        return
+      const response = await hospitalAPI.getStaff()
+      setDoctors(response.data.staff || [])
+    } catch (err: any) {
+      console.error('Fetch doctors error:', err)
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please login again.')
+      } else {
+        setError(err.response?.data?.error || err.message || 'Failed to load doctors')
       }
-
-      const response = await fetch(`${backendUrl}/api/hospital/staff?role=doctor`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch doctors')
-      }
-
-      const data = await response.json()
-      setDoctors(data.staff || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load doctors')
     } finally {
       setLoading(false)
     }
@@ -77,35 +65,23 @@ export default function DoctorsManagementPage() {
 
   const toggleDoctorStatus = async (doctorId: number) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`${backendUrl}/api/hospital/staff/${doctorId}/toggle-status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update doctor status')
-      }
-
+      await hospitalAPI.updateStaff(doctorId, { toggle_status: true })
       fetchDoctors()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update doctor status')
+    } catch (err: any) {
+      console.error('Toggle status error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to update doctor status')
     }
   }
 
   const filteredDoctors = doctors.filter(doctor => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doctor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doctor.doctor_profile?.specialization?.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesSpecialization = specializationFilter === '' ||
       doctor.doctor_profile?.specialization?.toLowerCase().includes(specializationFilter.toLowerCase())
-    
+
     return matchesSearch && matchesSpecialization
   })
 
@@ -241,11 +217,10 @@ export default function DoctorsManagementPage() {
                       {renderStars(doctor.doctor_profile?.rating || 0)}
                     </div>
                   </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    doctor.is_active 
-                      ? 'bg-green-100 text-green-800' 
+                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${doctor.is_active
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}>
+                    }`}>
                     {doctor.is_active ? 'Active' : 'Inactive'}
                   </div>
                 </div>
@@ -303,11 +278,10 @@ export default function DoctorsManagementPage() {
                   </Link>
                   <button
                     onClick={() => toggleDoctorStatus(doctor.id)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${
-                      doctor.is_active
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${doctor.is_active
                         ? 'bg-red-50 text-red-700 hover:bg-red-100'
                         : 'bg-green-50 text-green-700 hover:bg-green-100'
-                    }`}
+                      }`}
                   >
                     {doctor.is_active ? 'Deactivate' : 'Activate'}
                   </button>
