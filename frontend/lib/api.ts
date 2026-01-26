@@ -140,10 +140,12 @@ export const authAPI = {
 
 export const patientsAPI = {
   getAll: (params?: any) => api.get('/patients/', { params }),
+  getPatients: (params?: any) => api.get('/patients/', { params }), // Alias for consistency
   getById: (id: number) => api.get(`/patients/${id}`),
   create: (data: any) => api.post('/patients/', data),
   update: (id: number, data: any) => api.put(`/patients/${id}`, data),
   delete: (id: number) => api.delete(`/patients/${id}`),
+  deletePatient: (id: number) => api.delete(`/patients/${id}`), // Alias for consistency
 }
 
 export const doctorsAPI = {

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { patientsAPI, hospitalAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   UserGroupIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -61,7 +62,7 @@ export default function HospitalPatientsPage() {
     failed: number
     errors: string[]
   } | null>(null)
-  
+
   const router = useRouter()
 
   useEffect(() => {
@@ -71,37 +72,23 @@ export default function HospitalPatientsPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        router.push('/hospital/login')
-        return
-      }
 
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: '10',
+      const params = {
+        page: currentPage,
+        per_page: 10,
         search: searchTerm,
         gender: filterGender,
         blood_group: filterBloodGroup
-      })
-      
-      const response = await fetch(`http://localhost:5000/api/patients/?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPatients(data.patients || [])
-        setTotalPages(data.pages || 1)
-      } else {
-        console.error('Failed to fetch patients')
-        setPatients([])
       }
-    } catch (error) {
+
+      const response = await patientsAPI.getPatients(params)
+      setPatients(response.data.patients || [])
+      setTotalPages(response.data.pages || 1)
+    } catch (error: any) {
       console.error('Error fetching patients:', error)
+      if (error.response?.status === 401) {
+        router.push('/hospital/login')
+      }
       setPatients([])
     } finally {
       setLoading(false)
@@ -138,27 +125,13 @@ export default function HospitalPatientsPage() {
 
     try {
       setDeleting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      const response = await fetch(`http://localhost:5000/api/patients/${deleteModal.patient.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        toast.success('Patient deleted successfully')
-        setDeleteModal({ show: false, patient: null })
-        fetchPatients()
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to delete patient')
-      }
+      await patientsAPI.deletePatient(deleteModal.patient.id)
+      toast.success('Patient deleted successfully')
+      setDeleteModal({ show: false, patient: null })
+      fetchPatients()
     } catch (error: any) {
       console.error('Error deleting patient:', error)
-      toast.error('Failed to delete patient')
+      toast.error(error.response?.data?.error || 'Failed to delete patient')
     } finally {
       setDeleting(false)
     }
@@ -169,8 +142,8 @@ export default function HospitalPatientsPage() {
   }
 
   const handleSelectPatient = (patientId: number) => {
-    setSelectedPatients(prev => 
-      prev.includes(patientId) 
+    setSelectedPatients(prev =>
+      prev.includes(patientId)
         ? prev.filter(id => id !== patientId)
         : [...prev, patientId]
     )
@@ -192,30 +165,18 @@ export default function HospitalPatientsPage() {
   const handleBulkDeleteConfirm = async () => {
     try {
       setBulkDeleting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      for (const patientId of selectedPatients) {
-        const response = await fetch(`http://localhost:5000/api/patients/${patientId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(`Failed to delete patient ${patientId}: ${data.error}`)
-        }
+      for (const patientId of selectedPatients) {
+        await patientsAPI.deletePatient(patientId)
       }
-      
+
       toast.success(`${selectedPatients.length} patient(s) deleted successfully`)
       setBulkDeleteModal(false)
       setSelectedPatients([])
       fetchPatients()
     } catch (error: any) {
       console.error('Error deleting patients:', error)
-      toast.error(error.message || 'Failed to delete patients')
+      toast.error(error.response?.data?.error || error.message || 'Failed to delete patients')
     } finally {
       setBulkDeleting(false)
     }
@@ -226,8 +187,8 @@ export default function HospitalPatientsPage() {
   }
 
   const getGenderColor = (gender: string) => {
-    return gender.toLowerCase() === 'male' 
-      ? 'bg-blue-100 text-blue-800' 
+    return gender.toLowerCase() === 'male'
+      ? 'bg-blue-100 text-blue-800'
       : 'bg-pink-100 text-pink-800'
   }
 
@@ -249,7 +210,7 @@ export default function HospitalPatientsPage() {
     const csvContent = `first_name,last_name,date_of_birth,gender,phone,email,address,blood_group
 John,Doe,15-01-1990,Male,9876543210,john.doe@example.com,"123 Main St, City, 12345",O+
 Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Town, 67890",A+`
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -266,69 +227,30 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
 
     try {
       setImporting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      if (!token) {
-        toast.error('Please login first')
-        setImportResults({
-          success: 0,
-          failed: 1,
-          errors: ['Please login first']
-        })
-        return
-      }
-      
+
       const formData = new FormData()
       formData.append('file', importFile)
 
-      const response = await fetch('http://localhost:5000/api/hospital/patients/import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+      const response = await hospitalAPI.importPatients(formData)
+
+      setImportResults({
+        success: response.data.success || 0,
+        failed: response.data.failed || 0,
+        errors: response.data.errors || []
       })
 
-      // Check if response is ok before trying to parse JSON
-      let data
-      try {
-        const text = await response.text()
-        if (!text) {
-          throw new Error('Empty response from server')
-        }
-        data = JSON.parse(text)
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError)
-        throw new Error(`Server error: ${response.status} ${response.statusText}. Please make sure the backend server is running.`)
-      }
-
-      if (response.ok) {
-        setImportResults({
-          success: data.success || 0,
-          failed: data.failed || 0,
-          errors: data.errors || []
-        })
-        if (data.success > 0) {
-          toast.success(`Import completed: ${data.success} patients imported`)
-          fetchPatients() // Refresh the patient list
-        } else {
-          toast(`Import completed: ${data.success} patients imported, ${data.failed} failed`, {
-            icon: '⚠️',
-            duration: 4000
-          })
-        }
-      } else {
-        const errorMsg = data.error || data.message || 'Import failed'
-        toast.error(errorMsg)
-        setImportResults({
-          success: data.success || 0,
-          failed: data.failed || 1,
-          errors: data.errors || [errorMsg]
+      if (response.data.success > 0) {
+        toast.success(`Import completed: ${response.data.success} patients imported`)
+        fetchPatients()
+      } else if (response.data.failed > 0) {
+        toast(`Import completed: ${response.data.success} patients imported, ${response.data.failed} failed`, {
+          icon: '⚠️',
+          duration: 4000
         })
       }
     } catch (error: any) {
       console.error('Import error:', error)
-      const errorMessage = error.message || 'Failed to connect to server. Please check if the backend is running.'
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to import patients'
       toast.error(errorMessage)
       setImportResults({
         success: 0,
@@ -679,7 +601,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Contact</p>
@@ -781,7 +703,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                     <p className="text-sm text-gray-600 mb-3">
                       Upload a CSV file with patient data. Required columns: first_name, last_name, phone
                     </p>
-                    
+
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                       <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <div className="text-sm text-gray-600">
