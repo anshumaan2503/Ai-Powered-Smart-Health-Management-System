@@ -7,6 +7,7 @@ import { EyeIcon, EyeSlashIcon, BuildingOfficeIcon } from '@heroicons/react/24/o
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 export default function HospitalLoginPage() {
   const [email, setEmail] = useState('')
@@ -65,23 +66,26 @@ export default function HospitalLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      <div className="absolute top-4 right-4">
+        <ThemeToggleButton />
+      </div>
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center">
-            <BuildingOfficeIcon className="h-12 w-12 text-green-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">MediCare Pro</span>
+            <BuildingOfficeIcon className="h-12 w-12 text-green-600 dark:text-green-500" />
+            <span className="ml-2 text-2xl font-bold text-gray-900 dark:text-white">MediCare Pro</span>
           </Link>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">Hospital Login</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to your hospital management system</p>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Hospital Login</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Sign in to your hospital management system</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-100 dark:border-gray-700 transition-colors duration-300">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
               <input
@@ -98,7 +102,7 @@ export default function HospitalLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -146,14 +150,14 @@ export default function HospitalLoginPage() {
           <div className="mt-6 space-y-3">
             <Link
               href="/login"
-              className="w-full flex justify-center py-3 px-4 border border-blue-300 rounded-lg shadow-sm bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors duration-200"
+              className="w-full flex justify-center py-3 px-4 border border-blue-300 dark:border-blue-600 rounded-lg shadow-sm bg-blue-50 dark:bg-blue-900/20 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
             >
               👤 Patient Login
             </Link>
 
             <Link
               href="/hospital/register"
-              className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+              className="w-full flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200"
             >
               Register New Hospital
             </Link>
@@ -161,9 +165,9 @@ export default function HospitalLoginPage() {
         </div>
 
         {/* Demo Credentials */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-green-800 mb-2">Demo Hospital Credentials</h3>
-          <div className="text-xs text-green-700 space-y-2">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">Demo Hospital Credentials</h3>
+          <div className="text-xs text-green-700 dark:text-green-400 space-y-2">
             <div className="font-medium">Hospital Admin Login:</div>
             <div className="ml-2">
               <div>

@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  HeartIcon, 
-  EyeIcon, 
+import {
+  HeartIcon,
+  EyeIcon,
   EyeSlashIcon,
   UserIcon,
   EnvelopeIcon,
@@ -15,6 +15,7 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -31,7 +32,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<any>({})
   const [errorMessage, setErrorMessage] = useState('')
-  
+
   const router = useRouter()
 
   const validateForm = () => {
@@ -67,10 +68,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Clear previous messages
     setErrorMessage('')
-    
+
     // Validate form
     if (!validateForm()) {
       toast.error('Please fix the form errors')
@@ -81,22 +82,22 @@ export default function RegisterPage() {
 
     try {
       await api.post('/auth/register', formData)
-      
+
       // Show success toast
       toast.success('Registration successful!')
-      
+
       // Redirect immediately to success page with user info
       const fullName = `${formData.first_name} ${formData.last_name}`
       const params = new URLSearchParams({
         name: fullName,
         email: formData.email
       })
-      
+
       router.push(`/register/success?${params.toString()}`)
-      
+
     } catch (error: any) {
       console.error('Registration error:', error)
-      
+
       const message = error.response?.data?.error || 'Registration failed. Please try again.'
       setErrorMessage(message)
       toast.error(message)
@@ -108,12 +109,12 @@ export default function RegisterPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev: any) => ({ ...prev, [name]: '' }))
     }
-    
+
     // Clear general error message when user starts typing
     if (errorMessage) {
       setErrorMessage('')
@@ -121,30 +122,33 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      <div className="absolute top-4 right-4">
+        <ThemeToggleButton />
+      </div>
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center">
-            <HeartIcon className="h-12 w-12 text-blue-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">MediCare Pro</span>
+            <HeartIcon className="h-12 w-12 text-blue-600 dark:text-blue-500" />
+            <span className="ml-2 text-2xl font-bold text-gray-900 dark:text-white">MediCare Pro</span>
           </Link>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Create Patient Account
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Join our healthcare platform to manage your health records and appointments
           </p>
         </div>
 
         {/* Registration Form */}
-        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-100 dark:border-gray-700 transition-colors duration-300">
           <div className="mb-6">
-            <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4">
-              <UserIcon className="h-8 w-8 text-blue-600" />
+            <div className="flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto mb-4">
+              <UserIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-lg font-semibold text-center text-gray-900">Patient Registration</h3>
-            <p className="text-sm text-gray-600 text-center mt-2">
+            <h3 className="text-lg font-semibold text-center text-gray-900 dark:text-white">Patient Registration</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-2">
               Fill in your details to create your patient account
             </p>
           </div>
@@ -167,7 +171,7 @@ export default function RegisterPage() {
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   First Name
                 </label>
                 <div className="relative">
@@ -187,7 +191,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Last Name
                 </label>
                 <div className="relative">
@@ -209,7 +213,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
               <div className="relative">
@@ -231,7 +235,7 @@ export default function RegisterPage() {
 
             {/* Phone */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Phone Number (Optional)
               </label>
               <input
@@ -247,10 +251,10 @@ export default function RegisterPage() {
 
             {/* Password Fields */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
               </label>
-              <p className="text-xs text-gray-500 mb-2">Use any password you prefer - no restrictions</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Use any password you prefer - no restrictions</p>
               <div className="relative">
                 <LockClosedIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
@@ -280,7 +284,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Confirm Password
               </label>
               <div className="relative">
@@ -320,7 +324,7 @@ export default function RegisterPage() {
                 required
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
               />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                 I agree to the{' '}
                 <a href="#" className="text-blue-600 hover:text-blue-500 font-medium">
                   Terms of Service
@@ -336,11 +340,10 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full flex items-center justify-center py-3 font-medium rounded-lg transition-colors duration-200 ${
-                isLoading
-                  ? 'bg-blue-400 text-white cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              className={`w-full flex items-center justify-center py-3 font-medium rounded-lg transition-colors duration-200 ${isLoading
+                ? 'bg-blue-400 text-white cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
             >
               {isLoading ? (
                 <>
@@ -389,14 +392,14 @@ export default function RegisterPage() {
             <div className="mt-6 space-y-3">
               <Link
                 href="/login"
-                className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                className="w-full flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200"
               >
                 Sign in to your account
               </Link>
-              
+
               <Link
                 href="/hospital/login"
-                className="w-full flex justify-center py-3 px-4 border border-blue-300 rounded-lg shadow-sm bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors duration-200"
+                className="w-full flex justify-center py-3 px-4 border border-blue-300 dark:border-blue-600 rounded-lg shadow-sm bg-blue-50 dark:bg-blue-900/20 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200"
               >
                 🏥 Hospital Staff Login
               </Link>
