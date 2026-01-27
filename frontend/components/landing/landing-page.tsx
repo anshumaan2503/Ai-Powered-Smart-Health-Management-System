@@ -139,23 +139,23 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 relative overflow-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-[#020617] relative overflow-hidden transition-colors duration-300 antialiased font-sans">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 dark:from-blue-600/10 dark:to-purple-800/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-green-400/20 to-blue-600/20 dark:from-green-600/10 dark:to-blue-800/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-600/[0.03] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 dark:bg-indigo-600/[0.03] rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
       </div>
 
       {/* Navigation */}
-      <nav className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-b border-white/20 dark:border-gray-700/20 sticky top-0 z-50 shadow-lg">
+      <nav className="bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/60 sticky top-0 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-18">
+          <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center group">
               <div className="relative">
-                <HeartIcon className="h-9 w-9 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                <HeartIcon className="h-8 w-8 text-blue-600 dark:text-blue-500 group-hover:scale-105 transition-transform" />
               </div>
-              <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                MediCare Pro
+              <span className="ml-2.5 text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                MediCare<span className="text-blue-600 dark:text-blue-500">Pro</span>
               </span>
             </Link>
 
@@ -194,19 +194,14 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="relative py-24 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 rounded-full text-sm font-semibold text-blue-700 dark:text-blue-300 mb-8">
+          <div className="inline-flex items-center px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-full text-sm font-medium text-blue-600 dark:text-blue-400 mb-8">
             <SparklesIcon className="h-4 w-4 mr-2" />
-            Next-Generation Healthcare Technology
+            Healthcare Technology Redefined
           </div>
 
-          <h1 className="text-5xl lg:text-7xl font-black leading-tight mb-8">
-            <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 dark:from-gray-100 dark:via-blue-200 dark:to-gray-100 bg-clip-text text-transparent">
-              AI-Powered
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
-              Healthcare Platform
-            </span>
+          <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 dark:text-white mb-8">
+            AI-Powered <br />
+            <span className="text-blue-600 dark:text-blue-500">Healthcare Excellence</span>
           </h1>
 
           <p className="text-xl lg:text-2xl text-gray-700 dark:text-gray-300 max-w-4xl mx-auto mb-12 leading-relaxed">
@@ -219,14 +214,10 @@ export function LandingPage() {
 
           <button
             onClick={scrollToAccess}
-            className="group relative inline-flex items-center justify-center px-12 py-5 text-xl font-bold text-white transition-all duration-300 hover:scale-105 cursor-pointer mb-8"
+            className="group relative inline-flex items-center justify-center px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-xl transition-all duration-300 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 mb-8"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 rounded-2xl"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-2xl blur-lg opacity-75 animate-pulse"></div>
-            <span className="relative flex items-center">
-              Get Started
-              <ArrowRightIcon className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform" />
-            </span>
+            <span>Get Started</span>
+            <ArrowRightIcon className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
 
           {/* AI Chatbot Quick Access */}
@@ -374,61 +365,51 @@ export function LandingPage() {
       {/* AI Health Assistant Section */}
       <section className="py-20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all"></div>
-            <div className="relative bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl p-12 text-white overflow-hidden">
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
-              </div>
+          <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-800 group transition-all">
+            {/* Subtle Gradient Glow */}
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
 
-              <div className="relative z-10">
-                <div className="text-center mb-10">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-6">
-                    <SparklesIcon className="h-10 w-10 text-white" />
+            <div className="relative z-10 p-10 lg:p-16">
+              <div className="max-w-3xl">
+                <div className="inline-flex items-center px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-sm font-medium mb-6">
+                  <SparklesIcon className="h-4 w-4 mr-2" />
+                  AI Innovation
+                </div>
+                <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+                  AI Health Assistant
+                </h2>
+                <p className="text-lg text-slate-400 mb-10 leading-relaxed">
+                  Get instant health guidance, symptom analysis, and preparation tips for your doctor visits. Available 24/7 powered by advanced AI.
+                </p>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <SparklesIcon className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-semibold">Smart Insights</h4>
+                      <p className="text-sm text-slate-500">Intelligent health recommendations</p>
+                    </div>
                   </div>
-                  <h2 className="text-4xl lg:text-5xl font-black mb-4">
-                    AI Health Assistant
-                  </h2>
-                  <p className="text-xl text-white/90 max-w-3xl mx-auto">
-                    Get instant health guidance, symptom analysis, and preparation tips for your doctor visits. Available 24/7 with advanced GROQ AI technology.
-                  </p>
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <ShieldCheckIcon className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-semibold">Secure Service</h4>
+                      <p className="text-sm text-slate-500">Enterprise-grade medical security</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6 mb-10">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <SparklesIcon className="h-8 w-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">AI-Powered Insights</h3>
-                    <p className="text-white/80 text-sm">Intelligent health recommendations based on your symptoms</p>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <ShieldCheckIcon className="h-8 w-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">Safe & Secure</h3>
-                    <p className="text-white/80 text-sm">HIPAA compliant with enterprise-grade security</p>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <ClockIcon className="h-8 w-8 text-white mx-auto mb-3" />
-                    <h3 className="font-bold text-lg mb-2">Always Available</h3>
-                    <p className="text-white/80 text-sm">Access health assistance anytime, anywhere</p>
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <p className="text-white/90 mb-6 text-sm">
-                    <ShieldCheckIcon className="h-5 w-5 inline mr-2" />
-                    Login required to access AI Health Assistant
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <Link
-                      href="/login"
-                      className="bg-white text-purple-600 hover:bg-gray-100 font-bold py-4 px-10 rounded-xl transition-all flex items-center group/btn hover:scale-105 shadow-xl"
-                    >
-                      Try AI Chatbot
-                      <ArrowRightIcon className="ml-2 h-5 w-5 group-hover/btn:translate-x-1 transition-transform" />
-                    </Link>
-                  </div>
-                </div>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-8 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-bold rounded-xl transition-all shadow-xl hover:scale-105"
+                >
+                  Try AI Chatbot
+                  <ArrowRightIcon className="ml-2 h-5 w-5" />
+                </Link>
               </div>
             </div>
           </div>

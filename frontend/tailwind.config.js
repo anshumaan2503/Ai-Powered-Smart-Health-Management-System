@@ -10,22 +10,28 @@ module.exports = {
     extend: {
       colors: {
         medical: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#f0f7ff',
+          100: '#e0effe',
+          200: '#bae0fd',
+          300: '#7cc7fc',
+          400: '#38a9f8',
+          500: '#0e8ce9', // Adjusted for better screen vibrancy
+          600: '#0270c7',
+          700: '#0359a1',
+          800: '#074c85',
+          900: '#0c3e6e',
+        },
+        brand: {
+          primary: '#3b82f6',
+          secondary: '#10b981',
+          accent: '#8b5cf6',
+          surface: '#1e293b',
         },
         success: {
           50: '#f0fdf4',
           100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
+          500: '#10b981',
+          600: '#059669',
         },
         warning: {
           50: '#fffbeb',
@@ -39,7 +45,7 @@ module.exports = {
           500: '#ef4444',
           600: '#dc2626',
         },
-        // Dark mode specific colors
+        // Premium Dark Mode Palette
         dark: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -51,6 +57,7 @@ module.exports = {
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
+          950: '#020617', // Deeper, more "premium" black
         }
       },
       animation: {
