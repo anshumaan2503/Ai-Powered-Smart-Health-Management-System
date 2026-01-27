@@ -77,7 +77,6 @@
 @layer utilities {
   .custom-scroll {
     scrollbar-width: thin;
-    @apply scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent;
   }
 
   .custom-scroll::-webkit-scrollbar {
