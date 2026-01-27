@@ -168,21 +168,21 @@ export default function SubscriptionPage() {
 
   const loadSubscriptionData = async () => {
     try {
-      // Load from localStorage first
-      const hospital = localStorage.getItem('hospital')
-      const subscription = localStorage.getItem('subscription')
-
-      if (hospital) setHospitalData(JSON.parse(hospital))
-      if (subscription) setCurrentSubscription(JSON.parse(subscription))
-
-      // Load usage statistics
+      // Load token for API calls
       const token = localStorage.getItem('hospital_access_token')
+
       if (token) {
-        const headers = {
-          'Authorization': `Bearer ${token}`
+        const headers = { 'Authorization': `Bearer ${token}` }
+
+        // 1. Fetch Live Subscription Data from Backend
+        const subResponse = await api.get('/subscription', { headers })
+        if (subResponse.data?.subscription) {
+          const sub = subResponse.data.subscription
+          setCurrentSubscription(sub)
+          localStorage.setItem('subscription', JSON.stringify(sub)) // Keep localStorage in sync
         }
 
-        // Get usage stats from backend using API client
+        // 2. Load usage statistics (Keep existing robust logic)
         const [patientsRes, doctorsRes, staffRes] = await Promise.all([
           api.get('/hospital/patients?per_page=1', { headers }).catch(() => null),
           api.get('/hospital/staff?role=doctor', { headers }).catch(() => null),
