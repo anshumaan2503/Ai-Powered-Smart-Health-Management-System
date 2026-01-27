@@ -168,6 +168,7 @@ export default function SubscriptionManagementPage() {
           return {
             ...sub,
             currentPlan: upgradeData.newPlan,
+            status: upgradeData.newPlan === 'trial' ? 'trial' : 'active',
             billingCycle: upgradeData.billingCycle,
             monthlyFee: upgradeData.billingCycle === 'annual'
               ? newPlanData.annualPrice / 12
@@ -340,10 +341,10 @@ export default function SubscriptionManagementPage() {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 90
-                              ? 'bg-red-500'
-                              : getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 70
-                                ? 'bg-yellow-500'
-                                : 'bg-green-500'
+                            ? 'bg-red-500'
+                            : getUsagePercentage(subscription.usage.patients, subscription.limits.patients) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
                             }`}
                           style={{ width: `${getUsagePercentage(subscription.usage.patients, subscription.limits.patients)}%` }}
                         />
@@ -363,10 +364,10 @@ export default function SubscriptionManagementPage() {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 90
-                              ? 'bg-red-500'
-                              : getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 70
-                                ? 'bg-yellow-500'
-                                : 'bg-green-500'
+                            ? 'bg-red-500'
+                            : getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
                             }`}
                           style={{ width: `${getUsagePercentage(subscription.usage.doctors, subscription.limits.doctors)}%` }}
                         />
@@ -463,8 +464,8 @@ export default function SubscriptionManagementPage() {
                     <div
                       key={planKey}
                       className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.newPlan === planKey
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                       onClick={() => setUpgradeData(prev => ({ ...prev, newPlan: planKey }))}
                     >
@@ -494,8 +495,8 @@ export default function SubscriptionManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.billingCycle === 'monthly'
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setUpgradeData(prev => ({ ...prev, billingCycle: 'monthly' }))}
                   >
@@ -504,8 +505,8 @@ export default function SubscriptionManagementPage() {
                   </div>
                   <div
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${upgradeData.billingCycle === 'annual'
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setUpgradeData(prev => ({ ...prev, billingCycle: 'annual' }))}
                   >
