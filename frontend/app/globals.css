@@ -6,15 +6,21 @@
   * {
     box-sizing: border-box;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }
-  
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     line-height: 1.6;
     color: #374151;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body {
+    background-color: #0f172a;
+    color: #e2e8f0;
   }
 }
 
@@ -25,6 +31,7 @@
 
   .btn-secondary {
     @apply bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all duration-300 hover:scale-105;
+    @apply dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 dark:border-gray-700 dark:hover:border-gray-600;
   }
 
   .btn-danger {
@@ -33,22 +40,27 @@
 
   .input-field {
     @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm;
+    @apply dark:bg-gray-800/80 dark:border-gray-700 dark:text-gray-100 dark:focus:border-blue-400 dark:placeholder-gray-500;
   }
 
   .medical-card {
     @apply bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/30 p-8 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 hover:border-white/50;
+    @apply dark:bg-gray-800/80 dark:border-gray-700/30 dark:hover:border-gray-600/50 dark:shadow-gray-900/50;
   }
 
   .sidebar-item {
     @apply flex items-center px-6 py-4 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:text-blue-700 rounded-xl transition-all duration-300 hover:scale-105 font-medium;
+    @apply dark:text-gray-300 dark:hover:from-blue-900/50 dark:hover:to-blue-800/50 dark:hover:text-blue-300;
   }
 
   .sidebar-item.active {
     @apply bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 font-semibold shadow-lg;
+    @apply dark:from-blue-900/70 dark:to-blue-800/70 dark:text-blue-300;
   }
 
   .glass-card {
     @apply bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl;
+    @apply dark:bg-gray-900/30 dark:border-gray-700/30;
   }
 
   .gradient-text {
@@ -60,7 +72,7 @@
   }
 
   .bg-grid-pattern {
-    background-image: 
+    background-image:
       linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
     background-size: 20px 20px;
@@ -78,27 +90,36 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-20px);
   }
 }
 
 @keyframes bounce-gentle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
   }
+
   50% {
     box-shadow: 0 0 40px rgba(59, 130, 246, 0.8), 0 0 60px rgba(147, 51, 234, 0.4);
   }
@@ -109,17 +130,21 @@
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 #f8fafc;
   }
+
   .custom-scroll::-webkit-scrollbar {
     width: 8px;
   }
+
   .custom-scroll::-webkit-scrollbar-track {
     background: #f8fafc;
     border-radius: 9999px;
   }
+
   .custom-scroll::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #60a5fa, #a78bfa);
     border-radius: 9999px;
   }
+
   .custom-scroll::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, #3b82f6, #8b5cf6);
   }
