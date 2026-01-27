@@ -303,8 +303,8 @@ export function LandingPage() {
                 <div className="space-y-4 mb-8">
                   {['Book appointments online', 'AI symptom checker', 'Digital health records', 'Prescription management'].map((feature) => (
                     <div key={feature} className="flex items-center space-x-3">
-                      <CheckIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                      <span className="text-gray-700">{feature}</span>
+                      <CheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-200">{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -344,8 +344,8 @@ export function LandingPage() {
                 <div className="space-y-4 mb-8">
                   {['Patient management system', 'AI diagnosis assistance', 'Staff role management', 'Analytics & reporting'].map((feature) => (
                     <div key={feature} className="flex items-center space-x-3">
-                      <CheckIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-                      <span className="text-gray-700">{feature}</span>
+                      <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-200">{feature}</span>
                     </div>
                   ))}
                 </div>
