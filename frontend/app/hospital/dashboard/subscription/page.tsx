@@ -40,11 +40,31 @@ export default function SubscriptionPage() {
 
   const plans = [
     {
+      id: 'trial',
+      name: 'Trial',
+      subtitle: 'Basic health tech experience',
+      monthlyPrice: 0,
+      annualPrice: 0,
+      description: 'Experience core features for a limited time',
+      limits: {
+        patients: 10,
+        doctors: 1,
+        storage: 1
+      },
+      features: [
+        { name: 'Appointment scheduling', included: true },
+        { name: 'Patient records', included: true },
+        { name: 'Email support', included: true },
+        { name: 'Basic billing', included: false },
+        { name: 'Mobile app', included: false }
+      ]
+    },
+    {
       id: 'basic',
       name: 'Basic',
       subtitle: 'Perfect for small clinics',
-      monthlyPrice: 1999,
-      annualPrice: Math.round(1999 * 12 * 0.8),
+      monthlyPrice: 2999,
+      annualPrice: Math.round(2999 * 12 * 0.8),
       description: 'Essential features for small healthcare practices',
       limits: {
         patients: 25,
@@ -68,8 +88,8 @@ export default function SubscriptionPage() {
       id: 'standard',
       name: 'Standard',
       subtitle: 'Best for growing hospitals',
-      monthlyPrice: 3999,
-      annualPrice: Math.round(3999 * 12 * 0.8),
+      monthlyPrice: 7499,
+      annualPrice: Math.round(7499 * 12 * 0.8),
       description: 'Advanced features for mid-size healthcare facilities',
       limits: {
         patients: 100,
@@ -91,11 +111,36 @@ export default function SubscriptionPage() {
       popular: true
     },
     {
+      id: 'premium',
+      name: 'Premium',
+      subtitle: 'Premium healthcare solution',
+      monthlyPrice: 12999,
+      annualPrice: Math.round(12999 * 12 * 0.8),
+      description: 'High-end features for specialized medical centers',
+      limits: {
+        patients: 200,
+        doctors: 25,
+        storage: 100
+      },
+      features: [
+        { name: 'All Standard features', included: true },
+        { name: 'Advanced analytics', included: true },
+        { name: 'Custom reports', included: true },
+        { name: 'API access', included: true },
+        { name: 'Priority support', included: true },
+        { name: 'WhatsApp notifications', included: true },
+        { name: 'Patient portal', included: true },
+        { name: 'Inventory management', included: true },
+        { name: 'Cloud backup', included: true },
+        { name: '24/7 support', included: true }
+      ]
+    },
+    {
       id: 'enterprise',
       name: 'Enterprise',
       subtitle: 'For large hospital networks',
-      monthlyPrice: 9999,
-      annualPrice: Math.round(9999 * 12 * 0.8),
+      monthlyPrice: 17999,
+      annualPrice: Math.round(17999 * 12 * 0.8),
       description: 'Complete solution for large healthcare organizations',
       limits: {
         patients: -1, // Unlimited
@@ -196,9 +241,24 @@ export default function SubscriptionPage() {
     return plans.find(plan => plan.id === currentSubscription.plan_name) || plans[0]
   }
 
-  const handleUpgrade = (planId: string) => {
-    // In a real app, this would integrate with payment gateway
-    alert(`Upgrade to ${planId} plan - Payment integration would be implemented here`)
+  const handleUpgrade = async (planId: string) => {
+    try {
+      const response = await api.post('/subscription/upgrade', {
+        plan_name: planId,
+        billing_cycle: isAnnual ? 'annual' : 'monthly'
+      })
+
+      if (response.data.subscription) {
+        const newSubscription = response.data.subscription
+        setCurrentSubscription(newSubscription)
+        localStorage.setItem('subscription', JSON.stringify(newSubscription))
+        alert(`Successfully upgraded to ${planId} plan!`)
+      }
+    } catch (error: any) {
+      console.error('Error upgrading subscription:', error)
+      const errorMsg = error.response?.data?.error || 'Failed to upgrade subscription.'
+      alert(`Error: ${errorMsg}`)
+    }
   }
 
   if (loading) {

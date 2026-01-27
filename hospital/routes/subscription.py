@@ -68,6 +68,13 @@ def upgrade_subscription():
         
         # Plan configurations
         plan_configs = {
+            'trial': {
+                'max_patients': 10,
+                'max_doctors': 1,
+                'max_staff': 1,
+                'monthly_fee': 0.0,
+                'features': ['appointments', 'records', 'email_support']
+            },
             'basic': {
                 'max_patients': 25,
                 'max_doctors': 2,
@@ -86,8 +93,19 @@ def upgrade_subscription():
                     'patient_portal', 'inventory'
                 ]
             },
+            'premium': {
+                'max_patients': 200,
+                'max_doctors': 25,
+                'max_staff': 50,
+                'monthly_fee': 12999.0,
+                'features': [
+                    'appointments', 'billing', 'records', 'analytics', 'whatsapp', 
+                    'priority_support', 'patient_portal', 'advanced_analytics', 
+                    'custom_reports', 'api_access'
+                ]
+            },
             'enterprise': {
-                'max_patients': -1,  # Unlimited
+                'max_patients': -1,
                 'max_doctors': -1,
                 'max_staff': -1,
                 'monthly_fee': 17999.0,
@@ -100,7 +118,7 @@ def upgrade_subscription():
                 ]
             }
         }
-        
+
         if new_plan not in plan_configs:
             return jsonify({'error': 'Invalid plan selected'}), 400
             

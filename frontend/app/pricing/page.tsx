@@ -38,8 +38,8 @@ export default function PricingPage() {
     {
       name: 'Basic',
       subtitle: 'Perfect for small clinics',
-      monthlyPrice: 1999,
-      annualPrice: Math.round(1999 * 12 * 0.8), // 20% discount
+      monthlyPrice: 2999,
+      annualPrice: Math.round(2999 * 12 * 0.8), // 20% discount
       description: 'Essential features for small healthcare practices',
       limits: {
         patients: '25 patients/day',
@@ -65,8 +65,8 @@ export default function PricingPage() {
     {
       name: 'Standard',
       subtitle: 'Best for growing hospitals',
-      monthlyPrice: 3999,
-      annualPrice: Math.round(3499 * 12 * 0.8), // 20% discount
+      monthlyPrice: 7499,
+      annualPrice: Math.round(7499 * 12 * 0.8), // 20% discount
       description: 'Advanced features for mid-size healthcare facilities',
       limits: {
         patients: '100 patients/day',
@@ -90,10 +90,37 @@ export default function PricingPage() {
       buttonStyle: 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
     },
     {
+      name: 'Premium',
+      subtitle: 'Premium healthcare solution',
+      monthlyPrice: 12999,
+      annualPrice: Math.round(12999 * 12 * 0.8),
+      description: 'High-end features for specialized medical centers',
+      limits: {
+        patients: '200 patients/day',
+        doctors: '25 doctors',
+        storage: '100GB storage'
+      },
+      features: [
+        { name: 'All Standard features', included: true, icon: CheckIcon },
+        { name: 'Advanced analytics', included: true, icon: ChartBarIcon },
+        { name: 'Custom reports', included: true, icon: DocumentArrowDownIcon },
+        { name: 'API access', included: true, icon: CogIcon },
+        { name: 'Priority support', included: true, icon: ChatBubbleLeftRightIcon },
+        { name: 'WhatsApp notifications', included: true, icon: BellIcon },
+        { name: 'Patient portal', included: true, icon: UserGroupIcon },
+        { name: 'Inventory management', included: true, icon: CogIcon },
+        { name: 'Cloud backup', included: true, icon: CloudArrowUpIcon },
+        { name: '24/7 support', included: true, icon: ClockIcon }
+      ],
+      popular: false,
+      buttonText: 'Start Free Trial',
+      buttonStyle: 'bg-amber-600 hover:bg-amber-700 text-white'
+    },
+    {
       name: 'Enterprise',
       subtitle: 'For large hospital networks',
-      monthlyPrice: 9999,
-      annualPrice: Math.round(9999 * 12 * 0.8), // 20% discount
+      monthlyPrice: 17999,
+      annualPrice: Math.round(17999 * 12 * 0.8), // 20% discount
       description: 'Complete solution for large healthcare organizations',
       limits: {
         patients: 'Unlimited patients',

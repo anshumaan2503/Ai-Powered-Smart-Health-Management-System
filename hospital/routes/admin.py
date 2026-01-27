@@ -349,7 +349,7 @@ def admin_upgrade_subscription(subscription_id):
                 'max_patients': 200,
                 'max_doctors': 25,
                 'max_staff': 50,
-                'monthly_fee': 9999.0, # Adjusted to be more realistic than frontend's 999 typo but matching its existence
+                'monthly_fee': 12999.0,
                 'features': [
                     'appointments', 'billing', 'records', 'analytics', 'whatsapp', 
                     'priority_support', 'patient_portal', 'advanced_analytics', 

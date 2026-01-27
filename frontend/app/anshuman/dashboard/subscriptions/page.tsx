@@ -58,8 +58,8 @@ export default function SubscriptionManagementPage() {
     },
     premium: {
       name: 'Premium',
-      monthlyPrice: 999,
-      annualPrice: 9590,
+      monthlyPrice: 12999,
+      annualPrice: 124790,
       features: ['All Standard', 'Advanced Analytics', 'Custom Reports', 'API Access'],
       limits: { patients: 200, doctors: 25, storage: 100 }
     },
