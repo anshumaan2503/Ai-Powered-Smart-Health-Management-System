@@ -24,7 +24,6 @@ class MedicalRecord(db.Model):
     # Relationships
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
     patient = db.relationship('Patient', backref='medical_records', lazy=True)
-    doctor = db.relationship('Doctor', backref='medical_records', lazy=True)
     
     def to_dict(self):
         return {
