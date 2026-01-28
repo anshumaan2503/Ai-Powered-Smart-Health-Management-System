@@ -16,6 +16,14 @@ mail = Mail()
 def create_app(config_name="default"):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    
+    # ✅ Database Connection Fixes for Production (Render/Postgres)
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+        "pool_size": 10,
+        "max_overflow": 20
+    }
 
     # ✅ Logging (so Render logs show real errors)
     logging.basicConfig(level=logging.INFO)
