@@ -2,8 +2,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from hospital import db
 from hospital.models.patient import Patient
+from hospital.models.user import User
 from hospital.utils.validators import validate_required_fields, validate_email, validate_phone, validate_date
 import uuid
+import traceback
 
 patients_bp = Blueprint('patients', __name__)
 
@@ -15,10 +17,13 @@ def create_patient():
         current_identity = get_jwt_identity()
         user = None
         try:
-            user = User.query.get(int(current_identity))
+            admin_user = User.query.get(int(current_identity))
         except:
             db.session.rollback()
-            user = User.query.get(int(current_identity))
+            admin_user = User.query.get(int(current_identity))
+            
+        if not admin_user or not admin_user.hospital_id:
+            return jsonify({'error': 'Unauthorized or no hospital associated'}), 401
             
         data = request.get_json()
         
@@ -40,22 +45,37 @@ def create_patient():
         if not validate_date(data['date_of_birth']):
             return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
         
-        # Check if patient with email already exists
-        if data.get('email'):
-            existing_patient = Patient.query.filter_by(email=data['email']).first()
-            if existing_patient:
-                return jsonify({'error': 'Patient with this email already exists'}), 409
+        # Check if user with this email or phone already exists
+        email = data.get('email')
+        phone = data.get('phone')
         
+        existing_user = User.query.filter(
+            (User.email == email) | (User.phone == phone)
+        ).first()
+        
+        if existing_user:
+            return jsonify({'error': 'User with this email or phone already exists'}), 409
+        
+        # Create User first
+        patient_user = User(
+            email=email,
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            phone=phone,
+            role='patient',
+            hospital_id=admin_user.hospital_id
+        )
+        patient_user.set_password(str(uuid.uuid4())[:12]) # Random password for patients
+        db.session.add(patient_user)
+        db.session.flush()
+
         # Generate unique patient ID
         patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
         
-        # Create new patient
+        # Create new patient profile
         patient = Patient(
             patient_id=patient_id,
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            email=data.get('email'),
-            phone=data['phone'],
+            user_id=patient_user.id,
             date_of_birth=data['date_of_birth'],
             gender=data['gender'],
             address=data.get('address'),
@@ -64,7 +84,7 @@ def create_patient():
             blood_group=data.get('blood_group'),
             allergies=data.get('allergies'),
             medical_history=data.get('medical_history'),
-            insurance_number=data.get('insurance_number')
+            hospital_id=admin_user.hospital_id
         )
         
         db.session.add(patient)
@@ -94,17 +114,17 @@ def get_patients():
         per_page = request.args.get('per_page', 10, type=int)
         search = request.args.get('search', '')
         
-        query = Patient.query
+        query = db.session.query(Patient).join(User)
         
         # Apply search filter
         if search:
             query = query.filter(
                 db.or_(
-                    Patient.first_name.ilike(f'%{search}%'),
-                    Patient.last_name.ilike(f'%{search}%'),
+                    User.first_name.ilike(f'%{search}%'),
+                    User.last_name.ilike(f'%{search}%'),
                     Patient.patient_id.ilike(f'%{search}%'),
-                    Patient.email.ilike(f'%{search}%'),
-                    Patient.phone.ilike(f'%{search}%')
+                    User.email.ilike(f'%{search}%'),
+                    User.phone.ilike(f'%{search}%')
                 )
             )
         
@@ -156,14 +176,19 @@ def update_patient(patient_id):
         if data.get('phone') and not validate_phone(data['phone']):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
+        # Update user fields if provided
+        user_fields = ['first_name', 'last_name', 'email', 'phone']
+        for field in user_fields:
+            if field in data and patient.user:
+                setattr(patient.user, field, data[field])
+                
         # Update patient fields
-        updatable_fields = [
-            'first_name', 'last_name', 'email', 'phone', 'address',
-            'emergency_contact_name', 'emergency_contact_phone', 'blood_group',
-            'allergies', 'medical_history', 'insurance_number'
+        patient_fields = [
+            'address', 'emergency_contact_name', 'emergency_contact_phone', 
+            'blood_group', 'allergies', 'medical_history'
         ]
         
-        for field in updatable_fields:
+        for field in patient_fields:
             if field in data:
                 setattr(patient, field, data[field])
         
@@ -195,6 +220,9 @@ def delete_patient(patient_id):
         
         # In a real system, you might want to soft delete instead of hard delete
         # For now, we'll just delete the record
+        # Delete User and Patient record
+        if patient.user:
+            db.session.delete(patient.user)
         db.session.delete(patient)
         db.session.commit()
         

@@ -45,6 +45,11 @@ class Patient(db.Model):
             'medical_history': self.medical_history,
             'allergies': self.allergies,
             'hospital_id': self.hospital_id,
+            'first_name': self.user.first_name if self.user else '',
+            'last_name': self.user.last_name if self.user else '',
+            'full_name': self.user.full_name if self.user else '',
+            'email': self.user.email if self.user else '',
+            'phone': self.user.phone if self.user else '',
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

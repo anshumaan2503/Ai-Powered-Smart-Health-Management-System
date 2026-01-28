@@ -262,7 +262,12 @@ def add_sample_patients():
             {"first_name": "Vikram", "last_name": "Gupta", "phone": "9876543007", "gender": "Male", "email": "vikram.g@example.com"},
             {"first_name": "Kavita", "last_name": "Iyer", "phone": "9876543008", "gender": "Female", "email": "kavita.iyer@example.com"},
             {"first_name": "Aditya", "last_name": "Verma", "phone": "9876543009", "gender": "Male", "email": "aditya.v@example.com"},
-            {"first_name": "Meera", "last_name": "Nair", "phone": "9876543010", "gender": "Female", "email": "meera.nair@example.com"}
+            {"first_name": "Meera", "last_name": "Nair", "phone": "9876543010", "gender": "Female", "email": "meera.nair@example.com"},
+            {"first_name": "Rajesh", "last_name": "Kumar", "phone": "9876543011", "gender": "Male", "email": "rajesh.k@example.com"},
+            {"first_name": "Sunita", "last_name": "Rao", "phone": "9876543012", "gender": "Female", "email": "sunita.rao@example.com"},
+            {"first_name": "Amit", "last_name": "Shah", "phone": "9876543013", "gender": "Male", "email": "amit.shah@example.com"},
+            {"first_name": "Deepika", "last_name": "Padukone", "phone": "9876543014", "gender": "Female", "email": "deepika.p@example.com"},
+            {"first_name": "Suresh", "last_name": "Raina", "phone": "9876543015", "gender": "Male", "email": "suresh.r@example.com"}
         ]
         
         added_count = 0
