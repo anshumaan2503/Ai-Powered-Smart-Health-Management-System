@@ -28,11 +28,16 @@ api.interceptors.request.use(
   (config) => {
     const url = config.url || ''
 
-    // Hospital endpoints or shared resources when in hospital session
+    // Determine context based on current path
+    const isHospitalPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
+    const isAdminPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+
+    // Get all available tokens
     const hospitalToken = localStorage.getItem('hospital_access_token')
     const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     const adminToken = localStorage.getItem('admin_token')
 
+    // 1. Explicit hospital/admin endpoints
     if (url.includes('/hospital-auth/') || url.includes('/hospital/')) {
       if (hospitalToken) {
         config.headers.Authorization = `Bearer ${hospitalToken}`
@@ -41,16 +46,27 @@ api.interceptors.request.use(
       if (adminToken) {
         config.headers.Authorization = `Bearer ${adminToken}`
       }
-    } else if (url.includes('/patients/') || url.includes('/doctors/') || url.includes('/appointments/')) {
-      // Shared resource endpoints - use hospital token if in hospital portal session
-      if (hospitalToken && !patientToken) {
+    }
+    // 2. Shared resource endpoints (patients, doctors, appointments, ai, etc.)
+    else if (
+      url.includes('/patients/') ||
+      url.includes('/doctors/') ||
+      url.includes('/appointments/') ||
+      url.includes('/ai/')
+    ) {
+      if (isHospitalPortal && hospitalToken) {
         config.headers.Authorization = `Bearer ${hospitalToken}`
+      } else if (isAdminPortal && adminToken) {
+        config.headers.Authorization = `Bearer ${adminToken}`
       } else if (patientToken) {
         config.headers.Authorization = `Bearer ${patientToken}`
       }
-    } else {
-      // Fallback for other patient/auth endpoints
-      if (patientToken) {
+    }
+    // 3. Fallback for everything else
+    else {
+      if (isHospitalPortal && hospitalToken) {
+        config.headers.Authorization = `Bearer ${hospitalToken}`
+      } else if (patientToken) {
         config.headers.Authorization = `Bearer ${patientToken}`
       }
     }
@@ -60,59 +76,61 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ✅ Response interceptor to handle token refresh
+// ✅ Response interceptor to handle token refresh and unauthorized access
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
 
-    // Handle 401 errors
+    // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
-      // Try refreshing patient token if it exists
-      const patientRefreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
+      const isHospitalPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
 
-      if (patientRefreshToken) {
-        try {
-          const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
-            {},
-            {
-              headers: {
-                Authorization: `Bearer ${patientRefreshToken}`,
-              },
-            }
-          )
+      // If it's a patient/public request, try to refresh
+      if (!isHospitalPortal) {
+        const patientRefreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
 
-          const { access_token } = response.data
-          if (access_token) {
-            if (localStorage.getItem('refresh_token')) {
-              localStorage.setItem('access_token', access_token)
-            } else {
-              sessionStorage.setItem('access_token', access_token)
+        if (patientRefreshToken) {
+          try {
+            const response = await axios.post(
+              `${API_BASE_URL}/auth/refresh`,
+              {},
+              {
+                headers: { Authorization: `Bearer ${patientRefreshToken}` },
+              }
+            )
+
+            const { access_token } = response.data
+            if (access_token) {
+              if (localStorage.getItem('refresh_token')) {
+                localStorage.setItem('access_token', access_token)
+              } else {
+                sessionStorage.setItem('access_token', access_token)
+              }
+              originalRequest.headers.Authorization = `Bearer ${access_token}`
+              return api(originalRequest)
             }
-            originalRequest.headers.Authorization = `Bearer ${access_token}`
-            return api(originalRequest)
+          } catch (refreshError) {
+            // Refresh failed, proceed to logout
           }
-        } catch (refreshError) {
-          // Refresh failed
         }
       }
 
-      // If no refresh or refresh failed, redirect to appropriate login
-      const isHospitalPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
-
+      // Final redirect logic for 401 errors
       if (typeof window !== 'undefined') {
-        if (isHospitalPath) {
+        if (isHospitalPortal) {
+          // Clear only hospital session
           localStorage.removeItem('hospital_access_token')
           localStorage.removeItem('hospital_user')
           window.location.href = '/hospital/login'
         } else {
+          // Clear patient session
           localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
           localStorage.removeItem('user')
-          sessionStorage.removeItem('access_token')
-          sessionStorage.removeItem('user')
+          sessionStorage.clear()
           window.location.href = '/login'
         }
       }
