@@ -173,8 +173,15 @@ def import_doctors():
         }), 201
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': error_trace,
+            'message': 'Internal Server Error during doctor import'
+        }), 500
 
 @import_doctors_bp.route('/import-staff', methods=['POST'])
 @jwt_required()
@@ -298,8 +305,15 @@ def import_staff():
         }), 201
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': error_trace,
+            'message': 'Internal Server Error during staff import'
+        }), 500
 
 @import_doctors_bp.route('/import-staff-template', methods=['GET'])
 @jwt_required()
