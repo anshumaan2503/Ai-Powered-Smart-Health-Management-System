@@ -357,11 +357,12 @@ export default function PharmacyPage() {
       }
     } catch (error: any) {
       console.error('Import error:', error)
-      toast.error('Import failed: ' + error.message)
+      const msg = error.response?.data?.error || error.message || 'Import failed'
+      toast.error('Import failed: ' + msg)
       setImportResults({
         imported_count: 0,
         errors_count: 1,
-        errors: [error.message || 'Import failed']
+        errors: [msg]
       })
     } finally {
       setImporting(false)

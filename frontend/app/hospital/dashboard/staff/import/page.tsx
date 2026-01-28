@@ -115,8 +115,9 @@ export default function ImportStaffPage() {
       setImportResult(data)
       setSuccess(data.message)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import staff')
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to import staff'
+      setError(msg)
     } finally {
       setLoading(false)
     }

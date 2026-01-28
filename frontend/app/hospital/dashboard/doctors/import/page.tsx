@@ -117,8 +117,9 @@ export default function ImportDoctorsPage() {
       setImportResult(data)
       setSuccess(data.message)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import doctors')
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to import doctors'
+      setError(msg)
     } finally {
       setLoading(false)
     }
