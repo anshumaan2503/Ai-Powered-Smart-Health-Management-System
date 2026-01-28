@@ -205,7 +205,7 @@ export default function HospitalDashboard() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link
-              href="/hospital/patients"
+              href="/hospital/dashboard/patients"
               className="flex items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
             >
               <UserGroupIcon className="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" />
@@ -216,7 +216,7 @@ export default function HospitalDashboard() {
             </Link>
 
             <Link
-              href="/hospital/doctors"
+              href="/hospital/dashboard/doctors"
               className="flex items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
             >
               <UserGroupIcon className="h-8 w-8 text-green-600 dark:text-green-400 mr-3" />
@@ -227,7 +227,7 @@ export default function HospitalDashboard() {
             </Link>
 
             <Link
-              href="/hospital/appointments"
+              href="/hospital/dashboard/appointments"
               className="flex items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
             >
               <CalendarIcon className="h-8 w-8 text-purple-600 dark:text-purple-400 mr-3" />
