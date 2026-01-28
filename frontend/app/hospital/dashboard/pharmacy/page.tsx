@@ -337,11 +337,7 @@ export default function PharmacyPage() {
       const formData = new FormData()
       formData.append('file', importFile)
 
-      const response = await api.post('/hospital/pharmacy/import-medicines', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      const response = await api.post('/hospital/pharmacy/import-medicines', formData)
       const data = response.data
 
       // Axios success implies 2xx

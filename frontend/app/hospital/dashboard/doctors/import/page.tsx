@@ -109,11 +109,7 @@ export default function ImportDoctorsPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await api.post('/hospital/import-doctors', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      const response = await api.post('/hospital/import-doctors', formData)
       const data = response.data
 
       // Axios throws on non-2xx, so if we are here, it is ok.

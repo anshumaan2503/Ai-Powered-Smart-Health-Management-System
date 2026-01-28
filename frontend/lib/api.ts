@@ -43,6 +43,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${patientToken}`
     }
 
+    // ✅ Fix: If sending FormData, let the browser set the Content-Type with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     return config
   },
   (error) => Promise.reject(error)
@@ -192,16 +197,12 @@ export const hospitalAPI = {
   updateStaff: (id: number, data: any) => api.put(`/hospital/staff/${id}`, data),
   deleteStaff: (id: number) => api.delete(`/hospital/staff/${id}`),
   downloadStaffTemplate: () => api.get('/hospital/import-staff-template', { responseType: 'blob' }),
-  importStaff: (data: FormData) => api.post('/hospital/import-staff', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  importStaff: (data: FormData) => api.post('/hospital/import-staff', data),
 
   // Pharmacy
   getMedicines: () => api.get('/hospital/pharmacy/medicines'),
   downloadMedicinesTemplate: () => api.get('/hospital/pharmacy/import-medicines-template', { responseType: 'blob' }),
-  importMedicines: (data: FormData) => api.post('/hospital/pharmacy/import-medicines', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  importMedicines: (data: FormData) => api.post('/hospital/pharmacy/import-medicines', data),
   deleteMedicine: (id: number) => api.delete(`/hospital/pharmacy/medicines/${id}`),
   deleteAllMedicines: () => api.delete('/hospital/pharmacy/medicines/delete-all'),
 
@@ -213,7 +214,5 @@ export const hospitalAPI = {
   getAnalyticsRevenue: () => api.get('/hospital/analytics/revenue'),
 
   // Patients (hospital-specific imports)
-  importPatients: (data: FormData) => api.post('/hospital/patients/import', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  importPatients: (data: FormData) => api.post('/hospital/patients/import', data),
 }
