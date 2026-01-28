@@ -28,27 +28,30 @@ api.interceptors.request.use(
   (config) => {
     const url = config.url || ''
 
-    // Hospital endpoints -> hospital token
+    // Hospital endpoints or shared resources when in hospital session
+    const hospitalToken = localStorage.getItem('hospital_access_token')
+    const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    const adminToken = localStorage.getItem('admin_token')
+
     if (url.includes('/hospital-auth/') || url.includes('/hospital/')) {
-      const hospitalToken = localStorage.getItem('hospital_access_token')
       if (hospitalToken) {
         config.headers.Authorization = `Bearer ${hospitalToken}`
       }
-    } else {
-      // ✅ Admin endpoints -> admin token
-      if (url.includes('/admin/')) {
-        const adminToken = localStorage.getItem('admin_token')
-        if (adminToken) {
-          config.headers.Authorization = `Bearer ${adminToken}`
-        }
-        return config
+    } else if (url.includes('/admin/')) {
+      if (adminToken) {
+        config.headers.Authorization = `Bearer ${adminToken}`
       }
-
-      // ✅ Patient/auth endpoints -> patient token
-      let token = localStorage.getItem('access_token')
-      if (!token) token = sessionStorage.getItem('access_token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+    } else if (url.includes('/patients/') || url.includes('/doctors/') || url.includes('/appointments/')) {
+      // Shared resource endpoints - use hospital token if in hospital portal session
+      if (hospitalToken && !patientToken) {
+        config.headers.Authorization = `Bearer ${hospitalToken}`
+      } else if (patientToken) {
+        config.headers.Authorization = `Bearer ${patientToken}`
+      }
+    } else {
+      // Fallback for other patient/auth endpoints
+      if (patientToken) {
+        config.headers.Authorization = `Bearer ${patientToken}`
       }
     }
 
@@ -63,54 +66,57 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    // Refresh only for patient tokens
+    // Handle 401 errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
-      try {
-        let refreshToken = localStorage.getItem('refresh_token')
-        if (!refreshToken) refreshToken = sessionStorage.getItem('refresh_token')
+      // Try refreshing patient token if it exists
+      const patientRefreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
 
-        if (!refreshToken) {
-          throw new Error('No refresh token')
-        }
+      if (patientRefreshToken) {
+        try {
+          const response = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${patientRefreshToken}`,
+              },
+            }
+          )
 
-        // ✅ refresh endpoint is /api/auth/refresh (baseURL already has /api)
-        const response = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${refreshToken}`,
-            },
+          const { access_token } = response.data
+          if (access_token) {
+            if (localStorage.getItem('refresh_token')) {
+              localStorage.setItem('access_token', access_token)
+            } else {
+              sessionStorage.setItem('access_token', access_token)
+            }
+            originalRequest.headers.Authorization = `Bearer ${access_token}`
+            return api(originalRequest)
           }
-        )
-
-        const { access_token } = response.data
-
-        if (!access_token) {
-          throw new Error('No access_token from refresh API')
+        } catch (refreshError) {
+          // Refresh failed
         }
-
-        // Store in same place as refresh token
-        if (localStorage.getItem('refresh_token')) {
-          localStorage.setItem('access_token', access_token)
-        } else {
-          sessionStorage.setItem('access_token', access_token)
-        }
-
-        // Retry original request
-        originalRequest.headers.Authorization = `Bearer ${access_token}`
-        return api(originalRequest)
-      } catch (refreshError) {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        sessionStorage.removeItem('access_token')
-        sessionStorage.removeItem('refresh_token')
-
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
       }
+
+      // If no refresh or refresh failed, redirect to appropriate login
+      const isHospitalPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
+
+      if (typeof window !== 'undefined') {
+        if (isHospitalPath) {
+          localStorage.removeItem('hospital_access_token')
+          localStorage.removeItem('hospital_user')
+          window.location.href = '/hospital/login'
+        } else {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('user')
+          sessionStorage.removeItem('access_token')
+          sessionStorage.removeItem('user')
+          window.location.href = '/login'
+        }
+      }
+      return Promise.reject(error)
     }
 
     if (error.response?.status >= 500) {
