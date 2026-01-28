@@ -11,7 +11,7 @@ class User(db.Model):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(15))
-    role = db.Column(db.String(20), nullable=False)  # admin, doctor, nurse, receptionist
+    role = db.Column(db.String(20), nullable=False)  # admin, doctor, nurse, receptionist, patient
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -32,7 +32,7 @@ class User(db.Model):
         return f"{self.first_name} {self.last_name}"
     
     def to_dict(self):
-        return {
+        data = {
             'id': self.id,
             'email': self.email,
             'first_name': self.first_name,
@@ -41,5 +41,21 @@ class User(db.Model):
             'phone': self.phone,
             'role': self.role,
             'is_active': self.is_active,
+            'hospital_id': self.hospital_id,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+        
+        # Add profile info if exists
+        if hasattr(self, 'patient_profile') and self.patient_profile:
+            data['patient_profile'] = {
+                'id': self.patient_profile[0].id if isinstance(self.patient_profile, list) else self.patient_profile.id,
+                'patient_id': self.patient_profile[0].patient_id if isinstance(self.patient_profile, list) else self.patient_profile.patient_id
+            }
+        
+        if hasattr(self, 'doctor_profile') and self.doctor_profile:
+            data['doctor_profile'] = {
+                'id': self.doctor_profile[0].id if isinstance(self.doctor_profile, list) else self.doctor_profile.id,
+                'doctor_id': self.doctor_profile[0].doctor_id if isinstance(self.doctor_profile, list) else self.doctor_profile.doctor_id
+            }
+            
+        return data

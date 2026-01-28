@@ -29,6 +29,26 @@ class Patient(db.Model):
             today = date.today()
             return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         return None
+
+    @property
+    def full_name(self):
+        return self.user.full_name if self.user else ''
+
+    @property
+    def email(self):
+        return self.user.email if self.user else ''
+
+    @property
+    def phone(self):
+        return self.user.phone if self.user else ''
+
+    @property
+    def first_name(self):
+        return self.user.first_name if self.user else ''
+
+    @property
+    def last_name(self):
+        return self.user.last_name if self.user else ''
     
     def to_dict(self):
         return {

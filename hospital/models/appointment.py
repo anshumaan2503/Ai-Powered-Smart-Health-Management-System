@@ -6,7 +6,7 @@ class Appointment(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    # patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)  # Disabled for now
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
     appointment_date = db.Column(db.DateTime, nullable=False)
     appointment_type = db.Column(db.String(50))  # consultation, follow-up, emergency
@@ -23,14 +23,16 @@ class Appointment(db.Model):
     
     # Relationships
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    patient = db.relationship('Patient', backref='appointments', lazy=True)
+    hospital = db.relationship('Hospital', backref='appointments', lazy=True)
     
     def to_dict(self):
         return {
             'id': self.id,
             'appointment_id': self.appointment_id,
-            # 'patient_id': self.patient_id,  # Disabled for now
+            'patient_id': self.patient_id,
             'doctor_id': self.doctor_id,
-            # 'patient_name': self.patient.full_name if self.patient else None,  # Disabled for now
+            'patient_name': self.patient.full_name if self.patient else None,
             'doctor_name': self.doctor.user.full_name if self.doctor and self.doctor.user else None,
             'doctor_specialization': self.doctor.specialization if self.doctor else None,
             'appointment_date': self.appointment_date.isoformat() if self.appointment_date else None,

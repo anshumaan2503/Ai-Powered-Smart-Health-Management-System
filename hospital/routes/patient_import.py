@@ -173,26 +173,30 @@ def import_patients():
                 if existing_patient:
                     raise ValueError(f'Patient with phone {phone_clean} already exists')
                 
-                # Check for duplicate email if provided
-                if email:
-                    existing_email = Patient.query.filter_by(email=email).first()
-                    if existing_email:
-                        raise ValueError(f'Patient with email {email} already exists')
-                
                 # Generate unique patient ID
                 patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
                 
                 # Ensure patient ID is unique
                 while Patient.query.filter_by(patient_id=patient_id).first():
                     patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
-                
-                # Create patient
-                patient = Patient(
-                    patient_id=patient_id,
+
+                # Create user for patient
+                patient_user = User(
+                    email=email if email else f"patient_{patient_id.lower()}@example.com",
                     first_name=first_name,
                     last_name=last_name,
-                    email=email if email else None,
                     phone=phone_clean,
+                    role='patient',
+                    hospital_id=user.hospital_id
+                )
+                patient_user.set_password(str(uuid.uuid4())[:12])
+                db.session.add(patient_user)
+                db.session.flush() # Get the user ID
+                
+                # Create patient profile
+                patient = Patient(
+                    patient_id=patient_id,
+                    user_id=patient_user.id,
                     date_of_birth=date_of_birth,
                     gender=gender,
                     blood_group=blood_group,

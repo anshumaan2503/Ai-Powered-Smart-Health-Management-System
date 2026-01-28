@@ -374,21 +374,29 @@ def create_quick_patient():
         # Generate patient ID
         patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
         
+        # Create user for patient
+        patient_user = User(
+            email=data.get('email') if data.get('email') else f"patient_{patient_id.lower()}@example.com",
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            phone=data['phone'],
+            role='patient',
+            hospital_id=user.hospital_id
+        )
+        patient_user.set_password(str(uuid.uuid4())[:12])
+        db.session.add(patient_user)
+        db.session.flush() # Get the user ID
+        
         # Create patient
         patient = Patient(
             patient_id=patient_id,
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            email=data.get('email'),
-            phone=data['phone'],
+            user_id=patient_user.id,
             date_of_birth=dob,
             gender=data['gender'],
             address=data.get('address'),
             emergency_contact_name=data.get('emergency_contact_name'),
             emergency_contact_phone=data.get('emergency_contact_phone'),
             blood_group=data.get('blood_group'),
-            allergies=data.get('allergies'),
-            medical_history=data.get('medical_history'),
             hospital_id=user.hospital_id
         )
         

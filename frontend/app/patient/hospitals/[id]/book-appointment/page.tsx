@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import Link from 'next/link'
-import { 
+import {
   HeartIcon,
   ArrowLeftIcon,
   CalendarIcon,
@@ -63,15 +63,30 @@ export default function BookAppointmentPage() {
       return
     }
 
+    if (!user?.patient_profile?.id) {
+      toast.error('Patient profile not found. Please complete your profile first.')
+      return
+    }
+
     setIsBooking(true)
     try {
-      // Mock booking - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      // Create appointment datetime string
+      const appointment_date = `${selectedDate}T${selectedTime}:00`
+
+      await api.post('/appointments/', {
+        patient_id: user.patient_profile.id,
+        doctor_id: selectedDoctor.id,
+        appointment_date: appointment_date,
+        appointment_type: appointmentType,
+        symptoms: symptoms
+      })
+
       toast.success('Appointment booked successfully!')
       router.push('/patient/appointments')
-    } catch (error) {
-      toast.error('Failed to book appointment')
+    } catch (error: any) {
+      console.error('Booking error:', error)
+      const errorMsg = error.response?.data?.error || 'Failed to book appointment'
+      toast.error(errorMsg)
     } finally {
       setIsBooking(false)
     }
@@ -130,11 +145,10 @@ export default function BookAppointmentPage() {
                     <div
                       key={doctor.id}
                       onClick={() => setSelectedDoctor(doctor)}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedDoctor?.id === doctor.id
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedDoctor?.id === doctor.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center space-x-3">
                         <UserIcon className="h-8 w-8 text-blue-600" />
@@ -176,11 +190,10 @@ export default function BookAppointmentPage() {
                       <button
                         key={time}
                         onClick={() => setSelectedTime(time)}
-                        className={`p-2 text-sm border rounded-lg transition-colors ${
-                          selectedTime === time
+                        className={`p-2 text-sm border rounded-lg transition-colors ${selectedTime === time
                             ? 'border-blue-500 bg-blue-50 text-blue-700'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                          }`}
                       >
                         {time}
                       </button>

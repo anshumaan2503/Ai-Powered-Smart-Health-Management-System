@@ -12,6 +12,14 @@ interface User {
   full_name: string
   role: string
   is_active: boolean
+  patient_profile?: {
+    id: number
+    patient_id: string
+  }
+  doctor_profile?: {
+    id: number
+    doctor_id: string
+  }
 }
 
 interface AuthContextType {

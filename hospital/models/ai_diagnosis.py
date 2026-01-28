@@ -5,7 +5,7 @@ class AIDiagnosis(db.Model):
     __tablename__ = 'ai_diagnoses'
     
     id = db.Column(db.Integer, primary_key=True)
-    # patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)  # Disabled for now
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'))
     symptoms = db.Column(db.Text, nullable=False)
     predicted_conditions = db.Column(db.JSON)  # List of conditions with confidence scores
@@ -22,13 +22,15 @@ class AIDiagnosis(db.Model):
     
     # Relationships
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    patient = db.relationship('Patient', backref='ai_diagnoses', lazy=True)
+    doctor = db.relationship('Doctor', backref='ai_diagnoses', lazy=True)
     
     def to_dict(self):
         return {
             'id': self.id,
-            # 'patient_id': self.patient_id,  # Disabled for now
+            'patient_id': self.patient_id,
             'doctor_id': self.doctor_id,
-            # 'patient_name': self.patient.full_name if self.patient else None,  # Disabled for now
+            'patient_name': self.patient.full_name if self.patient else None,
             'doctor_name': self.doctor.user.full_name if self.doctor and self.doctor.user else None,
             'symptoms': self.symptoms,
             'predicted_conditions': self.predicted_conditions,

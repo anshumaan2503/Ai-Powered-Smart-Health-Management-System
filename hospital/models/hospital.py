@@ -17,7 +17,7 @@ class Hospital(db.Model):
     # Relationships
     users = db.relationship('User', backref='hospital', lazy=True)
     doctors = db.relationship('Doctor', backref='hospital', lazy=True)
-    # appointments = db.relationship('Appointment', backref='hospital', lazy=True)  # Disabled for now
+    # appointments = db.relationship('Appointment', backref='hospital', lazy=True) # Already added backref in Appointment model
     
     def to_dict(self):
         return {

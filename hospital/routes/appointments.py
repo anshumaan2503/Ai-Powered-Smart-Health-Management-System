@@ -62,7 +62,8 @@ def create_appointment():
             notes=data.get('notes'),
             priority=data.get('priority', 'normal'),
             estimated_duration=data.get('estimated_duration', 30),
-            consultation_fee=doctor.consultation_fee
+            consultation_fee=doctor.consultation_fee,
+            hospital_id=doctor.hospital_id
         )
         
         db.session.add(appointment)
