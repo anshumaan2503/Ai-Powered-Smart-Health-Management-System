@@ -16,7 +16,8 @@ import {
   ExclamationTriangleIcon,
   CloudArrowUpIcon,
   DocumentArrowDownIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import Link from 'next/link'
@@ -62,6 +63,7 @@ export default function HospitalPatientsPage() {
     failed: number
     errors: string[]
   } | null>(null)
+  const [addingSample, setAddingSample] = useState(false)
 
   const router = useRouter()
 
@@ -262,6 +264,20 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
     }
   }
 
+  const handleAddSamplePatients = async () => {
+    try {
+      setAddingSample(true)
+      const response = await hospitalAPI.addSamplePatients()
+      toast.success(response.data.message || 'Sample patients added successfully')
+      fetchPatients()
+    } catch (error: any) {
+      console.error('Error adding sample patients:', error)
+      toast.error(error.response?.data?.error || 'Failed to add sample patients')
+    } finally {
+      setAddingSample(false)
+    }
+  }
+
   if (loading && patients.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,6 +300,18 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
+          <button
+            onClick={handleAddSamplePatients}
+            disabled={addingSample}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-white text-green-700 border border-green-200 rounded-lg font-medium hover:bg-green-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          >
+            {addingSample ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <CheckCircleIcon className="h-5 w-5" />
+            )}
+            <span>{addingSample ? 'Processing...' : 'Add Sample Data'}</span>
+          </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary flex items-center"

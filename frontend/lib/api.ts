@@ -240,4 +240,5 @@ export const hospitalAPI = {
 
   // Patients (hospital-specific imports)
   importPatients: (data: FormData) => api.post('/hospital/patients/import', data),
+  addSamplePatients: () => api.post('/hospital/patients/add-sample-data'),
 }
