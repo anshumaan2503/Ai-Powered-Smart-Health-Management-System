@@ -26,26 +26,49 @@ export const api = axios.create({
 // ✅ Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Determine portal context once
-    const isHospitalPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
-    const isAdminPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+    const url = config.url || ''
 
+    // Determine portal context
+    const isHospitalPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/hospital')
+    const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+    const isHospitalURL = url.includes('/hospital/') || url.includes('/hospital-auth/')
+    const isAdminURL = url.includes('/admin/')
+
+    // Get all available tokens
     const hospitalToken = localStorage.getItem('hospital_access_token')
     const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     const adminToken = localStorage.getItem('admin_token')
 
-    // Apply token based on portal context
-    if (isHospitalPortal && hospitalToken) {
-      config.headers.Authorization = `Bearer ${hospitalToken}`
-    } else if (isAdminPortal && adminToken) {
-      config.headers.Authorization = `Bearer ${adminToken}`
-    } else if (patientToken) {
+    // Helper to check if token is valid string
+    const isValid = (t: any) => t && t !== 'null' && t !== 'undefined'
+
+    // 1. Hospital Context (Portal or explicit URL)
+    if ((isHospitalPath || isHospitalURL)) {
+      if (isValid(hospitalToken)) {
+        config.headers.Authorization = `Bearer ${hospitalToken}`
+      }
+      // CRITICAL: If we are in hospital context, DO NOT fall back to patient token
+      // This prevents 401/403 errors when accessing hospital-only endpoints with a patient session
+    }
+    // 2. Admin Context
+    else if ((isAdminPath || isAdminURL)) {
+      if (isValid(adminToken)) {
+        config.headers.Authorization = `Bearer ${adminToken}`
+      }
+    }
+    // 3. Fallback to Patient Context
+    else if (isValid(patientToken)) {
       config.headers.Authorization = `Bearer ${patientToken}`
     }
 
     // ✅ Fix: If sending FormData, let the browser set the Content-Type with boundary
+    // We handle common casing because different versions of axios/interceptors might vary
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type']
+      if (config.headers) {
+        delete config.headers['Content-Type']
+        delete config.headers['content-type']
+        delete config.headers['CONTENT-TYPE']
+      }
     }
 
     return config
