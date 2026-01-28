@@ -364,6 +364,113 @@ def get_staff_import_template():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@import_doctors_bp.route('/add-sample-data', methods=['POST'])
+@jwt_required()
+def add_sample_data():
+    """Add sample Indian doctors and staff to the hospital"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
+            
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'User not associated with any hospital'}), 404
+            
+        if user.role not in ['admin']:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        hospital = Hospital.query.get(user.hospital_id)
+        hospital_domain = hospital.name.lower().replace(' ', '').replace('-', '') if hospital else 'hospital'
+        
+        # Sample Doctors (Indian Names)
+        sample_doctors = [
+            {"first_name": "Rajesh", "last_name": "Kumar", "specialization": "Cardiology", "qualification": "MBBS, MD"},
+            {"first_name": "Sneha", "last_name": "Sharma", "specialization": "Neurology", "qualification": "MBBS, MD"},
+            {"first_name": "Amit", "last_name": "Patel", "specialization": "Orthopedics", "qualification": "MBBS, MS"},
+            {"first_name": "Priya", "last_name": "Singh", "specialization": "Pediatrics", "qualification": "MBBS, MD"},
+            {"first_name": "Vikram", "last_name": "Malhotra", "specialization": "Oncology", "qualification": "MBBS, MD"},
+            {"first_name": "Ananya", "last_name": "Verma", "specialization": "Dermatology", "qualification": "MBBS, DDVL"},
+            {"first_name": "Sanjay", "last_name": "Gupta", "specialization": "General Medicine", "qualification": "MBBS, MD"},
+            {"first_name": "Meena", "last_name": "Iyer", "specialization": "Gynecology", "qualification": "MBBS, MS"},
+            {"first_name": "Arjun", "last_name": "Reddy", "specialization": "Radiology", "qualification": "MBBS, MD"},
+            {"first_name": "Kavita", "last_name": "Deshmukh", "specialization": "ENT", "qualification": "MBBS, MS"}
+        ]
+        
+        # Sample Staff (Indian Names)
+        sample_staff = [
+            {"first_name": "Suresh", "last_name": "Gupta", "role": "nurse"},
+            {"first_name": "Meena", "last_name": "Kumari", "role": "nurse"},
+            {"first_name": "Rahul", "last_name": "Deshmukh", "role": "receptionist"},
+            {"first_name": "Kavita", "last_name": "Reddy", "role": "admin"},
+            {"first_name": "Deepak", "last_name": "Singh", "role": "pharmacist"}
+        ]
+        
+        added_doctors = 0
+        added_staff = 0
+        
+        # Process Doctors
+        for doc in sample_doctors:
+            email = f"{doc['first_name'].lower()}.{doc['last_name'].lower()}@{hospital_domain}.com"
+            if User.query.filter_by(email=email).first():
+                continue
+                
+            new_user = User(
+                email=email,
+                first_name=doc['first_name'],
+                last_name=doc['last_name'],
+                role='doctor',
+                hospital_id=user.hospital_id
+            )
+            new_user.set_password("123")
+            db.session.add(new_user)
+            db.session.flush()
+            
+            doctor_profile = Doctor(
+                doctor_id=f"DOC{str(uuid.uuid4())[:8].upper()}",
+                user_id=new_user.id,
+                specialization=doc['specialization'],
+                qualification=doc['qualification'],
+                experience_years=random.randint(5, 20),
+                license_number=f"LIC{str(uuid.uuid4())[:8].upper()}",
+                consultation_fee=random.randint(500, 2000),
+                hospital_id=user.hospital_id
+            )
+            db.session.add(doctor_profile)
+            added_doctors += 1
+            
+        # Process Staff
+        for s in sample_staff:
+            email = f"{s['first_name'].lower()}.{s['last_name'].lower()}@{hospital_domain}.com"
+            if User.query.filter_by(email=email).first():
+                continue
+                
+            new_user = User(
+                email=email,
+                first_name=s['first_name'],
+                last_name=s['last_name'],
+                role=s['role'],
+                hospital_id=user.hospital_id
+            )
+            new_user.set_password("123")
+            db.session.add(new_user)
+            added_staff += 1
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully added {added_doctors} doctors and {added_staff} staff members with Indian names.',
+            'added_doctors': added_doctors,
+            'added_staff': added_staff
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @import_doctors_bp.route('/import-template', methods=['GET'])
 @jwt_required()
 def get_import_template():
