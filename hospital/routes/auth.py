@@ -81,8 +81,10 @@ def login():
         if not user or not user.check_password(password):
             return jsonify({'error': 'Invalid credentials'}), 401
         
+        # Auto-reactivate account if it was deactivated
         if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
+            user.is_active = True
+            db.session.commit()
         
         # Convert user.id to string as required by Flask-JWT-Extended
         access_token = create_access_token(identity=str(user.id))

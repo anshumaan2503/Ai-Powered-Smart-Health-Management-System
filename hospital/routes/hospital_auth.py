@@ -116,8 +116,10 @@ def hospital_login():
         if not user or not user.check_password(password):
             return jsonify({'error': 'Invalid credentials'}), 401
         
+        # Auto-reactivate account if it was deactivated
         if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
+            user.is_active = True
+            db.session.commit()
         
         # Check hospital subscription status
         if user.hospital_id:
