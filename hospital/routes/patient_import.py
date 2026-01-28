@@ -6,6 +6,7 @@ from hospital.models.patient import Patient
 import csv
 import io
 import uuid
+import random
 from datetime import datetime, date
 
 patient_import_bp = Blueprint('patient_import', __name__)
