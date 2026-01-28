@@ -17,7 +17,12 @@ def get_hospital_staff():
     """Get all staff members for the hospital"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404
@@ -245,8 +250,45 @@ def add_staff_member():
             return jsonify({'error': 'Email address already exists in database'}), 422
         elif "NOT NULL constraint failed" in error_msg:
             return jsonify({'error': f'Required field missing: {error_msg}'}), 422
-        else:
-            return jsonify({'error': f'Database error: {error_msg}'}), 422
+        return jsonify({'error': error_msg}), 500
+
+@hospital_staff_bp.route('/staff/<int:staff_id>', methods=['GET'])
+@jwt_required()
+def get_staff_member(staff_id):
+    """Get a specific staff member by ID"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
+            
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'User not associated with any hospital'}), 404
+            
+        staff_member = User.query.filter_by(
+            id=staff_id, 
+            hospital_id=user.hospital_id
+        ).first()
+        
+        if not staff_member:
+            return jsonify({'error': 'Staff member not found'}), 404
+            
+        staff_dict = staff_member.to_dict()
+        if staff_member.role == 'doctor':
+            doctor_profile = Doctor.query.filter_by(user_id=staff_member.id).first()
+            staff_dict['doctor_profile'] = doctor_profile.to_dict() if doctor_profile else None
+            
+        return jsonify(staff_dict), 200
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 @hospital_staff_bp.route('/staff/<int:staff_id>', methods=['PUT'])
 @jwt_required()
@@ -254,7 +296,12 @@ def update_staff_member(staff_id):
     """Update a staff member"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404
@@ -304,7 +351,8 @@ def update_staff_member(staff_id):
                 doctor_data = data['doctor_profile']
                 doctor_fields = [
                     'specialization', 'qualification', 'experience_years', 
-                    'consultation_fee', 'available_days', 'available_hours'
+                    'consultation_fee', 'available_days', 'available_hours',
+                    'license_number'
                 ]
                 for field in doctor_fields:
                     if field in doctor_data:
@@ -323,8 +371,14 @@ def update_staff_member(staff_id):
         }), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'traceback': error_trace,
+            'message': 'Internal Server Error during staff update'
+        }), 500
 
 @hospital_staff_bp.route('/staff/<int:staff_id>/toggle-status', methods=['PUT'])
 @jwt_required()
@@ -332,7 +386,12 @@ def toggle_staff_status(staff_id):
     """Toggle staff member active status"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404

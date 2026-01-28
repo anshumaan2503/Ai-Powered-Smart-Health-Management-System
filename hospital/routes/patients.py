@@ -12,6 +12,14 @@ patients_bp = Blueprint('patients', __name__)
 def create_patient():
     """Create a new patient"""
     try:
+        current_identity = get_jwt_identity()
+        user = None
+        try:
+            user = User.query.get(int(current_identity))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_identity))
+            
         data = request.get_json()
         
         # Validate required fields
@@ -68,8 +76,14 @@ def create_patient():
         }), 201
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'traceback': error_trace,
+            'message': 'Internal Server Error during patient creation'
+        }), 500
 
 @patients_bp.route('/', methods=['GET'])
 @jwt_required()
@@ -161,8 +175,14 @@ def update_patient(patient_id):
         }), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'traceback': error_trace,
+            'message': 'Internal Server Error during patient update'
+        }), 500
 
 @patients_bp.route('/<int:patient_id>', methods=['DELETE'])
 @jwt_required()

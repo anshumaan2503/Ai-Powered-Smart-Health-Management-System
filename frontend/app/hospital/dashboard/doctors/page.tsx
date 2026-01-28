@@ -65,7 +65,7 @@ export default function DoctorsManagementPage() {
 
   const toggleDoctorStatus = async (doctorId: number) => {
     try {
-      await hospitalAPI.updateStaff(doctorId, { toggle_status: true })
+      await hospitalAPI.toggleStaffStatus(doctorId)
       fetchDoctors()
     } catch (err: any) {
       console.error('Toggle status error:', err)
@@ -218,8 +218,8 @@ export default function DoctorsManagementPage() {
                     </div>
                   </div>
                   <div className={`px-2 py-1 rounded-full text-xs font-semibold ${doctor.is_active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
                     }`}>
                     {doctor.is_active ? 'Active' : 'Inactive'}
                   </div>
@@ -279,8 +279,8 @@ export default function DoctorsManagementPage() {
                   <button
                     onClick={() => toggleDoctorStatus(doctor.id)}
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${doctor.is_active
-                        ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                        : 'bg-green-50 text-green-700 hover:bg-green-100'
+                      ? 'bg-red-50 text-red-700 hover:bg-red-100'
+                      : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                   >
                     {doctor.is_active ? 'Deactivate' : 'Activate'}

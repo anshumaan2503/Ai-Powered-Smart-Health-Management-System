@@ -64,24 +64,18 @@ export default function EditStaffPage() {
         return
       }
 
-      // First get all staff to find the specific member
-      const response = await api.get('/hospital/staff', {
+      // Use the dedicated endpoint for fetching a specific staff member
+      const response = await api.get(`/hospital/staff/${staffId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
 
       if (!response?.data) {
-        throw new Error('Failed to fetch staff')
+        throw new Error('Failed to fetch staff member')
       }
 
-      const data = response.data
-      const staffMember = data.staff?.find((s: StaffMember) => s.id === parseInt(staffId))
-
-      if (!staffMember) {
-        throw new Error('Staff member not found')
-      }
-
+      const staffMember = response.data
       setStaff(staffMember)
       setFormData({
         first_name: staffMember.first_name,
