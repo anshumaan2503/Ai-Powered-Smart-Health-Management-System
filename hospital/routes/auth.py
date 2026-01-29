@@ -155,6 +155,7 @@ def get_profile():
             
             if patient:
                 user_data.update({
+                    'patient_profile_id': patient.id,  # Add the Patient table's primary key
                     'patient_id': patient.patient_id,
                     'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else None,
                     'gender': patient.gender,
