@@ -145,7 +145,27 @@ def get_profile():
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 401
         
-        return jsonify({'user': user.to_dict()}), 200
+        # Build response with user data
+        response_data = user.to_dict()
+        
+        # Add full patient profile data if user is a patient
+        if user.role == 'patient' and user.patient_profile:
+            from hospital.models.patient import Patient
+            patient = user.patient_profile
+            
+            response_data.update({
+                'patient_id': patient.patient_id,
+                'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+                'gender': patient.gender,
+                'blood_group': patient.blood_group,
+                'address': patient.address,
+                'emergency_contact_name': patient.emergency_contact_name,
+                'emergency_contact_phone': patient.emergency_contact_phone,
+                'medical_history': patient.medical_history,
+                'allergies': patient.allergies
+            })
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         # Log the specific error for debugging
