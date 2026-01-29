@@ -135,3 +135,61 @@ def get_profile():
         # Log the specific error for debugging
         print(f"Profile endpoint error: {str(e)}")
         return jsonify({'error': 'Authentication failed', 'details': str(e)}), 422
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile including patient details"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Update user basic info
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+        if 'phone' in data:
+            user.phone = data['phone']
+        
+        # Update patient-specific info if user is a patient
+        if user.role == 'patient' and user.patient_profile:
+            patient = user.patient_profile
+            
+            if 'date_of_birth' in data and data['date_of_birth']:
+                from datetime import datetime
+                try:
+                    patient.date_of_birth = datetime.fromisoformat(data['date_of_birth'].replace('Z', '+00:00')).date()
+                except:
+                    patient.date_of_birth = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+            
+            if 'gender' in data:
+                patient.gender = data['gender']
+            if 'blood_group' in data:
+                patient.blood_group = data['blood_group']
+            if 'address' in data:
+                patient.address = data['address']
+            if 'emergency_contact_name' in data:
+                patient.emergency_contact_name = data['emergency_contact_name']
+            if 'emergency_contact_phone' in data:
+                patient.emergency_contact_phone = data['emergency_contact_phone']
+            if 'medical_history' in data:
+                patient.medical_history = data['medical_history']
+            if 'allergies' in data:
+                patient.allergies = data['allergies']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
