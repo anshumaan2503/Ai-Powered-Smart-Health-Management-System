@@ -33,7 +33,7 @@ interface Appointment {
 }
 
 export default function PatientAppointmentsPage() {
-  const { user } = useAuth()
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -225,6 +225,14 @@ export default function PatientAppointmentsPage() {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
   }
 
   if (!user) {

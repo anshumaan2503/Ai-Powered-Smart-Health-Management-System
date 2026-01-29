@@ -20,6 +20,7 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
 import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
+import { useAuth } from '@/lib/auth-context'
 
 interface Hospital {
     id: number
@@ -36,47 +37,33 @@ interface Hospital {
 }
 
 export default function PatientDashboard() {
-    const [user, setUser] = useState<any>(null)
-    const [isAuthChecking, setIsAuthChecking] = useState(true)
+    const { user, isLoading: isAuthLoading } = useAuth()
     const [hospitals, setHospitals] = useState<Hospital[]>([])
+    const [stats, setStats] = useState({ appointments: 0, records: 0, prescriptions: 0, alerts: 0 })
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedSpecialization, setSelectedSpecialization] = useState('')
 
     useEffect(() => {
-        checkAuth()
-        fetchHospitals()
-    }, [])
-
-    const checkAuth = async () => {
-        // Check for token
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-        if (!token) {
-            setIsAuthChecking(false)
-            return
+        if (user) {
+            fetchHospitals()
+            fetchStats()
         }
+    }, [user])
 
-        // Validate token by fetching profile
+    const fetchStats = async () => {
         try {
-            const response = await api.get('/auth/profile')
-            if (response.data.user) {
-                setUser(response.data.user)
-                // Update stored user data
-                const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage
-                storage.setItem('user', JSON.stringify(response.data.user))
-            }
-        } catch (error: any) {
-            // Token is invalid, clear it
-            console.error('Auth check failed:', error)
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
-            localStorage.removeItem('user')
-            sessionStorage.removeItem('access_token')
-            sessionStorage.removeItem('refresh_token')
-            sessionStorage.removeItem('user')
-            setUser(null)
-        } finally {
-            setIsAuthChecking(false)
+            const response = await api.get('/appointments/')
+            const apps = response.data.appointments || []
+            const reportCount = apps.filter((a: any) => a.report_url).length
+            setStats({
+                appointments: apps.length,
+                records: reportCount,
+                prescriptions: 0, // Not implemented yet
+                alerts: 0
+            })
+        } catch (error) {
+            console.error('Error fetching stats:', error)
         }
     }
 
@@ -102,7 +89,7 @@ export default function PatientDashboard() {
 
     const uniqueSpecializations = Array.from(new Set(hospitals.flatMap(h => h.specializations))).filter(Boolean)
 
-    if (isAuthChecking) {
+    if (isAuthLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
                 <LoadingSpinner size="lg" />
@@ -198,7 +185,7 @@ export default function PatientDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Appointments</p>
-                                <p className="text-3xl font-black bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">0</p>
+                                <p className="text-3xl font-black bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">{stats.appointments}</p>
                             </div>
                             <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <CalendarIcon className="h-7 w-7 text-white" />
@@ -210,7 +197,7 @@ export default function PatientDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Records</p>
-                                <p className="text-3xl font-black bg-gradient-to-r from-green-600 to-cyan-600 dark:from-green-400 dark:to-cyan-400 bg-clip-text text-transparent">0</p>
+                                <p className="text-3xl font-black bg-gradient-to-r from-green-600 to-cyan-600 dark:from-green-400 dark:to-cyan-400 bg-clip-text text-transparent">{stats.records}</p>
                             </div>
                             <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
                                 <DocumentTextIcon className="h-7 w-7 text-white" />
@@ -222,7 +209,7 @@ export default function PatientDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Prescriptions</p>
-                                <p className="text-3xl font-black bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">0</p>
+                                <p className="text-3xl font-black bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">{stats.prescriptions}</p>
                             </div>
                             <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
                                 <HeartIcon className="h-7 w-7 text-white" />
@@ -234,7 +221,7 @@ export default function PatientDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Alerts</p>
-                                <p className="text-3xl font-black bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">0</p>
+                                <p className="text-3xl font-black bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">{stats.alerts}</p>
                             </div>
                             <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
                                 <BellIcon className="h-7 w-7 text-white" />

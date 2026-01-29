@@ -17,6 +17,7 @@ import {
   TrashIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 interface Appointment {
   id: number
@@ -93,7 +94,8 @@ export default function AppointmentsPage() {
         params: {
           date: dateFilter || undefined,
           status: statusFilter || undefined,
-          doctor_id: doctorFilter || undefined
+          doctor_id: doctorFilter || undefined,
+          _t: Date.now() // Cache busting
         }
       })
 
@@ -115,11 +117,12 @@ export default function AppointmentsPage() {
   const updateAppointmentStatus = async (appointmentId: number, newStatus: string) => {
     try {
       await api.put(`/hospital/appointments/${appointmentId}`, { status: newStatus })
-
+      toast.success(`Appointment marked as ${newStatus}`)
       // Refresh appointments
       fetchAppointments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update appointment')
+      toast.error('Failed to update status')
     }
   }
 
@@ -132,11 +135,12 @@ export default function AppointmentsPage() {
         appointment_date: schedulingModal.date,
         appointment_time: schedulingModal.time
       })
-
+      toast.success('Appointment scheduled successfully')
       setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
       fetchAppointments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to schedule appointment')
+      toast.error('Failed to schedule appointment')
     }
   }
 
@@ -153,11 +157,13 @@ export default function AppointmentsPage() {
           'Content-Type': 'multipart/form-data',
         },
       });
+      toast.success('Medical report uploaded successfully');
       setReportModal({ show: false, appointment: null, file: null, uploading: false });
       fetchAppointments();
     } catch (err) {
       console.error('Error uploading report:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload report');
+      toast.error('Failed to upload report');
       setReportModal(prev => ({ ...prev, uploading: false }));
     }
   };
@@ -169,11 +175,12 @@ export default function AppointmentsPage() {
 
     try {
       await api.put(`/hospital/appointments/${appointmentId}/cancel`)
-
+      toast.success('Appointment cancelled')
       // Refresh appointments
       fetchAppointments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel appointment')
+      toast.error('Failed to cancel appointment')
     }
   }
 
@@ -184,11 +191,12 @@ export default function AppointmentsPage() {
 
     try {
       await api.delete(`/hospital/appointments/${appointmentId}`)
-
+      toast.success('Appointment deleted permanently')
       // Refresh appointments
       fetchAppointments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete appointment')
+      toast.error('Failed to delete appointment')
     }
   }
 

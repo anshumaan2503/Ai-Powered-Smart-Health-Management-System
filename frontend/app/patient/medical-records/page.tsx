@@ -12,6 +12,7 @@ import {
     EyeIcon,
     HeartIcon
 } from '@heroicons/react/24/outline'
+import { useAuth } from '@/lib/auth-context'
 
 interface Record {
     id: number
@@ -24,13 +25,16 @@ interface Record {
 }
 
 export default function MedicalRecordsPage() {
+    const { user, isLoading: isAuthLoading } = useAuth()
     const [records, setRecords] = useState<Record[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
 
     useEffect(() => {
-        fetchRecords()
-    }, [])
+        if (user) {
+            fetchRecords()
+        }
+    }, [user])
 
     const fetchRecords = async () => {
         try {
@@ -50,6 +54,27 @@ export default function MedicalRecordsPage() {
         record.doctor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.hospital_name.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <LoadingSpinner size="lg" />
+            </div>
+        )
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-gray-600 font-medium mb-4">You need to be logged in to view medical records.</p>
+                    <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                        Go to Login
+                    </Link>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">

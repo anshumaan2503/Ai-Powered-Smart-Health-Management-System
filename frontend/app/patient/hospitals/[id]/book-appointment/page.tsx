@@ -28,7 +28,7 @@ interface Doctor {
 export default function BookAppointmentPage() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [selectedDate, setSelectedDate] = useState('')
@@ -97,6 +97,14 @@ export default function BookAppointmentPage() {
     } finally {
       setIsBooking(false)
     }
+  }
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
   }
 
   if (!user) {
