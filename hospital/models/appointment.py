@@ -35,6 +35,8 @@ class Appointment(db.Model):
             'patient_name': self.patient.full_name if self.patient else None,
             'doctor_name': self.doctor.user.full_name if self.doctor and self.doctor.user else None,
             'doctor_specialization': self.doctor.specialization if self.doctor else None,
+            'hospital_name': self.hospital.name if self.hospital else None,
+            'hospital_address': self.hospital.address if self.hospital else None,
             'appointment_date': self.appointment_date.isoformat() if self.appointment_date else None,
             'appointment_type': self.appointment_type,
             'status': self.status,

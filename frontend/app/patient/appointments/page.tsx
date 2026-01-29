@@ -22,6 +22,7 @@ interface Appointment {
   appointment_id: string
   doctor_name: string
   hospital_name: string
+  hospital_address?: string
   doctor_specialization: string
   appointment_date: string
   appointment_type: string
@@ -81,11 +82,11 @@ export default function PatientAppointmentsPage() {
       const tableRows = appointments.map(apt => [
         new Date(apt.appointment_date).toLocaleDateString(),
         new Date(apt.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        apt.doctor_name,
-        apt.hospital_name,
-        apt.appointment_type,
-        apt.status,
-        `Rs. ${apt.consultation_fee}`
+        apt.doctor_name || 'N/A',
+        apt.hospital_name || 'N/A',
+        apt.appointment_type || 'N/A',
+        apt.status || 'N/A',
+        `Rs. ${apt.consultation_fee || 0}`
       ])
 
       autoTable(doc, {
@@ -128,27 +129,27 @@ export default function PatientAppointmentsPage() {
       doc.setFont("helvetica", "bold")
       doc.text('APPOINTMENT ID:', 14, startY)
       doc.setFont("helvetica", "normal")
-      doc.text(appointment.appointment_id, 60, startY)
+      doc.text(appointment.appointment_id || 'N/A', 60, startY)
 
       doc.setFont("helvetica", "bold")
       doc.text('PATIENT NAME:', 14, startY + spacing)
       doc.setFont("helvetica", "normal")
-      doc.text(`${user?.first_name} ${user?.last_name}`, 60, startY + spacing)
+      doc.text(`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Patient', 60, startY + spacing)
 
       doc.setFont("helvetica", "bold")
       doc.text('HOSPITAL:', 14, startY + spacing * 2)
       doc.setFont("helvetica", "normal")
-      doc.text(appointment.hospital_name, 60, startY + spacing * 2)
+      doc.text(appointment.hospital_name || 'Not Specified', 60, startY + spacing * 2)
 
       doc.setFont("helvetica", "bold")
       doc.text('DOCTOR:', 14, startY + spacing * 3)
       doc.setFont("helvetica", "normal")
-      doc.text(appointment.doctor_name, 60, startY + spacing * 3)
+      doc.text(appointment.doctor_name || 'Not Specified', 60, startY + spacing * 3)
 
       doc.setFont("helvetica", "bold")
       doc.text('SPECIALIZATION:', 14, startY + spacing * 4)
       doc.setFont("helvetica", "normal")
-      doc.text(appointment.doctor_specialization, 60, startY + spacing * 4)
+      doc.text(appointment.doctor_specialization || 'General', 60, startY + spacing * 4)
 
       doc.setFont("helvetica", "bold")
       doc.text('DATE & TIME:', 14, startY + spacing * 5)
@@ -159,7 +160,7 @@ export default function PatientAppointmentsPage() {
       doc.setFont("helvetica", "bold")
       doc.text('FEE PAID:', 14, startY + spacing * 6)
       doc.setFont("helvetica", "normal")
-      doc.text(`Rs. ${appointment.consultation_fee}`, 60, startY + spacing * 6)
+      doc.text(`Rs. ${appointment.consultation_fee || 0}`, 60, startY + spacing * 6)
 
       // Footer
       doc.setDrawColor(200)
