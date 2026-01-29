@@ -87,6 +87,8 @@ instance/
 
 # Uploads
 uploads/
+hospital/static/uploads/*.pdf
+hospital/static/uploads/**/*.pdf
 
 # Python cache (comprehensive)
 **/__pycache__/

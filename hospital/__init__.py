@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -6,6 +6,7 @@ from flask_mail import Mail
 from flask_cors import CORS
 from config import config
 import logging
+import os
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -34,6 +35,14 @@ def create_app(config_name="default"):
         app,
         resources={
             r"/api/*": {
+                "origins": [
+                    "https://hospital-management-frontend-0421.onrender.com",
+                    "https://hospital-management-frontend-6kel.onrender.com",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                ]
+            },
+            r"/static/*": {
                 "origins": [
                     "https://hospital-management-frontend-0421.onrender.com",
                     "https://hospital-management-frontend-6kel.onrender.com",
@@ -72,6 +81,35 @@ def create_app(config_name="default"):
                 }
             )
         return {"total_routes": len(routes), "routes": routes}, 200
+
+    # ✅ Serve static files (PDFs and other uploads)
+    @app.route("/static/uploads/<path:filename>")
+    def serve_static(filename):
+        """Serve uploaded files (PDFs, images, etc.)"""
+        from flask import make_response
+        static_folder = app.static_folder or os.path.join(app.root_path, 'static')
+        response = make_response(send_from_directory(os.path.join(static_folder, 'uploads'), filename))
+        
+        # Add headers for PDF viewing and downloading
+        if filename.lower().endswith('.pdf'):
+            response.headers['Content-Type'] = 'application/pdf'
+            # Allow inline viewing in browser
+            response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(filename)}"'
+        
+        return response
+
+    # ✅ Download endpoint - Forces file download
+    @app.route("/static/uploads/<path:filename>/download")
+    def download_static(filename):
+        """Force download of uploaded files"""
+        from flask import make_response
+        static_folder = app.static_folder or os.path.join(app.root_path, 'static')
+        response = make_response(send_from_directory(os.path.join(static_folder, 'uploads'), filename))
+        
+        # Force download with attachment header
+        response.headers['Content-Disposition'] = f'attachment; filename="{os.path.basename(filename)}"'
+        
+        return response
 
     # ✅ JWT Error Handlers
     @jwt.expired_token_loader

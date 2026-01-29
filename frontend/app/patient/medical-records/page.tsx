@@ -156,12 +156,12 @@ export default function MedicalRecordsPage() {
                                         View
                                     </a>
                                     <a
-                                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${record.report_url}`}
-                                        download
+                                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${record.report_url}/download`}
+                                        download={record.report_name || 'medical-report.pdf'}
                                         className="flex items-center justify-center p-3 bg-gray-50 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors text-sm font-bold"
                                     >
                                         <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                                        Save
+                                        Download
                                     </a>
                                 </div>
                             </div>
