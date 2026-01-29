@@ -34,7 +34,7 @@ export default function MedicalRecordsPage() {
 
     const fetchRecords = async () => {
         try {
-            const response = await api.get('/appointments/my-appointments')
+            const response = await api.get('/appointments/')
             // Filter only completed appointments with reports
             const allApps = response.data.appointments || []
             const reportApps = allApps.filter((app: any) => app.status === 'completed' && app.report_url)
