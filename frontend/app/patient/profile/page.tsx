@@ -35,7 +35,8 @@ export default function PatientProfilePage() {
         try {
             setLoading(true)
             const response = await api.get('/auth/profile')
-            const data = response.data
+            // Extract user data from the wrapper
+            const data = response.data.user || response.data
 
             setProfile(data)
             setFormData({
