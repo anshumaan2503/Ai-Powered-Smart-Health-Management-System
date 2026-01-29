@@ -83,7 +83,7 @@ export default function HospitalPatientsPage() {
         blood_group: filterBloodGroup
       }
 
-      const response = await patientsAPI.getPatients(params)
+      const response = await hospitalAPI.getPatients(params)
       setPatients(response.data.patients || [])
       setTotalPages(response.data.pages || 1)
     } catch (error: any) {

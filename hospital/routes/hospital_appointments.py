@@ -468,8 +468,32 @@ def get_all_patients():
         
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search', '')
+        gender = request.args.get('gender', '')
+        blood_group = request.args.get('blood_group', '')
         
-        patients = Patient.query.filter_by(hospital_id=user.hospital_id).paginate(
+        query = db.session.query(Patient).join(User, Patient.user_id == User.id).filter(Patient.hospital_id == user.hospital_id)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    Patient.patient_id.ilike(f'%{search}%'),
+                    User.first_name.ilike(f'%{search}%'),
+                    User.last_name.ilike(f'%{search}%'),
+                    User.phone.ilike(f'%{search}%')
+                )
+            )
+            
+        # Apply gender filter
+        if gender:
+            query = query.filter_by(gender=gender)
+            
+        # Apply blood group filter
+        if blood_group:
+            query = query.filter_by(blood_group=blood_group)
+            
+        patients = query.paginate(
             page=page, per_page=per_page, error_out=False
         )
         

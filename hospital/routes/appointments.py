@@ -65,6 +65,10 @@ def create_appointment():
             consultation_fee=doctor.consultation_fee,
             hospital_id=doctor.hospital_id
         )
+
+        # Also associate patient with hospital if not already associated
+        if not patient.hospital_id:
+            patient.hospital_id = doctor.hospital_id
         
         db.session.add(appointment)
         db.session.commit()
