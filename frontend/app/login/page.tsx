@@ -173,22 +173,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Demo Patient Credentials</h3>
-          <div className="text-xs text-blue-700 dark:text-blue-400 space-y-2">
-            <div className="font-medium">Sample Patients (Password: 123 for all):</div>
-            <div className="ml-2 grid grid-cols-2 gap-1">
-              <div><strong>arjun@patient.com</strong></div>
-              <div><strong>priya@patient.com</strong></div>
-              <div><strong>rahul@patient.com</strong></div>
-              <div><strong>sneha@patient.com</strong></div>
-              <div><strong>vikram@patient.com</strong></div>
-              <div><strong>anita@patient.com</strong></div>
-            </div>
-            <div className="font-medium mt-2">All patients use password: <strong>123</strong></div>
-          </div>
-        </div>
+
       </div>
     </div>
   )

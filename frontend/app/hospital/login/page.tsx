@@ -181,36 +181,7 @@ export default function HospitalLoginPage() {
           </div>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">Demo Hospital Credentials</h3>
-          <div className="text-xs text-green-700 dark:text-green-400 space-y-2">
-            <div className="font-medium">Hospital Admin Login:</div>
-            <div className="ml-2">
-              <div>
-                <strong>Email:</strong> admin@hospital.com
-              </div>
-              <div>
-                <strong>Password:</strong> 123
-              </div>
-            </div>
-            <div className="font-medium mt-2">Other Hospital Admins:</div>
-            <div className="ml-2">
-              <div>
-                <strong>City Hospital:</strong> city@hospital.com
-              </div>
-              <div>
-                <strong>Apollo:</strong> apollo@hospital.com
-              </div>
-              <div>
-                <strong>Fortis:</strong> fortis@hospital.com
-              </div>
-              <div>
-                <strong>Password:</strong> 123 (for all)
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   )
