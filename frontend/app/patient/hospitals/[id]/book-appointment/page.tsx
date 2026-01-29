@@ -65,7 +65,7 @@ export default function BookAppointmentPage() {
 
     setIsBooking(true)
     try {
-      // First, fetch the current user profile to get patient_id
+      // First, fetch the current user profile to get patient info
       const profileResponse = await api.get('/auth/profile')
       const userData = profileResponse.data.user || profileResponse.data
 
@@ -75,11 +75,23 @@ export default function BookAppointmentPage() {
         return
       }
 
+      // Get the actual Patient record from the database
+      const patientResponse = await api.get(`/patients?user_id=${userData.id}`)
+      const patients = patientResponse.data.patients || patientResponse.data
+
+      if (!patients || patients.length === 0) {
+        toast.error('Patient profile not found. Please complete your profile first.')
+        router.push('/patient/profile')
+        return
+      }
+
+      const patientId = patients[0].id  // Get the Patient table's primary key
+
       // Create appointment datetime string
       const appointment_date = `${selectedDate}T${selectedTime}:00`
 
       await api.post('/appointments/', {
-        patient_id: userData.id,  // Use the user's database ID
+        patient_id: patientId,  // Use the Patient table's ID
         doctor_id: selectedDoctor.id,
         appointment_date: appointment_date,
         appointment_type: appointmentType,
