@@ -244,23 +244,23 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg p-8 text-white">
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 rounded-xl shadow-lg p-8 text-white">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold mb-2">Appointment Management</h1>
-            <p className="text-indigo-100 text-lg">Schedule and manage patient appointments</p>
+            <p className="text-indigo-100 dark:text-indigo-200 text-lg">Schedule and manage patient appointments</p>
             <div className="mt-4 flex items-center space-x-6 text-sm">
-              <span className="bg-indigo-500 bg-opacity-50 px-3 py-1 rounded-full">
+              <span className="bg-indigo-500/50 dark:bg-indigo-600/50 px-3 py-1 rounded-full">
                 📅 {appointments.length} Total Appointments
               </span>
-              <span className="bg-indigo-500 bg-opacity-50 px-3 py-1 rounded-full">
+              <span className="bg-indigo-500/50 dark:bg-indigo-600/50 px-3 py-1 rounded-full">
                 ✅ {appointments.filter(a => a.status === 'scheduled').length} Scheduled
               </span>
             </div>
           </div>
           <Link
             href="/hospital/dashboard/appointments/book"
-            className="bg-white text-indigo-600 px-6 py-3 rounded-lg hover:bg-indigo-50 flex items-center space-x-2 font-semibold shadow-lg"
+            className="bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-6 py-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-700 flex items-center space-x-2 font-semibold shadow-lg transition-colors"
           >
             <PlusIcon className="h-5 w-5" />
             <span>Book Appointment</span>
@@ -269,29 +269,29 @@ export default function AppointmentsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-400">{error}</p>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-card rounded-lg shadow-sm p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+            <label className="block text-sm font-medium text-primary mb-2">Date</label>
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="input-field"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <label className="block text-sm font-medium text-primary mb-2">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="input-field"
             >
               <option value="">All Status</option>
               <option value="scheduled">Scheduled</option>
@@ -302,11 +302,11 @@ export default function AppointmentsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Doctor</label>
+            <label className="block text-sm font-medium text-primary mb-2">Doctor</label>
             <select
               value={doctorFilter}
               onChange={(e) => setDoctorFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="input-field"
             >
               <option value="">All Doctors</option>
               {/* We'll populate this dynamically later */}
@@ -319,7 +319,7 @@ export default function AppointmentsPage() {
                 setStatusFilter('')
                 setDoctorFilter('')
               }}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
               Clear Filters
             </button>
@@ -328,12 +328,12 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Appointments List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-card rounded-lg shadow-sm">
         {appointments.length === 0 ? (
           <div className="p-8 text-center">
-            <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h3>
-            <p className="text-gray-600 mb-4">Start by booking your first appointment.</p>
+            <CalendarIcon className="h-12 w-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-primary mb-2">No appointments found</h3>
+            <p className="text-secondary mb-4">Start by booking your first appointment.</p>
             <Link
               href="/hospital/dashboard/appointments/book"
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 inline-flex items-center space-x-2"
@@ -345,9 +345,9 @@ export default function AppointmentsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="table-header">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Appointment
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -367,11 +367,11 @@ export default function AppointmentsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-primary divide-y divide-slate-200 dark:divide-slate-800">
                 {appointments.map((appointment) => {
                   const { date, time } = formatDateTime(appointment.appointment_date)
                   return (
-                    <tr key={appointment.id} className="hover:bg-gray-50">
+                    <tr key={appointment.id} className="table-row">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
@@ -516,21 +516,21 @@ export default function AppointmentsPage() {
 
       {/* Scheduling Modal */}
       {schedulingModal.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Schedule Appointment</h2>
-            <p className="text-sm text-gray-600 mb-6">
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 className="text-xl font-bold text-primary mb-4">Schedule Appointment</h2>
+            <p className="text-sm text-secondary mb-6">
               Assing a final date and time for <strong>{schedulingModal.appointment?.patient.name}'s</strong> request with <strong>Dr. {schedulingModal.appointment?.doctor.name}</strong>.
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
+                <label className="block text-sm font-medium text-primary mb-1">Appointment Date</label>
                 <input
                   type="date"
                   value={schedulingModal.date}
                   onChange={(e) => setSchedulingModal({ ...schedulingModal, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="input-field"
                 />
               </div>
               <div>
@@ -547,7 +547,7 @@ export default function AppointmentsPage() {
             <div className="flex justify-end space-x-3 mt-8">
               <button
                 onClick={() => setSchedulingModal({ show: false, appointment: null, date: '', time: '' })}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -564,10 +564,10 @@ export default function AppointmentsPage() {
 
       {/* Report Upload Modal */}
       {reportModal.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+        <div className="modal-overlay">
+          <div className="modal-content">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Upload Medical Report</h2>
+              <h2 className="text-xl font-bold text-primary">Upload Medical Report</h2>
               <button onClick={() => setReportModal({ ...reportModal, show: false })} className="text-gray-400 hover:text-gray-600">
                 <XCircleIcon className="h-6 w-6" />
               </button>
