@@ -219,3 +219,48 @@ def add_patient_id_to_appointments():
             'traceback': traceback.format_exc(),
             'status': 'failed'
         }), 500
+@migration_bp.route('/add-report-columns', methods=['POST'])
+def add_report_columns():
+    """Add report_url and report_name columns to appointments table"""
+    try:
+        # Check existing columns
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('appointments')]
+        
+        needed = ['report_url', 'report_name']
+        to_add = [col for col in needed if col not in columns]
+        
+        if not to_add:
+            return jsonify({
+                'message': 'Report columns already exist',
+                'status': 'skipped'
+            }), 200
+            
+        with db.engine.connect() as conn:
+            if 'postgresql' in str(db.engine.url):
+                if 'report_url' in to_add:
+                    conn.execute(text('ALTER TABLE appointments ADD COLUMN report_url VARCHAR(255)'))
+                if 'report_name' in to_add:
+                    conn.execute(text('ALTER TABLE appointments ADD COLUMN report_name VARCHAR(100)'))
+                conn.commit()
+            else:
+                # Local SQLite
+                if 'report_url' in to_add:
+                    conn.execute(text('ALTER TABLE appointments ADD COLUMN report_url VARCHAR(255)'))
+                if 'report_name' in to_add:
+                    conn.execute(text('ALTER TABLE appointments ADD COLUMN report_name VARCHAR(100)'))
+                # SQLite handle it simplified or just error out if logic is complex
+                # But simple ADD COLUMN usually works in SQLite for simple types
+                
+        return jsonify({
+            'message': f'Added columns: {", ".join(to_add)}',
+            'status': 'success'
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'status': 'failed'
+        }), 500
