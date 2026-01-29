@@ -10,6 +10,7 @@ import {
   ClockIcon,
   PhoneIcon,
   CheckCircleIcon,
+  CheckBadgeIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
   TrashIcon
@@ -386,25 +387,44 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {(appointment.status === 'scheduled' || appointment.status === 'requested') && (
+                          {/* Action Buttons based on Status */}
+                          {appointment.status === 'requested' && (
                             <button
                               onClick={() => {
-                                if (appointment.status === 'requested') {
-                                  const dt = new Date(appointment.appointment_date)
-                                  setSchedulingModal({
-                                    show: true,
-                                    appointment: appointment,
-                                    date: dt.toISOString().split('T')[0],
-                                    time: dt.toTimeString().split(' ')[0].substring(0, 5)
-                                  })
-                                } else {
-                                  updateAppointmentStatus(appointment.id, 'confirmed')
-                                }
+                                const dt = new Date(appointment.appointment_date)
+                                setSchedulingModal({
+                                  show: true,
+                                  appointment: appointment,
+                                  date: dt.toISOString().split('T')[0],
+                                  time: dt.toTimeString().split(' ')[0].substring(0, 5)
+                                })
                               }}
-                              className={`${appointment.status === 'requested' ? 'text-blue-600 hover:text-blue-900' : 'text-green-600 hover:text-green-900'} p-1 rounded`}
-                              title={appointment.status === 'requested' ? "Schedule/Confirm Appointment" : "Confirm Appointment"}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                              title="Schedule Appointment"
                             >
-                              {appointment.status === 'requested' ? <ClockIcon className="h-4 w-4" /> : <CheckCircleIcon className="h-4 w-4" />}
+                              <ClockIcon className="h-4 w-4" />
+                            </button>
+                          )}
+
+                          {/* Confirm Button for Scheduled */}
+                          {appointment.status === 'scheduled' && (
+                            <button
+                              onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
+                              className="text-green-600 hover:text-green-900 p-1 rounded"
+                              title="Confirm Appointment"
+                            >
+                              <CheckCircleIcon className="h-4 w-4" />
+                            </button>
+                          )}
+
+                          {/* Complete Button for Scheduled or Confirmed */}
+                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed') && (
+                            <button
+                              onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
+                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
+                              title="Mark as Completed"
+                            >
+                              <CheckBadgeIcon className="h-4 w-4" />
                             </button>
                           )}
                           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
