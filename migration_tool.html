@@ -171,7 +171,7 @@
         <p class="subtitle">Run database migrations for AI Smart Health Management System</p>
 
         <div class="api-url">
-            <strong>API Base:</strong> https://ai-powered-smart-health-management-system-render.com
+            <strong>API Base:</strong> https://ai-powered-smart-health-management.onrender.com
         </div>
 
         <div class="warning">
@@ -199,7 +199,8 @@
         <div class="migration-section">
             <h2>3. Add patient_id Column to Appointments ⭐ NEW</h2>
             <p>Adds the patient_id column to the appointments table with foreign key constraint to patients table.
-                <strong>Required for appointment booking!</strong></p>
+                <strong>Required for appointment booking!</strong>
+            </p>
             <button onclick="runMigration('add-patient-id-to-appointments', 'status3')">Run Migration</button>
             <div id="status3" class="status"></div>
         </div>
@@ -214,7 +215,7 @@
     </div>
 
     <script>
-        const API_BASE = 'https://ai-powered-smart-health-management-system-render.com/api/migration';
+        const API_BASE = 'https://ai-powered-smart-health-management.onrender.com/api/migration';
 
         async function runMigration(endpoint, statusId) {
             const statusEl = document.getElementById(statusId);
