@@ -40,6 +40,22 @@ def register():
         user.set_password(data['password'])
         
         db.session.add(user)
+        db.session.flush()  # Flush to get user.id
+        
+        # If registering as patient, create patient profile
+        if data['role'] == 'patient':
+            from hospital.models.patient import Patient
+            import uuid
+            
+            # Generate unique patient ID
+            patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
+            
+            patient = Patient(
+                user_id=user.id,
+                patient_id=patient_id
+            )
+            db.session.add(patient)
+        
         db.session.commit()
         
         return jsonify({

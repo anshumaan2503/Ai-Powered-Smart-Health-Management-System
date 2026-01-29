@@ -105,3 +105,54 @@ def fix_appointments():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@migration_bp.route('/create-patient-profiles', methods=['POST'])
+def create_patient_profiles():
+    """Create patient profiles for users who don't have one"""
+    try:
+        from hospital.models.user import User
+        from hospital.models.patient import Patient
+        import uuid
+        
+        # Find all users with role='patient' who don't have a patient profile
+        users_without_profile = User.query.filter(
+            User.role == 'patient',
+            ~User.id.in_(db.session.query(Patient.user_id))
+        ).all()
+        
+        if not users_without_profile:
+            return jsonify({
+                'message': 'All patient users already have profiles',
+                'created_count': 0
+            }), 200
+        
+        created_count = 0
+        created_profiles = []
+        
+        for user in users_without_profile:
+            # Generate unique patient ID
+            patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
+            
+            # Create patient profile
+            patient = Patient(
+                user_id=user.id,
+                patient_id=patient_id
+            )
+            db.session.add(patient)
+            created_count += 1
+            created_profiles.append({
+                'email': user.email,
+                'patient_id': patient_id
+            })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Patient profiles created successfully',
+            'created_count': created_count,
+            'profiles': created_profiles
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
