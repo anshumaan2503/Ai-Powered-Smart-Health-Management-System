@@ -18,6 +18,8 @@ class Appointment(db.Model):
     actual_duration = db.Column(db.Integer)
     consultation_fee = db.Column(db.Float)
     payment_status = db.Column(db.String(20), default='pending')  # pending, paid, cancelled
+    report_url = db.Column(db.String(255))
+    report_name = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -47,5 +49,7 @@ class Appointment(db.Model):
             'actual_duration': self.actual_duration,
             'consultation_fee': self.consultation_fee,
             'payment_status': self.payment_status,
+            'report_url': self.report_url,
+            'report_name': self.report_name,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

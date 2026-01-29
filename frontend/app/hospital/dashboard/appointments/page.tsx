@@ -13,6 +13,7 @@ import {
   CheckBadgeIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  ArrowUpTrayIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
@@ -39,6 +40,8 @@ interface Appointment {
     name: string
     specialization: string
   }
+  report_url?: string
+  report_name?: string
 }
 
 export default function AppointmentsPage() {
@@ -48,11 +51,28 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [doctorFilter, setDoctorFilter] = useState('')
-  const [schedulingModal, setSchedulingModal] = useState<{ show: boolean; appointment: Appointment | null; date: string; time: string }>({
+  const [schedulingModal, setSchedulingModal] = useState<{
+    show: boolean;
+    appointment: Appointment | null;
+    date: string;
+    time: string;
+  }>({
     show: false,
     appointment: null,
     date: '',
-    time: ''
+    time: '',
+  })
+
+  const [reportModal, setReportModal] = useState<{
+    show: boolean;
+    appointment: Appointment | null;
+    file: File | null;
+    uploading: boolean;
+  }>({
+    show: false,
+    appointment: null,
+    file: null,
+    uploading: false,
   })
 
   useEffect(() => {
@@ -119,6 +139,28 @@ export default function AppointmentsPage() {
       setError(err instanceof Error ? err.message : 'Failed to schedule appointment')
     }
   }
+
+  const handleReportUpload = async () => {
+    if (!reportModal.appointment || !reportModal.file) return;
+
+    setReportModal(prev => ({ ...prev, uploading: true }));
+    const formData = new FormData();
+    formData.append('file', reportModal.file);
+
+    try {
+      await api.post(`/hospital/appointments/${reportModal.appointment.id}/upload-report`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setReportModal({ show: false, appointment: null, file: null, uploading: false });
+      fetchAppointments();
+    } catch (err) {
+      console.error('Error uploading report:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload report');
+      setReportModal(prev => ({ ...prev, uploading: false }));
+    }
+  };
 
   const cancelAppointment = async (appointmentId: number) => {
     if (!confirm('Are you sure you want to cancel this appointment?')) {
@@ -427,6 +469,16 @@ export default function AppointmentsPage() {
                               <CheckBadgeIcon className="h-4 w-4" />
                             </button>
                           )}
+
+                          {appointment.status === 'completed' && (
+                            <button
+                              onClick={() => setReportModal({ ...reportModal, show: true, appointment: appointment })}
+                              className={`${appointment.report_url ? 'text-green-600 hover:text-green-900' : 'text-indigo-600 hover:text-indigo-900'} p-1 rounded`}
+                              title={appointment.report_url ? "Update Medical Report" : "Upload Medical Report"}
+                            >
+                              <ArrowUpTrayIcon className="h-4 w-4" />
+                            </button>
+                          )}
                           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
                             <button
                               onClick={() => cancelAppointment(appointment.id)}
@@ -497,6 +549,74 @@ export default function AppointmentsPage() {
               >
                 Assign & Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Upload Modal */}
+      {reportModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Upload Medical Report</h2>
+              <button onClick={() => setReportModal({ ...reportModal, show: false })} className="text-gray-400 hover:text-gray-600">
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Upload the laboratory or medical report for <strong>{reportModal.appointment?.patient.name}</strong>. This will be visible in their patient portal.
+            </p>
+
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors pointer-events-auto">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  id="report-upload"
+                  className="hidden"
+                  onChange={(e) => setReportModal({ ...reportModal, file: e.target.files?.[0] || null })}
+                />
+                <label htmlFor="report-upload" className="cursor-pointer block">
+                  <ArrowUpTrayIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                  <span className="text-sm font-medium text-gray-600 block mb-1">
+                    {reportModal.file ? reportModal.file.name : 'Click to select PDF report'}
+                  </span>
+                  <span className="text-xs text-gray-500">Only PDF files up to 10MB</span>
+                </label>
+              </div>
+
+              {reportModal.file && (
+                <div className="bg-blue-50 p-3 rounded-lg flex items-center text-blue-800 text-sm">
+                  <CheckCircleIcon className="h-5 w-5 mr-2" />
+                  <span>File ready for upload</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setReportModal({ ...reportModal, show: false })}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!reportModal.file || reportModal.uploading}
+                  onClick={handleReportUpload}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                >
+                  {reportModal.uploading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading...
+                    </>
+                  ) : 'Upload Report'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

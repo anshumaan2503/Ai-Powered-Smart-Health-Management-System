@@ -8,6 +8,9 @@ from hospital.models.appointment import Appointment
 from hospital.models.hospital import Hospital
 from datetime import datetime, timedelta
 import uuid
+import os
+from flask import current_app
+from werkzeug.utils import secure_filename
 
 hospital_appointments_bp = Blueprint('hospital_appointments', __name__)
 
@@ -590,4 +593,67 @@ def get_available_doctors():
         }), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@hospital_appointments_bp.route('/appointments/<int:appointment_id>/upload-report', methods=['POST'])
+@jwt_required()
+def upload_report(appointment_id):
+    """Upload a PDF report for an appointment"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
+        
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'User not associated with any hospital'}), 404
+        
+        if user.role not in ['admin', 'receptionist', 'doctor']:
+            return jsonify({'error': 'Access denied'}), 403
+            
+        appointment = Appointment.query.filter_by(
+            id=appointment_id,
+            hospital_id=user.hospital_id
+        ).first()
+        
+        if not appointment:
+            return jsonify({'error': 'Appointment not found'}), 404
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        if file and file.filename.lower().endswith('.pdf'):
+            # Create uploads directory if it doesn't exist
+            static_folder = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+            upload_folder = os.path.join(static_folder, 'uploads', 'reports')
+            
+            if not os.path.exists(upload_folder):
+                os.makedirs(upload_folder)
+                
+            filename = secure_filename(f"report_{appointment.appointment_id}_{uuid.uuid4().hex[:8]}.pdf")
+            filepath = os.path.join(upload_folder, filename)
+            file.save(filepath)
+            
+            # Save the relative URL
+            report_url = f"/static/uploads/reports/{filename}"
+            appointment.report_url = report_url
+            appointment.report_name = file.filename
+            appointment.status = 'completed' # Auto mark as completed
+            appointment.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Report uploaded successfully',
+                'report_url': report_url,
+                'report_name': file.filename,
+                'appointment': appointment.to_dict()
+            }), 200
+        else:
+            return jsonify({'error': 'Only PDF files are allowed'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
