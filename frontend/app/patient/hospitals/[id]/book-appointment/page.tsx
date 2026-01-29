@@ -63,18 +63,23 @@ export default function BookAppointmentPage() {
       return
     }
 
-    if (!user?.patient_profile?.id) {
-      toast.error('Patient profile not found. Please complete your profile first.')
-      return
-    }
-
     setIsBooking(true)
     try {
+      // First, fetch the current user profile to get patient_id
+      const profileResponse = await api.get('/auth/profile')
+      const userData = profileResponse.data.user || profileResponse.data
+
+      if (!userData.patient_id) {
+        toast.error('Patient profile not found. Please complete your profile first.')
+        router.push('/patient/profile')
+        return
+      }
+
       // Create appointment datetime string
       const appointment_date = `${selectedDate}T${selectedTime}:00`
 
       await api.post('/appointments/', {
-        patient_id: user.patient_profile.id,
+        patient_id: userData.id,  // Use the user's database ID
         doctor_id: selectedDoctor.id,
         appointment_date: appointment_date,
         appointment_type: appointmentType,
@@ -146,8 +151,8 @@ export default function BookAppointmentPage() {
                       key={doctor.id}
                       onClick={() => setSelectedDoctor(doctor)}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedDoctor?.id === doctor.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >
                       <div className="flex items-center space-x-3">
@@ -191,8 +196,8 @@ export default function BookAppointmentPage() {
                         key={time}
                         onClick={() => setSelectedTime(time)}
                         className={`p-2 text-sm border rounded-lg transition-colors ${selectedTime === time
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300'
                           }`}
                       >
                         {time}
