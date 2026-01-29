@@ -10,7 +10,7 @@ class Appointment(db.Model):
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
     appointment_date = db.Column(db.DateTime, nullable=False)
     appointment_type = db.Column(db.String(50))  # consultation, follow-up, emergency
-    status = db.Column(db.String(20), default='scheduled')  # scheduled, completed, cancelled, no-show
+    status = db.Column(db.String(20), default='scheduled')  # requested, scheduled, confirmed, completed, cancelled, no-show
     symptoms = db.Column(db.Text)
     notes = db.Column(db.Text)
     priority = db.Column(db.String(10), default='normal')  # low, normal, high, emergency

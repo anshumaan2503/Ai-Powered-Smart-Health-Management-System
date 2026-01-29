@@ -13,61 +13,56 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
+import { api } from '@/lib/api'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import toast from 'react-hot-toast'
 
 interface Appointment {
   id: number
+  appointment_id: string
   doctor_name: string
   hospital_name: string
-  specialization: string
-  date: string
-  time: string
-  type: string
-  status: 'confirmed' | 'pending' | 'cancelled' | 'completed'
-  fee: number
+  doctor_specialization: string
+  appointment_date: string
+  appointment_type: string
+  status: 'requested' | 'scheduled' | 'confirmed' | 'cancelled' | 'completed' | 'no-show'
+  consultation_fee: number
 }
 
 export default function PatientAppointmentsPage() {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock appointments data
-    setAppointments([
-      {
-        id: 1,
-        doctor_name: "Dr. Sarah Johnson",
-        hospital_name: "City General Hospital",
-        specialization: "Cardiology",
-        date: "2024-12-25",
-        time: "10:00",
-        type: "consultation",
-        status: "confirmed",
-        fee: 150
-      },
-      {
-        id: 2,
-        doctor_name: "Dr. Michael Chen",
-        hospital_name: "Metro Medical Center",
-        specialization: "Neurology",
-        date: "2024-12-28",
-        time: "14:00",
-        type: "followup",
-        status: "pending",
-        fee: 200
-      }
-    ])
-  }, [])
+    if (user) {
+      fetchAppointments()
+    }
+  }, [user])
 
-  const handleCancelAppointment = (appointmentId: number) => {
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get('/appointments/')
+      setAppointments(response.data.appointments || [])
+    } catch (error) {
+      console.error('Error fetching appointments:', error)
+      toast.error('Failed to load appointments')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelAppointment = async (appointmentId: number) => {
     if (confirm('Are you sure you want to cancel this appointment?')) {
-      setAppointments(prev =>
-        prev.map(apt =>
-          apt.id === appointmentId
-            ? { ...apt, status: 'cancelled' as const }
-            : apt
-        )
-      )
-      alert('Appointment cancelled successfully!')
+      try {
+        await api.put(`/appointments/${appointmentId}`, { status: 'cancelled' })
+        toast.success('Appointment cancelled successfully!')
+        fetchAppointments()
+      } catch (error) {
+        console.error('Error cancelling appointment:', error)
+        toast.error('Failed to cancel appointment')
+      }
     }
   }
 
@@ -75,12 +70,14 @@ export default function PatientAppointmentsPage() {
     switch (status) {
       case 'confirmed':
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />
-      case 'pending':
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+      case 'scheduled':
+        return <CalendarIcon className="h-5 w-5 text-blue-500" />
+      case 'requested':
+        return <ClockIcon className="h-5 w-5 text-yellow-500" />
       case 'cancelled':
         return <XCircleIcon className="h-5 w-5 text-red-500" />
       case 'completed':
-        return <CheckCircleIcon className="h-5 w-5 text-blue-500" />
+        return <CheckCircleIcon className="h-5 w-5 text-indigo-500" />
       default:
         return <ClockIcon className="h-5 w-5 text-gray-500" />
     }
@@ -90,12 +87,14 @@ export default function PatientAppointmentsPage() {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800'
-      case 'pending':
+      case 'scheduled':
+        return 'bg-blue-100 text-blue-800'
+      case 'requested':
         return 'bg-yellow-100 text-yellow-800'
       case 'cancelled':
         return 'bg-red-100 text-red-800'
       case 'completed':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-indigo-100 text-indigo-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -161,7 +160,11 @@ export default function PatientAppointmentsPage() {
 
         {/* Appointments List */}
         <div className="space-y-6">
-          {appointments.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : appointments.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-12 text-center">
               <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h3>
@@ -195,26 +198,26 @@ export default function PatientAppointmentsPage() {
                       </div>
                       <div className="flex items-center">
                         <HeartIcon className="h-4 w-4 mr-2" />
-                        <span>{appointment.specialization}</span>
+                        <span>{appointment.doctor_specialization}</span>
                       </div>
                       <div className="flex items-center">
                         <CalendarIcon className="h-4 w-4 mr-2" />
-                        <span>{new Date(appointment.date).toLocaleDateString()}</span>
+                        <span>{new Date(appointment.appointment_date).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center">
                         <ClockIcon className="h-4 w-4 mr-2" />
-                        <span>{appointment.time}</span>
+                        <span>{new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="text-lg font-semibold text-gray-900 mb-2">
-                      ₹{appointment.fee}
+                      ₹{appointment.consultation_fee}
                     </div>
                     <div className="flex items-center text-sm text-gray-600 mb-4">
                       {getStatusIcon(appointment.status)}
-                      <span className="ml-1 capitalize">{appointment.type}</span>
+                      <span className="ml-1 capitalize">{appointment.appointment_type}</span>
                     </div>
 
                     <div className="space-y-2">

@@ -134,7 +134,10 @@ export default function BookAppointmentPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Book Your Appointment</h1>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Request Appointment</h1>
+            <p className="text-gray-600 mt-1">Submit your preferred date and time. The hospital will review and confirm or assign a final slot.</p>
+          </div>
 
           {isLoading ? (
             <div className="flex justify-center py-12">
@@ -175,7 +178,7 @@ export default function BookAppointmentPage() {
               {/* Date Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Date
+                  Preferred Date
                 </label>
                 <input
                   type="date"
@@ -190,7 +193,7 @@ export default function BookAppointmentPage() {
               {selectedDoctor && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Select Time
+                    Preferred Time Slot
                   </label>
                   <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
                     {selectedDoctor.available_times.map((time) => (
@@ -282,12 +285,12 @@ export default function BookAppointmentPage() {
                 {isBooking ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
-                    Booking Appointment...
+                    Sending Request...
                   </>
                 ) : (
                   <>
                     <CheckCircleIcon className="h-5 w-5 mr-2" />
-                    Book Appointment
+                    Send Appointment Request
                   </>
                 )}
               </button>

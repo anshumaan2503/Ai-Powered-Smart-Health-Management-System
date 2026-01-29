@@ -47,6 +47,12 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [doctorFilter, setDoctorFilter] = useState('')
+  const [schedulingModal, setSchedulingModal] = useState<{ show: boolean; appointment: Appointment | null; date: string; time: string }>({
+    show: false,
+    appointment: null,
+    date: '',
+    time: ''
+  })
 
   useEffect(() => {
     fetchAppointments()
@@ -96,6 +102,23 @@ export default function AppointmentsPage() {
     }
   }
 
+  const handleScheduleSubmit = async () => {
+    if (!schedulingModal.appointment || !schedulingModal.date || !schedulingModal.time) return
+
+    try {
+      await api.put(`/hospital/appointments/${schedulingModal.appointment.id}`, {
+        status: 'scheduled',
+        appointment_date: schedulingModal.date,
+        appointment_time: schedulingModal.time
+      })
+
+      setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
+      fetchAppointments()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to schedule appointment')
+    }
+  }
+
   const cancelAppointment = async (appointmentId: number) => {
     if (!confirm('Are you sure you want to cancel this appointment?')) {
       return
@@ -128,6 +151,7 @@ export default function AppointmentsPage() {
 
   const getStatusBadge = (status: string) => {
     const badges = {
+      requested: 'bg-yellow-100 text-yellow-800',
       scheduled: 'bg-blue-100 text-blue-800',
       confirmed: 'bg-green-100 text-green-800',
       completed: 'bg-gray-100 text-gray-800',
@@ -362,13 +386,25 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {appointment.status === 'scheduled' && (
+                          {(appointment.status === 'scheduled' || appointment.status === 'requested') && (
                             <button
-                              onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
-                              className="text-green-600 hover:text-green-900 p-1 rounded"
-                              title="Confirm Appointment"
+                              onClick={() => {
+                                if (appointment.status === 'requested') {
+                                  const dt = new Date(appointment.appointment_date)
+                                  setSchedulingModal({
+                                    show: true,
+                                    appointment: appointment,
+                                    date: dt.toISOString().split('T')[0],
+                                    time: dt.toTimeString().split(' ')[0].substring(0, 5)
+                                  })
+                                } else {
+                                  updateAppointmentStatus(appointment.id, 'confirmed')
+                                }
+                              }}
+                              className={`${appointment.status === 'requested' ? 'text-blue-600 hover:text-blue-900' : 'text-green-600 hover:text-green-900'} p-1 rounded`}
+                              title={appointment.status === 'requested' ? "Schedule/Confirm Appointment" : "Confirm Appointment"}
                             >
-                              <CheckCircleIcon className="h-4 w-4" />
+                              {appointment.status === 'requested' ? <ClockIcon className="h-4 w-4" /> : <CheckCircleIcon className="h-4 w-4" />}
                             </button>
                           )}
                           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
@@ -397,6 +433,54 @@ export default function AppointmentsPage() {
           </div>
         )}
       </div>
+
+      {/* Scheduling Modal */}
+      {schedulingModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Schedule Appointment</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Assing a final date and time for <strong>{schedulingModal.appointment?.patient.name}'s</strong> request with <strong>Dr. {schedulingModal.appointment?.doctor.name}</strong>.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
+                <input
+                  type="date"
+                  value={schedulingModal.date}
+                  onChange={(e) => setSchedulingModal({ ...schedulingModal, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Time</label>
+                <input
+                  type="time"
+                  value={schedulingModal.time}
+                  onChange={(e) => setSchedulingModal({ ...schedulingModal, time: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-8">
+              <button
+                onClick={() => setSchedulingModal({ show: false, appointment: null, date: '', time: '' })}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleScheduleSubmit}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-all active:scale-95"
+              >
+                Assign & Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

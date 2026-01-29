@@ -63,6 +63,7 @@ def create_appointment():
             priority=data.get('priority', 'normal'),
             estimated_duration=data.get('estimated_duration', 30),
             consultation_fee=doctor.consultation_fee,
+            status='requested',
             hospital_id=doctor.hospital_id
         )
 
