@@ -322,9 +322,8 @@ def delete_appointment(appointment_id):
         if not appointment:
             return jsonify({'error': 'Appointment not found'}), 404
         
-        # Only allow deletion of cancelled appointments or future appointments
-        if appointment.status not in ['cancelled', 'scheduled'] and appointment.appointment_date > datetime.now():
-            return jsonify({'error': 'Can only delete cancelled appointments or future scheduled appointments'}), 400
+        # Administrators can delete any appointment associated with their hospital
+        # The frontend already shows a confirmation dialog
         
         db.session.delete(appointment)
         db.session.commit()
