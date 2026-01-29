@@ -149,21 +149,22 @@ def get_profile():
         user_data = user.to_dict()
         
         # Add full patient profile data if user is a patient
-        if user.role == 'patient' and user.patient_profile:
+        if user.role == 'patient':
             from hospital.models.patient import Patient
-            patient = user.patient_profile
+            patient = Patient.query.filter_by(user_id=user.id).first()
             
-            user_data.update({
-                'patient_id': patient.patient_id,
-                'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else None,
-                'gender': patient.gender,
-                'blood_group': patient.blood_group,
-                'address': patient.address,
-                'emergency_contact_name': patient.emergency_contact_name,
-                'emergency_contact_phone': patient.emergency_contact_phone,
-                'medical_history': patient.medical_history,
-                'allergies': patient.allergies
-            })
+            if patient:
+                user_data.update({
+                    'patient_id': patient.patient_id,
+                    'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+                    'gender': patient.gender,
+                    'blood_group': patient.blood_group,
+                    'address': patient.address,
+                    'emergency_contact_name': patient.emergency_contact_name,
+                    'emergency_contact_phone': patient.emergency_contact_phone,
+                    'medical_history': patient.medical_history,
+                    'allergies': patient.allergies
+                })
         
         # IMPORTANT: Keep the 'user' wrapper for backwards compatibility
         return jsonify({'user': user_data}), 200
@@ -195,9 +196,21 @@ def update_profile():
             user.phone = data['phone']
         
         # Update patient-specific info if user is a patient
-        if user.role == 'patient' and user.patient_profile:
-            patient = user.patient_profile
+        if user.role == 'patient':
+            from hospital.models.patient import Patient
             
+            # Get or create patient profile
+            patient = Patient.query.filter_by(user_id=user.id).first()
+            
+            if not patient:
+                # Create patient profile if it doesn't exist
+                import uuid
+                patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
+                patient = Patient(user_id=user.id, patient_id=patient_id)
+                db.session.add(patient)
+                db.session.flush()
+            
+            # Update patient fields
             if 'date_of_birth' in data and data['date_of_birth']:
                 from datetime import datetime
                 try:
@@ -229,4 +242,5 @@ def update_profile():
         
     except Exception as e:
         db.session.rollback()
+        print(f"Update profile error: {str(e)}")
         return jsonify({'error': str(e)}), 500
