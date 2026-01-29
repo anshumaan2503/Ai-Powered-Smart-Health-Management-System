@@ -12,6 +12,7 @@ marshmallow==3.20.1
 requests==2.31.0
 google-generativeai>=0.8.0
 groq>=0.4.0
+cloudinary>=1.36.0
 
 # Required for CSV/Excel import functionality
 pandas>=2.2.0

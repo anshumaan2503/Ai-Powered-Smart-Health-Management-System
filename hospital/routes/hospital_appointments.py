@@ -624,6 +624,36 @@ def upload_report(appointment_id):
             return jsonify({'error': 'No selected file'}), 400
             
         if file and file.filename.lower().endswith('.pdf'):
+            # Try Cloudinary first (for production/cloud deployments)
+            try:
+                from hospital.utils.cloudinary_helper import upload_pdf_to_cloudinary
+                
+                cloudinary_result = upload_pdf_to_cloudinary(file, appointment.appointment_id)
+                
+                if cloudinary_result and cloudinary_result.get('url'):
+                    # Successfully uploaded to Cloudinary
+                    report_url = cloudinary_result['url']
+                    appointment.report_url = report_url
+                    appointment.report_name = file.filename
+                    appointment.status = 'completed'
+                    appointment.updated_at = datetime.utcnow()
+                    
+                    db.session.commit()
+                    
+                    return jsonify({
+                        'message': 'Report uploaded successfully to cloud storage',
+                        'report_url': report_url,
+                        'report_name': file.filename,
+                        'storage': 'cloudinary',
+                        'appointment': appointment.to_dict()
+                    }), 200
+            except Exception as cloudinary_error:
+                current_app.logger.warning(f"Cloudinary upload failed, falling back to local: {str(cloudinary_error)}")
+            
+            # Fallback to local storage (for development)
+            # Reset file pointer after Cloudinary attempt
+            file.seek(0)
+            
             # Create uploads directory if it doesn't exist
             static_folder = current_app.static_folder or os.path.join(current_app.root_path, 'static')
             upload_folder = os.path.join(static_folder, 'uploads', 'reports')
@@ -645,9 +675,11 @@ def upload_report(appointment_id):
             db.session.commit()
             
             return jsonify({
-                'message': 'Report uploaded successfully',
+                'message': 'Report uploaded successfully to local storage',
                 'report_url': report_url,
                 'report_name': file.filename,
+                'storage': 'local',
+                'warning': 'Local storage may not persist across deployments. Configure Cloudinary for production.',
                 'appointment': appointment.to_dict()
             }), 200
         else:
