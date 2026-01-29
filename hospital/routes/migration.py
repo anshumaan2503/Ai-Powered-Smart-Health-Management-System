@@ -156,3 +156,66 @@ def create_patient_profiles():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@migration_bp.route('/add-patient-id-to-appointments', methods=['POST'])
+def add_patient_id_to_appointments():
+    """Add patient_id column to appointments table"""
+    try:
+        # Check if column already exists
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('appointments')]
+        
+        if 'patient_id' in columns:
+            return jsonify({
+                'message': 'patient_id column already exists',
+                'status': 'skipped'
+            }), 200
+        
+        # Add the column
+        with db.engine.connect() as conn:
+            # For PostgreSQL
+            if 'postgresql' in str(db.engine.url):
+                print("Adding patient_id column...")
+                conn.execute(text('ALTER TABLE appointments ADD COLUMN patient_id INTEGER'))
+                conn.commit()
+                
+                # Add foreign key constraint
+                print("Adding foreign key constraint...")
+                conn.execute(text('''
+                    ALTER TABLE appointments 
+                    ADD CONSTRAINT fk_appointments_patient_id 
+                    FOREIGN KEY (patient_id) REFERENCES patients(id)
+                '''))
+                conn.commit()
+                
+                # Check if there are existing appointments
+                result = conn.execute(text('SELECT COUNT(*) FROM appointments'))
+                count = result.fetchone()[0]
+                
+                if count == 0:
+                    # Safe to add NOT NULL constraint
+                    print("Adding NOT NULL constraint...")
+                    conn.execute(text('ALTER TABLE appointments ALTER COLUMN patient_id SET NOT NULL'))
+                    conn.commit()
+                    message = 'patient_id column added successfully with NOT NULL constraint'
+                else:
+                    message = f'patient_id column added successfully. Found {count} existing appointments - NOT NULL constraint skipped. Please update existing records manually.'
+                
+            else:
+                return jsonify({
+                    'error': 'SQLite migration not supported. Please use PostgreSQL.',
+                    'status': 'failed'
+                }), 400
+        
+        return jsonify({
+            'message': message,
+            'status': 'success'
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'status': 'failed'
+        }), 500
