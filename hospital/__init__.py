@@ -30,29 +30,29 @@ def create_app(config_name="default"):
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
-    # ✅ Proper CORS (NO manual before_request/after_request hacks)
+    # ✅ Proper CORS - Definitive Railway Fix
+    # This allows the frontend URL from environment variables, 
+    # and fallback URLs to ensure it works on Railway/Render.
+    allowed_origins = [
+        os.getenv("FRONTEND_URL", ""),
+        os.getenv("CORS_ORIGINS", ""),
+        "https://graceful-curiosity-production.up.railway.app",
+        "https://graceful-curiosity-production-c234.up.railway.app",
+        "https://ai-powered-smart-health-management-system-production.up.railway.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    # Clean up empty strings and trailing slashes
+    allowed_origins = [origin.rstrip('/') for origin in allowed_origins if origin]
+
     CORS(
         app,
         resources={
-            r"/api/*": {
-                "origins": [
-                    "https://hospital-management-frontend-0421.onrender.com",
-                    "https://hospital-management-frontend-6kel.onrender.com",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:3000",
-                ]
-            },
-            r"/static/*": {
-                "origins": [
-                    "https://hospital-management-frontend-0421.onrender.com",
-                    "https://hospital-management-frontend-6kel.onrender.com",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:3000",
-                ]
-            }
+            r"/api/*": {"origins": allowed_origins},
+            r"/static/*": {"origins": allowed_origins}
         },
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
         methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     )
 
