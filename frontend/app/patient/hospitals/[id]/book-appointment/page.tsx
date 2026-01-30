@@ -121,30 +121,30 @@ export default function BookAppointmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-slate-800 shadow-sm border-b dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <button
                 onClick={() => router.back()}
-                className="mr-4 p-2 hover:bg-gray-100 rounded-lg"
+                className="mr-4 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
               >
-                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+                <ArrowLeftIcon className="h-5 w-5 text-gray-600 dark:text-slate-300" />
               </button>
-              <HeartIcon className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">Book Appointment</span>
+              <HeartIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <span className="ml-2 text-xl font-bold text-gray-900 dark:text-slate-100">Book Appointment</span>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Request Appointment</h1>
-            <p className="text-gray-600 mt-1">Submit your preferred date and time. The hospital will review and confirm or assign a final slot.</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Request Appointment</h1>
+            <p className="text-gray-600 dark:text-slate-400 mt-1">Submit your preferred date and time. The hospital will review and confirm or assign a final slot.</p>
           </div>
 
           {isLoading ? (
@@ -155,7 +155,7 @@ export default function BookAppointmentPage() {
             <div className="space-y-6">
               {/* Doctor Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                   Select Doctor
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,16 +164,16 @@ export default function BookAppointmentPage() {
                       key={doctor.id}
                       onClick={() => setSelectedDoctor(doctor)}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedDoctor?.id === doctor.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
                         }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <UserIcon className="h-8 w-8 text-blue-600" />
+                        <UserIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                         <div>
-                          <h3 className="font-medium text-gray-900">{doctor.name}</h3>
-                          <p className="text-sm text-gray-600">{doctor.specialization}</p>
-                          <p className="text-sm font-medium text-green-600">
+                          <h3 className="font-medium text-gray-900 dark:text-slate-100">{doctor.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-slate-400">{doctor.specialization}</p>
+                          <p className="text-sm font-medium text-green-600 dark:text-green-400">
                             Fee: ₹{doctor.consultation_fee}
                           </p>
                         </div>
@@ -185,7 +185,7 @@ export default function BookAppointmentPage() {
 
               {/* Date Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Preferred Date
                 </label>
                 <input
@@ -200,7 +200,7 @@ export default function BookAppointmentPage() {
               {/* Time Selection */}
               {selectedDoctor && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                     Preferred Time Slot
                   </label>
                   <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
@@ -209,8 +209,8 @@ export default function BookAppointmentPage() {
                         key={time}
                         onClick={() => setSelectedTime(time)}
                         className={`p-2 text-sm border rounded-lg transition-colors ${selectedTime === time
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500 text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700'
                           }`}
                       >
                         {time}
@@ -222,7 +222,7 @@ export default function BookAppointmentPage() {
 
               {/* Appointment Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Appointment Type
                 </label>
                 <select
@@ -239,7 +239,7 @@ export default function BookAppointmentPage() {
 
               {/* Symptoms */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Symptoms/Reason for Visit (Optional)
                 </label>
                 <textarea
@@ -253,12 +253,12 @@ export default function BookAppointmentPage() {
 
               {/* Booking Summary */}
               {selectedDoctor && selectedDate && selectedTime && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">Appointment Summary</h3>
-                  <div className="space-y-2 text-sm">
+                <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-900 dark:text-slate-100 mb-3">Appointment Summary</h3>
+                  <div className="space-y-2 text-sm text-gray-700 dark:text-slate-300">
                     <div className="flex justify-between">
                       <span>Doctor:</span>
-                      <span className="font-medium">{selectedDoctor.name}</span>
+                      <span className="font-medium text-gray-900 dark:text-slate-100">{selectedDoctor.name}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Specialization:</span>
@@ -276,7 +276,7 @@ export default function BookAppointmentPage() {
                       <span>Type:</span>
                       <span className="capitalize">{appointmentType}</span>
                     </div>
-                    <div className="flex justify-between font-medium text-lg border-t pt-2">
+                    <div className="flex justify-between font-medium text-lg border-t dark:border-slate-600 pt-2 text-gray-900 dark:text-slate-100">
                       <span>Total Fee:</span>
                       <span>₹{selectedDoctor.consultation_fee}</span>
                     </div>
