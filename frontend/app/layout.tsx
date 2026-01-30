@@ -12,7 +12,30 @@ export const metadata: Metadata = {
   description: 'Advanced hospital management system with AI-powered diagnosis and patient care',
   keywords: 'hospital, management, AI, healthcare, diagnosis, patient care',
   authors: [{ name: 'Your Name' }],
-  viewport: 'width=device-width, initial-scale=1',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+    viewportFit: 'cover', // For notched devices
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' }
+  ],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'MediCare Pro'
+  },
+  formatDetection: {
+    telephone: false, // Prevent auto-detection of phone numbers
+  },
+  openGraph: {
+    title: 'MediCare Pro - AI-Powered Hospital Management',
+    description: 'Advanced hospital management system with AI-powered diagnosis and patient care',
+    type: 'website',
+  }
 }
 
 export default function RootLayout({

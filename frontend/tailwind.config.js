@@ -8,6 +8,20 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '475px', // Extra small devices
+        // sm: '640px' (default)
+        // md: '768px' (default)
+        // lg: '1024px' (default)
+        // xl: '1280px' (default)
+        // 2xl: '1536px' (default)
+      },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
       colors: {
         medical: {
           50: '#f0f7ff',
@@ -63,6 +77,8 @@ module.exports = {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
         'slide-in': 'slideIn 0.3s ease-out',
+        'slide-up': 'slideUp 0.4s ease-out',
+        'bounce-in': 'bounceIn 0.6s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -72,6 +88,15 @@ module.exports = {
         slideIn: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        bounceIn: {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '50%': { opacity: '1', transform: 'scale(1.02)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
         }
       }
     },
