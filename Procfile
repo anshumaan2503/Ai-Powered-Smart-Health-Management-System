@@ -1,1 +1,1 @@
-web: python -m gunicorn --bind 0.0.0.0:$PORT wsgi:app --workers 2 --timeout 120
+web: python3 -m gunicorn --bind 0.0.0.0:$PORT wsgi:app --workers 2 --timeout 120 --log-level debug
