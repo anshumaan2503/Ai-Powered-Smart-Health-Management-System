@@ -13,8 +13,6 @@ sys.path.insert(0, str(project_root))
 
 # Set up environment variables for Vercel
 os.environ.setdefault('FLASK_CONFIG', 'production')
-os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY', 'fallback-secret-key'))
-os.environ.setdefault('JWT_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', 'fallback-jwt-key'))
 
 try:
     # Import Flask app
@@ -31,9 +29,8 @@ try:
         except Exception as e:
             print(f"⚠️ Database initialization warning: {e}")
     
-    # Export the app for Vercel
-    # Vercel will use this as the WSGI application
-    
+    print("✅ Flask app created successfully")
+
 except ImportError as e:
     print(f"❌ Import error: {e}")
     # Create a minimal Flask app as fallback
@@ -41,8 +38,14 @@ except ImportError as e:
     app = Flask(__name__)
     
     @app.route('/api/health')
+    @app.route('/health')
+    @app.route('/')
     def health():
-        return jsonify({"status": "error", "message": f"Import error: {e}"})
+        return jsonify({
+            "status": "error", 
+            "message": f"Import error: {str(e)}",
+            "hint": "Check that all dependencies are installed"
+        }), 500
 
 except Exception as e:
     print(f"❌ Error: {e}")
@@ -51,9 +54,14 @@ except Exception as e:
     app = Flask(__name__)
     
     @app.route('/api/health')
+    @app.route('/health')
+    @app.route('/')
     def health():
-        return jsonify({"status": "error", "message": f"Setup error: {e}"})
+        return jsonify({
+            "status": "error", 
+            "message": f"Setup error: {str(e)}",
+            "hint": "Check environment variables and database connection"
+        }), 500
 
-# This is what Vercel will use
-def handler(request):
-    return app(request.environ, lambda status, headers: None)
+# Export the app for Vercel
+# Vercel will use this as the WSGI application
