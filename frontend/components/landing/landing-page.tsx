@@ -48,7 +48,10 @@ export function LandingPage() {
             } catch (e) {
               setPatientName('Patient');
             }
-            // No redirect - allow users to view homepage even when logged in
+            // Redirect to patient dashboard if on homepage
+            if (window.location.pathname === '/') {
+              window.location.href = '/patient/dashboard';
+            }
           } else {
             // Token is invalid, clear it
             localStorage.removeItem('access_token');
@@ -94,7 +97,10 @@ export function LandingPage() {
             } catch (e) {
               setHospitalName('Hospital');
             }
-            // No redirect - allow users to view homepage even when logged in
+            // Redirect to hospital dashboard if on homepage
+            if (window.location.pathname === '/') {
+              window.location.href = '/hospital/dashboard';
+            }
           } else {
             // Token is invalid, clear it
             localStorage.removeItem('hospital_access_token');
@@ -131,7 +137,8 @@ export function LandingPage() {
       localStorage.removeItem('hospital_data');
       setIsHospitalLoggedIn(false);
     }
-    window.location.reload();
+    // Redirect to homepage after logout
+    window.location.href = '/';
   };
 
   const scrollToAccess = () => {
