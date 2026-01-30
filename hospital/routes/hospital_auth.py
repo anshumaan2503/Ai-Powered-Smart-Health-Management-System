@@ -319,8 +319,8 @@ def get_hospital_doctors(hospital_id):
             doctor_data['name'] = user.full_name
             doctor_data['email'] = user.email
             doctor_data['phone'] = user.phone
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)  # Dynamic fee based on experience
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))  # Rating based on experience
@@ -370,8 +370,8 @@ def get_all_doctors():
             doctor_data['phone'] = user.phone
             doctor_data['hospital_name'] = hospital.name
             doctor_data['hospital_id'] = hospital.id
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))
