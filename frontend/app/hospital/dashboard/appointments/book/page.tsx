@@ -486,14 +486,14 @@ export default function BookAppointmentPage() {
             {/* Appointment Form */}
             <form onSubmit={handleAppointmentSubmit} className="space-y-8">
               {/* Doctor & Type Selection */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <UserIcon className="h-5 w-5 text-indigo-600 mr-2" />
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
+                  <UserIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" />
                   Doctor & Appointment Details
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       👨‍⚕️ Select Doctor *
                     </label>
                     <div className="relative">
@@ -502,19 +502,19 @@ export default function BookAppointmentPage() {
                         value={appointmentData.doctor_user_id}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-200 bg-white shadow-sm"
+                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-indigo-200 dark:focus:ring-indigo-800 focus:border-indigo-400 dark:focus:border-indigo-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm"
                       >
-                        <option value="">Choose a doctor...</option>
+                        <option value="" className="dark:bg-slate-800 dark:text-slate-100">Choose a doctor...</option>
                         {doctors.map((doctor) => (
-                          <option key={doctor.id} value={doctor.id}>
+                          <option key={doctor.id} value={doctor.id} className="dark:bg-slate-800 dark:text-slate-100">
                             Dr. {doctor.name} • {doctor.specialization} • ₹{doctor.consultation_fee}
                           </option>
                         ))}
                       </select>
                     </div>
                     {appointmentData.doctor_user_id && (
-                      <div className="mt-2 p-2 bg-green-50 rounded-lg">
-                        <p className="text-sm text-green-700">
+                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                        <p className="text-sm text-green-700 dark:text-green-400">
                           ✅ Doctor selected successfully
                         </p>
                       </div>
@@ -522,7 +522,7 @@ export default function BookAppointmentPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       📋 Appointment Type
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -537,8 +537,8 @@ export default function BookAppointmentPage() {
                           type="button"
                           onClick={() => setAppointmentData(prev => ({ ...prev, appointment_type: type.value }))}
                           className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${appointmentData.appointment_type === type.value
-                            ? `border-${type.color}-400 bg-${type.color}-50 text-${type.color}-700`
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                            ? `border-${type.color}-400 dark:border-${type.color}-600 bg-${type.color}-50 dark:bg-${type.color}-900/30 text-${type.color}-700 dark:text-${type.color}-400`
+                            : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'
                             }`}
                         >
                           {type.label}
@@ -550,14 +550,14 @@ export default function BookAppointmentPage() {
               </div>
 
               {/* Date & Time Selection */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <CalendarIcon className="h-5 w-5 text-green-600 mr-2" />
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
+                  <CalendarIcon className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
                   Schedule Appointment
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       📅 Date *
                     </label>
                     <input
@@ -567,12 +567,12 @@ export default function BookAppointmentPage() {
                       onChange={handleInputChange}
                       min={new Date().toISOString().split('T')[0]}
                       required
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-green-200 focus:border-green-400 transition-all duration-200 bg-white shadow-sm"
+                      className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-green-200 dark:focus:ring-green-800 focus:border-green-400 dark:focus:border-green-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       🕐 Time *
                     </label>
                     <input
@@ -581,12 +581,12 @@ export default function BookAppointmentPage() {
                       value={appointmentData.appointment_time}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-green-200 focus:border-green-400 transition-all duration-200 bg-white shadow-sm"
+                      className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-green-200 dark:focus:ring-green-800 focus:border-green-400 dark:focus:border-green-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       ⚡ Priority Level
                     </label>
                     <div className="space-y-2">
@@ -603,9 +603,9 @@ export default function BookAppointmentPage() {
                             value={priority.value}
                             checked={appointmentData.priority === priority.value}
                             onChange={handleInputChange}
-                            className="mr-3 text-indigo-600 focus:ring-indigo-500"
+                            className="mr-3 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400"
                           />
-                          <span className="text-sm font-medium text-gray-700">{priority.label}</span>
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{priority.label}</span>
                         </label>
                       ))}
                     </div>
@@ -614,14 +614,14 @@ export default function BookAppointmentPage() {
               </div>
 
               {/* Symptoms & Notes */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <ClockIcon className="h-5 w-5 text-purple-600 mr-2" />
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 border border-purple-100 dark:border-purple-800">
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
+                  <ClockIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
                   Medical Information
                 </h4>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       🩺 Patient Symptoms
                     </label>
                     <textarea
@@ -629,16 +629,16 @@ export default function BookAppointmentPage() {
                       value={appointmentData.symptoms}
                       onChange={handleInputChange}
                       rows={4}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-purple-200 focus:border-purple-400 transition-all duration-200 bg-white shadow-sm resize-none"
+                      className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-400 dark:focus:border-purple-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-sm resize-none"
                       placeholder="Describe the patient's symptoms in detail..."
                     />
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                       💡 Include duration, severity, and any relevant details
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                       📝 Additional Notes
                     </label>
                     <textarea
@@ -646,7 +646,7 @@ export default function BookAppointmentPage() {
                       value={appointmentData.notes}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-purple-200 focus:border-purple-400 transition-all duration-200 bg-white shadow-sm resize-none"
+                      className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-purple-200 dark:focus:ring-purple-800 focus:border-purple-400 dark:focus:border-purple-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-sm resize-none"
                       placeholder="Any special instructions or additional information..."
                     />
                   </div>
