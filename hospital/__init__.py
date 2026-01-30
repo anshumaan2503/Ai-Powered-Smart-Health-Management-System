@@ -88,13 +88,27 @@ def create_app(config_name="default"):
         """Serve uploaded files (PDFs, images, etc.)"""
         from flask import make_response
         static_folder = app.static_folder or os.path.join(app.root_path, 'static')
-        response = make_response(send_from_directory(os.path.join(static_folder, 'uploads'), filename))
+        
+        # Extract the actual filename and subdirectory from the path
+        # filename might be like "reports/report_ANTH_MR298_Saqib102.pdf"
+        file_parts = filename.split('/')
+        if len(file_parts) > 1:
+            # Has subdirectory (e.g., reports/file.pdf)
+            subdirectory = '/'.join(file_parts[:-1])
+            actual_filename = file_parts[-1]
+            upload_path = os.path.join(static_folder, 'uploads', subdirectory)
+        else:
+            # No subdirectory, just filename
+            actual_filename = filename
+            upload_path = os.path.join(static_folder, 'uploads')
+        
+        response = make_response(send_from_directory(upload_path, actual_filename))
         
         # Add headers for PDF viewing and downloading
-        if filename.lower().endswith('.pdf'):
+        if actual_filename.lower().endswith('.pdf'):
             response.headers['Content-Type'] = 'application/pdf'
             # Allow inline viewing in browser
-            response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(filename)}"'
+            response.headers['Content-Disposition'] = f'inline; filename="{actual_filename}"'
         
         return response
 
@@ -104,10 +118,24 @@ def create_app(config_name="default"):
         """Force download of uploaded files"""
         from flask import make_response
         static_folder = app.static_folder or os.path.join(app.root_path, 'static')
-        response = make_response(send_from_directory(os.path.join(static_folder, 'uploads'), filename))
+        
+        # Extract the actual filename and subdirectory from the path
+        # filename might be like "reports/report_ANTH_MR298_Saqib102.pdf"
+        file_parts = filename.split('/')
+        if len(file_parts) > 1:
+            # Has subdirectory (e.g., reports/file.pdf)
+            subdirectory = '/'.join(file_parts[:-1])
+            actual_filename = file_parts[-1]
+            upload_path = os.path.join(static_folder, 'uploads', subdirectory)
+        else:
+            # No subdirectory, just filename
+            actual_filename = filename
+            upload_path = os.path.join(static_folder, 'uploads')
+        
+        response = make_response(send_from_directory(upload_path, actual_filename))
         
         # Force download with attachment header
-        response.headers['Content-Disposition'] = f'attachment; filename="{os.path.basename(filename)}"'
+        response.headers['Content-Disposition'] = f'attachment; filename="{actual_filename}"'
         
         return response
 
