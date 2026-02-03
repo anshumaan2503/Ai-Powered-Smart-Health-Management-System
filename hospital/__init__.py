@@ -104,10 +104,15 @@ def create_app(config_name="default"):
         
         response = make_response(send_from_directory(upload_path, actual_filename))
         
-        # Add headers for PDF viewing and downloading
-        if actual_filename.lower().endswith('.pdf'):
+        # Add headers for PDF/Image viewing
+        ext = actual_filename.lower().rsplit('.', 1)[-1] if '.' in actual_filename else ''
+        if ext == 'pdf':
             response.headers['Content-Type'] = 'application/pdf'
-            # Allow inline viewing in browser
+            response.headers['Content-Disposition'] = f'inline; filename="{actual_filename}"'
+        elif ext in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']:
+            # Browsers handle image content types well, but we can be explicit
+            content_type = f'image/{ext if ext != "jpg" else "jpeg"}'
+            response.headers['Content-Type'] = content_type
             response.headers['Content-Disposition'] = f'inline; filename="{actual_filename}"'
         
         return response

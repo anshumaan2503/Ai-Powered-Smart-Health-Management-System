@@ -581,7 +581,7 @@ export default function AppointmentsPage() {
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors pointer-events-auto">
                 <input
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt,.xls,.xlsx,.csv,.gif,.bmp,.webp"
                   id="report-upload"
                   className="hidden"
                   onChange={(e) => setReportModal({ ...reportModal, file: e.target.files?.[0] || null })}
@@ -589,9 +589,9 @@ export default function AppointmentsPage() {
                 <label htmlFor="report-upload" className="cursor-pointer block">
                   <ArrowUpTrayIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                   <span className="text-sm font-medium text-gray-600 block mb-1">
-                    {reportModal.file ? reportModal.file.name : 'Click to select PDF report'}
+                    {reportModal.file ? reportModal.file.name : 'Click to select report file'}
                   </span>
-                  <span className="text-xs text-gray-500">Only PDF files up to 10MB</span>
+                  <span className="text-xs text-gray-500">PDF, Images, or Documents up to 10MB</span>
                 </label>
               </div>
 

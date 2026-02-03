@@ -623,7 +623,10 @@ def upload_report(appointment_id):
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
             
-        if file and file.filename.lower().endswith('.pdf'):
+        allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.csv', '.gif', '.bmp', '.webp'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file and file_ext in allowed_extensions:
             # Create uploads directory if it doesn't exist
             static_folder = current_app.static_folder or os.path.join(current_app.root_path, 'static')
             upload_folder = os.path.join(static_folder, 'uploads', 'reports')
@@ -631,7 +634,7 @@ def upload_report(appointment_id):
             if not os.path.exists(upload_folder):
                 os.makedirs(upload_folder)
                 
-            filename = secure_filename(f"report_{appointment.appointment_id}_{uuid.uuid4().hex[:8]}.pdf")
+            filename = secure_filename(f"report_{appointment.appointment_id}_{uuid.uuid4().hex[:8]}{file_ext}")
             filepath = os.path.join(upload_folder, filename)
             file.save(filepath)
             
@@ -651,7 +654,7 @@ def upload_report(appointment_id):
                 'appointment': appointment.to_dict()
             }), 200
         else:
-            return jsonify({'error': 'Only PDF files are allowed'}), 400
+            return jsonify({'error': 'File type not allowed. Please upload common document or image files.'}), 400
             
     except Exception as e:
         db.session.rollback()

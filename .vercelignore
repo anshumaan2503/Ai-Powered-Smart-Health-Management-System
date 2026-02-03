@@ -42,7 +42,8 @@ tests/
 
 # Documentation
 docs/
-.md
+*.md
+!README.md
 
 # Uploads (can be large)
 uploads/
@@ -68,3 +69,14 @@ instance/
 tmp/
 temp/
 .kiro/
+
+# FRONTEND - Don't deploy with backend
+frontend/
+*.zip
+*.7z
+
+# Large Python packages (not needed for serverless)
+*.whl
+
+# Migration files (run migrations separately)
+migrations/
