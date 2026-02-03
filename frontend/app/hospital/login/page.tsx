@@ -13,6 +13,7 @@ export default function HospitalLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -32,19 +33,29 @@ export default function HospitalLoginPage() {
         throw new Error('No access token received from server')
       }
 
+      // Select storage based on Remember Me
+      const storage = rememberMe ? localStorage : sessionStorage
+      const otherStorage = rememberMe ? sessionStorage : localStorage
+
       // ✅ Store tokens + hospital info
-      localStorage.setItem('hospital_access_token', data.access_token)
+      storage.setItem('hospital_access_token', data.access_token)
+
+      // Clear opposite storage
+      otherStorage.removeItem('hospital_access_token')
+      otherStorage.removeItem('hospital_refresh_token')
+      otherStorage.removeItem('hospital_user')
+      otherStorage.removeItem('hospital_data')
 
       if (data.refresh_token) {
-        localStorage.setItem('hospital_refresh_token', data.refresh_token)
+        storage.setItem('hospital_refresh_token', data.refresh_token)
       }
 
       if (data.user) {
-        localStorage.setItem('hospital_user', JSON.stringify(data.user))
+        storage.setItem('hospital_user', JSON.stringify(data.user))
       }
 
       if (data.hospital) {
-        localStorage.setItem('hospital_data', JSON.stringify(data.hospital))
+        storage.setItem('hospital_data', JSON.stringify(data.hospital))
       }
 
       toast.success('Hospital login successful!')
@@ -145,6 +156,28 @@ export default function HospitalLoginPage() {
                     <EyeIcon className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <a href="#" className="font-medium text-green-600 hover:text-green-500">
+                  Forgot password?
+                </a>
               </div>
             </div>
 

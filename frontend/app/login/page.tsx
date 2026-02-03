@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
@@ -22,8 +23,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Always remember the user (save to localStorage)
-      const success = await login(email, password, true)
+      const success = await login(email, password, rememberMe)
       if (success) {
         toast.success('Login successful!')
         router.push('/patient/dashboard')
@@ -122,10 +122,24 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+
               <div className="text-sm">
                 <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  Forgot your password?
+                  Forgot password?
                 </a>
               </div>
             </div>

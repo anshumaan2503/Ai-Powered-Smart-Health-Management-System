@@ -460,10 +460,10 @@ export default function AppointmentsPage() {
                           {appointment.status === 'scheduled' && (
                             <button
                               onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
-                              className="text-green-600 hover:text-green-900 p-1 rounded"
-                              title="Confirm Appointment"
+                              className="text-green-600 hover:text-green-900 p-1 rounded transition-transform hover:scale-125"
+                              title="Confirm Appointment: Verify and validate this scheduled appointment"
                             >
-                              <CheckCircleIcon className="h-4 w-4" />
+                              <CheckCircleIcon className="h-5 w-5" />
                             </button>
                           )}
 
@@ -471,37 +471,37 @@ export default function AppointmentsPage() {
                           {(appointment.status === 'scheduled' || appointment.status === 'confirmed') && (
                             <button
                               onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
-                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
-                              title="Mark as Completed"
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded transition-transform hover:scale-125"
+                              title="Mark as Completed: Successfully finish the consultation and close the record"
                             >
-                              <CheckBadgeIcon className="h-4 w-4" />
+                              <CheckBadgeIcon className="h-5 w-5" />
                             </button>
                           )}
 
                           {appointment.status === 'completed' && (
                             <button
                               onClick={() => setReportModal({ ...reportModal, show: true, appointment: appointment })}
-                              className={`${appointment.report_url ? 'text-green-600 hover:text-green-900' : 'text-indigo-600 hover:text-indigo-900'} p-1 rounded`}
-                              title={appointment.report_url ? "Update Medical Report" : "Upload Medical Report"}
+                              className={`${appointment.report_url ? 'text-green-600 hover:text-green-900' : 'text-indigo-600 hover:text-indigo-900'} p-1 rounded transition-transform hover:scale-125`}
+                              title={appointment.report_url ? "Update Medical Report: Upload a revised version of the medical document" : "Upload Medical Report: Add clinical results and reports for the patient"}
                             >
-                              <ArrowUpTrayIcon className="h-4 w-4" />
+                              <ArrowUpTrayIcon className="h-5 w-5" />
                             </button>
                           )}
                           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
                             <button
                               onClick={() => cancelAppointment(appointment.id)}
-                              className="text-yellow-600 hover:text-yellow-900 p-1 rounded"
-                              title="Cancel Appointment"
+                              className="text-yellow-600 hover:text-yellow-900 p-1 rounded transition-transform hover:scale-125"
+                              title="Cancel Appointment: Stop this appointment and notify stakeholders"
                             >
-                              <XCircleIcon className="h-4 w-4" />
+                              <XCircleIcon className="h-5 w-5" />
                             </button>
                           )}
                           <button
                             onClick={() => deleteAppointment(appointment.id)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded"
-                            title="Delete Appointment Permanently"
+                            className="text-red-600 hover:text-red-900 p-1 rounded transition-transform hover:scale-125"
+                            title="Delete Permanently: Completely remove this appointment from the database"
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <TrashIcon className="h-5 w-5" />
                           </button>
                         </div>
                       </td>

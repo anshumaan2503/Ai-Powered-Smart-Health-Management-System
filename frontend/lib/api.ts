@@ -34,10 +34,10 @@ api.interceptors.request.use(
     const isHospitalURL = url.includes('/hospital/') || url.includes('/hospital-auth/')
     const isAdminURL = url.includes('/admin/')
 
-    // Get all available tokens
-    const hospitalToken = localStorage.getItem('hospital_access_token')
+    // Get all available tokens (check both storage types)
+    const hospitalToken = localStorage.getItem('hospital_access_token') || sessionStorage.getItem('hospital_access_token')
     const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-    const adminToken = localStorage.getItem('admin_token')
+    const adminToken = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token')
 
     // Helper to check if token is valid string
     const isValid = (t: any) => t && t !== 'null' && t !== 'undefined'
@@ -113,11 +113,16 @@ api.interceptors.response.use(
         if (isHospitalPortal) {
           localStorage.removeItem('hospital_access_token')
           localStorage.removeItem('hospital_user')
+          sessionStorage.removeItem('hospital_access_token')
+          sessionStorage.removeItem('hospital_user')
           window.location.href = '/hospital/login'
         } else {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           localStorage.removeItem('user')
+          sessionStorage.removeItem('access_token')
+          sessionStorage.removeItem('refresh_token')
+          sessionStorage.removeItem('user')
           sessionStorage.clear()
           window.location.href = '/login'
         }
