@@ -36,9 +36,13 @@ def create_app(config_name="default"):
     allowed_origins = [
         os.getenv("FRONTEND_URL", ""),
         os.getenv("CORS_ORIGINS", ""),
+        # Current Railway frontend URL
+        "https://medicapro.up.railway.app",
+        # Legacy/alternate Railway URLs
         "https://graceful-curiosity-production.up.railway.app",
         "https://graceful-curiosity-production-c234.up.railway.app",
         "https://ai-powered-smart-health-management-system-production.up.railway.app",
+        # Local development
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
