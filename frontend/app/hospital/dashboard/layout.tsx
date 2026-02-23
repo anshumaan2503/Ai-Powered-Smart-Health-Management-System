@@ -45,10 +45,10 @@ export default function HospitalDashboardLayout({
   const pathname = usePathname()
 
   useEffect(() => {
-    // Check authentication
-    const userData = localStorage.getItem('hospital_user')
-    const hospitalData = localStorage.getItem('hospital_data')
-    const token = localStorage.getItem('hospital_access_token')
+    // Check authentication in BOTH storages (sessionStorage = default, localStorage = remember me)
+    const userData = localStorage.getItem('hospital_user') || sessionStorage.getItem('hospital_user')
+    const hospitalData = localStorage.getItem('hospital_data') || sessionStorage.getItem('hospital_data')
+    const token = localStorage.getItem('hospital_access_token') || sessionStorage.getItem('hospital_access_token')
 
     if (!userData || !token) {
       router.push('/hospital/login')
@@ -62,11 +62,17 @@ export default function HospitalDashboardLayout({
   }, [router])
 
   const handleLogout = () => {
+    // Clear both storages
     localStorage.removeItem('hospital_access_token')
     localStorage.removeItem('hospital_refresh_token')
     localStorage.removeItem('hospital_user')
     localStorage.removeItem('hospital_data')
     localStorage.removeItem('hospital_subscription')
+    sessionStorage.removeItem('hospital_access_token')
+    sessionStorage.removeItem('hospital_refresh_token')
+    sessionStorage.removeItem('hospital_user')
+    sessionStorage.removeItem('hospital_data')
+    sessionStorage.removeItem('hospital_subscription')
     router.push('/hospital/login')
   }
 
@@ -115,8 +121,8 @@ export default function HospitalDashboardLayout({
               key={item.name}
               href={item.href}
               className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
-                  ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+                ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
