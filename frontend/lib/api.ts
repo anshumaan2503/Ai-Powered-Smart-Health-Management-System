@@ -228,6 +228,7 @@ export const hospitalAPI = {
   deleteStaff: (id: number) => api.delete(`/hospital/staff/${id}`),
   downloadStaffTemplate: () => api.get('/hospital/import-staff-template', { responseType: 'blob' }),
   importStaff: (data: FormData) => api.post('/hospital/import-staff', data),
+  deleteAllDoctors: () => api.delete('/hospital/staff/doctors/all', { data: { confirm: 'DELETE_ALL_DOCTORS' } }),
 
   // Pharmacy
   getMedicines: () => api.get('/hospital/pharmacy/medicines'),

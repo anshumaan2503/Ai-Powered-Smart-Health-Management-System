@@ -510,6 +510,64 @@ def delete_staff_member(staff_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@hospital_staff_bp.route('/staff/doctors/all', methods=['DELETE'])
+@jwt_required()
+def delete_all_doctors():
+    """Delete ALL doctor users and their profiles for this hospital (admin only)."""
+    try:
+        current_user_id = get_jwt_identity()
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
+
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'User not associated with any hospital'}), 404
+
+        if user.role not in ['admin']:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # Require explicit confirmation in request body
+        data = request.get_json() or {}
+        if data.get('confirm') != 'DELETE_ALL_DOCTORS':
+            return jsonify({'error': 'Confirmation required. Send {"confirm": "DELETE_ALL_DOCTORS"}'}), 400
+
+        # Find all doctor users for this hospital
+        doctor_users = User.query.filter_by(hospital_id=user.hospital_id, role='doctor').all()
+        doctor_user_ids = [d.id for d in doctor_users]
+
+        deleted_doctors = 0
+        deleted_profiles = 0
+
+        # Delete doctor profiles first (foreign key constraint)
+        if doctor_user_ids:
+            profiles_deleted = Doctor.query.filter(Doctor.user_id.in_(doctor_user_ids)).delete(synchronize_session='fetch')
+            deleted_profiles = profiles_deleted
+
+            # Delete doctor user accounts
+            users_deleted = User.query.filter(
+                User.id.in_(doctor_user_ids)
+            ).delete(synchronize_session='fetch')
+            deleted_doctors = users_deleted
+
+        db.session.commit()
+
+        return jsonify({
+            'message': f'Successfully deleted {deleted_doctors} doctors and {deleted_profiles} doctor profiles.',
+            'deleted_doctors': deleted_doctors,
+            'deleted_profiles': deleted_profiles
+        }), 200
+
+    except Exception as e:
+        import traceback
+        db.session.rollback()
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 @hospital_staff_bp.route('/roles', methods=['GET'])
 @jwt_required()
 def get_available_roles():

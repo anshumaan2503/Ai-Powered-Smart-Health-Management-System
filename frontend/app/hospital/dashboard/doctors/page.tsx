@@ -24,6 +24,7 @@ interface Doctor {
   last_name: string
   email: string
   phone?: string
+  role: string
   is_active: boolean
   doctor_profile?: {
     specialization: string
@@ -50,7 +51,8 @@ export default function DoctorsManagementPage() {
   const fetchDoctors = async () => {
     try {
       const response = await hospitalAPI.getStaff()
-      setDoctors(response.data.staff || [])
+      const allStaff = response.data.staff || []
+      setDoctors(allStaff.filter((s: Doctor) => s.role === 'doctor'))
     } catch (err: any) {
       console.error('Fetch doctors error:', err)
       if (err.response?.status === 401) {

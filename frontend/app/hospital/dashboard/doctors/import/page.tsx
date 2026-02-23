@@ -138,15 +138,22 @@ export default function ImportDoctorsPage() {
     navigator.clipboard.writeText(allCredentials)
   }
 
-  const handleAddSampleData = async () => {
+  const handleClearAllDoctors = async () => {
+    if (!window.confirm('Are you SURE you want to delete ALL doctors? This action cannot be undone and will remove all fake/stored data.')) {
+      return
+    }
+
     setLoading(true)
     setError('')
     setSuccess('')
     try {
-      const response = await api.post('/hospital/add-sample-data')
+      const { hospitalAPI } = await import('@/lib/api')
+      const response = await hospitalAPI.deleteAllDoctors()
       setSuccess(response.data.message)
+      setImportResult(null)
+      setFile(null)
     } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Failed to add sample data'
+      const msg = err.response?.data?.error || err.message || 'Failed to clear doctors'
       setError(msg)
     } finally {
       setLoading(false)
@@ -171,16 +178,16 @@ export default function ImportDoctorsPage() {
             </div>
           </div>
           <button
-            onClick={handleAddSampleData}
+            onClick={handleClearAllDoctors}
             disabled={loading}
-            className="flex items-center justify-center space-x-2 px-6 py-3 bg-white text-green-700 rounded-xl font-bold hover:bg-green-50 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            className="flex items-center justify-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             {loading ? (
-              <div className="h-5 w-5 border-2 border-green-700 border-t-transparent rounded-full animate-spin" />
+              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <CheckCircleIcon className="h-5 w-5" />
+              <ExclamationTriangleIcon className="h-5 w-5" />
             )}
-            <span>{loading ? 'Processing...' : 'Add Sample Indian Data'}</span>
+            <span>{loading ? 'Processing...' : 'Clear All Doctors'}</span>
           </button>
         </div>
       </div>
