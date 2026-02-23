@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -30,35 +30,42 @@ def create_app(config_name="default"):
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
-    # ✅ Proper CORS - Definitive Railway Fix
-    # This allows the frontend URL from environment variables, 
-    # and fallback URLs to ensure it works on Railway/Render.
-    allowed_origins = [
-        os.getenv("FRONTEND_URL", ""),
-        os.getenv("CORS_ORIGINS", ""),
-        # Current Railway frontend URL
-        "https://medicapro.up.railway.app",
-        # Legacy/alternate Railway URLs
-        "https://graceful-curiosity-production.up.railway.app",
-        "https://graceful-curiosity-production-c234.up.railway.app",
-        "https://ai-powered-smart-health-management-system-production.up.railway.app",
-        # Local development
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
-    # Clean up empty strings and trailing slashes
-    allowed_origins = [origin.rstrip('/') for origin in allowed_origins if origin]
-
+    # ✅ Bullet-proof CORS Fix for Railway deployment
+    # Flask-CORS handles the main setup, but the after_request handler below
+    # guarantees CORS headers are stamped on EVERY response (including errors).
     CORS(
         app,
-        resources={
-            r"/api/*": {"origins": allowed_origins},
-            r"/static/*": {"origins": allowed_origins}
-        },
-        supports_credentials=True,
+        resources={r"/api/*": {"origins": "*"}, r"/static/*": {"origins": "*"}},
+        supports_credentials=False,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
         methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     )
+
+    @app.after_request
+    def add_cors_headers(response):
+        """Guarantee CORS headers on every response, including errors and OPTIONS."""
+        origin = request.headers.get('Origin', '')
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    @app.before_request
+    def handle_options_preflight():
+        """Immediately respond to OPTIONS preflight requests."""
+        if request.method == 'OPTIONS':
+            origin = request.headers.get('Origin', '*')
+            resp = make_response('', 204)
+            resp.headers['Access-Control-Allow-Origin'] = origin
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
+            resp.headers['Access-Control-Max-Age'] = '86400'
+            return resp
 
     # ✅ Initialize extensions
     db.init_app(app)
