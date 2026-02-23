@@ -45,10 +45,10 @@ export default function HospitalDashboardLayout({
   const pathname = usePathname()
 
   useEffect(() => {
-    // Check authentication in BOTH storages (sessionStorage = default, localStorage = remember me)
-    const userData = localStorage.getItem('hospital_user') || sessionStorage.getItem('hospital_user')
-    const hospitalData = localStorage.getItem('hospital_data') || sessionStorage.getItem('hospital_data')
-    const token = localStorage.getItem('hospital_access_token') || sessionStorage.getItem('hospital_access_token')
+    // Check authentication — login always writes to localStorage
+    const userData = localStorage.getItem('hospital_user')
+    const hospitalData = localStorage.getItem('hospital_data')
+    const token = localStorage.getItem('hospital_access_token')
 
     if (!userData || !token) {
       router.push('/hospital/login')

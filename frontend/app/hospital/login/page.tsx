@@ -33,29 +33,25 @@ export default function HospitalLoginPage() {
         throw new Error('No access token received from server')
       }
 
-      // Select storage based on Remember Me
-      const storage = rememberMe ? localStorage : sessionStorage
-      const otherStorage = rememberMe ? sessionStorage : localStorage
+      // ✅ Always use localStorage for hospital tokens (reliable across navigations)
+      localStorage.setItem('hospital_access_token', data.access_token)
 
-      // ✅ Store tokens + hospital info
-      storage.setItem('hospital_access_token', data.access_token)
-
-      // Clear opposite storage
-      otherStorage.removeItem('hospital_access_token')
-      otherStorage.removeItem('hospital_refresh_token')
-      otherStorage.removeItem('hospital_user')
-      otherStorage.removeItem('hospital_data')
+      // Clear sessionStorage to avoid stale data
+      sessionStorage.removeItem('hospital_access_token')
+      sessionStorage.removeItem('hospital_refresh_token')
+      sessionStorage.removeItem('hospital_user')
+      sessionStorage.removeItem('hospital_data')
 
       if (data.refresh_token) {
-        storage.setItem('hospital_refresh_token', data.refresh_token)
+        localStorage.setItem('hospital_refresh_token', data.refresh_token)
       }
 
       if (data.user) {
-        storage.setItem('hospital_user', JSON.stringify(data.user))
+        localStorage.setItem('hospital_user', JSON.stringify(data.user))
       }
 
       if (data.hospital) {
-        storage.setItem('hospital_data', JSON.stringify(data.hospital))
+        localStorage.setItem('hospital_data', JSON.stringify(data.hospital))
       }
 
       toast.success('Hospital login successful!')
