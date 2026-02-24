@@ -6,6 +6,7 @@ from hospital.models.patient import Patient
 from hospital.models.doctor import Doctor
 from hospital.models.user import User
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 import uuid
 
 appointments_bp = Blueprint('appointments', __name__)
@@ -97,7 +98,11 @@ def get_appointments():
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
         
-        query = Appointment.query
+        query = Appointment.query.options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor).joinedload(Doctor.user),
+            joinedload(Appointment.hospital)
+        )
         
         # ✅ Role-based auto-filtering
         current_identity = get_jwt_identity()

@@ -4,6 +4,7 @@ from hospital import db
 from hospital.models.patient import Patient
 from hospital.models.user import User
 from hospital.utils.validators import validate_required_fields, validate_email, validate_phone, validate_date
+from sqlalchemy.orm import joinedload
 import uuid
 import traceback
 
@@ -114,7 +115,7 @@ def get_patients():
         per_page = request.args.get('per_page', 10, type=int)
         search = request.args.get('search', '')
         
-        query = db.session.query(Patient).join(User)
+        query = Patient.query.options(joinedload(Patient.user))
         
         # Apply search filter
         if search:

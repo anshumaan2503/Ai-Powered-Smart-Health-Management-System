@@ -227,7 +227,19 @@ def get_subscription_status():
 def get_all_hospitals():
     """Get all active hospitals for patient dashboard"""
     try:
-        # Filter out deleted hospitals (those with [DELETED] in name) and inactive hospitals
+        from sqlalchemy import func
+        # Get hospitals and doctor counts in a single query
+        # Join Hospital with User (filtered for doctors) to get counts
+        doctor_counts = db.session.query(
+            User.hospital_id,
+            func.count(User.id).label('count')
+        ).filter(
+            User.role == 'doctor',
+            User.is_active == True
+        ).group_by(User.hospital_id).all()
+        
+        doctor_counts_map = {h_id: count for h_id, count in doctor_counts if h_id}
+        
         hospitals = Hospital.query.filter(
             Hospital.is_active == True,
             ~Hospital.name.like('%[DELETED]%')
@@ -235,19 +247,12 @@ def get_all_hospitals():
         
         hospitals_data = []
         for hospital in hospitals:
-            # Skip hospitals with [DELETED] in name as extra safety check
+            # Skip hospitals with [DELETED] in name (already filtered but just in case)
             if '[DELETED]' in hospital.name:
                 continue
                 
-            # Get doctor count for this hospital
-            doctor_count = User.query.filter_by(
-                hospital_id=hospital.id, 
-                role='doctor', 
-                is_active=True
-            ).count()
-            
             hospital_data = hospital.to_dict()
-            hospital_data['total_doctors'] = doctor_count
+            hospital_data['total_doctors'] = doctor_counts_map.get(hospital.id, 0)
             hospital_data['rating'] = 4.5  # Mock rating
             hospital_data['specializations'] = ['General Medicine', 'Cardiology', 'Neurology']  # Mock specializations
             

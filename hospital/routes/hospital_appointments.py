@@ -7,6 +7,7 @@ from hospital.models.patient import Patient
 from hospital.models.appointment import Appointment
 from hospital.models.hospital import Hospital
 from datetime import datetime, timedelta
+from sqlalchemy.orm import joinedload
 import uuid
 import os
 from flask import current_app
@@ -35,8 +36,11 @@ def get_appointments():
         doctor_id = request.args.get('doctor_id', '', type=int)
         status_filter = request.args.get('status', '')
         
-        # Build query
-        query = Appointment.query.filter_by(hospital_id=user.hospital_id)
+        # Build query with eager loading to prevent N+1 queries
+        query = Appointment.query.filter_by(hospital_id=user.hospital_id).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor).joinedload(Doctor.user)
+        )
         
         # Apply filters
         if date_filter:
@@ -491,7 +495,8 @@ def get_all_patients():
         gender = request.args.get('gender', '')
         blood_group = request.args.get('blood_group', '')
         
-        query = db.session.query(Patient).join(User, Patient.user_id == User.id).filter(Patient.hospital_id == user.hospital_id)
+        # Build query with eager loading for user data
+        query = Patient.query.options(joinedload(Patient.user)).filter(Patient.hospital_id == user.hospital_id)
         
         # Apply search filter
         if search:
