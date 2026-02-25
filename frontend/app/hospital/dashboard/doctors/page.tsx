@@ -50,9 +50,8 @@ export default function DoctorsManagementPage() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await hospitalAPI.getStaff()
-      const allStaff = response.data.staff || []
-      setDoctors(allStaff.filter((s: Doctor) => s.role === 'doctor'))
+      const response = await hospitalAPI.getStaff({ role: 'doctor', per_page: 100 })
+      setDoctors(response.data.staff || [])
     } catch (err: any) {
       console.error('Fetch doctors error:', err)
       if (err.response?.status === 401) {
@@ -77,12 +76,12 @@ export default function DoctorsManagementPage() {
 
   const filteredDoctors = doctors.filter(doctor => {
     const matchesSearch = searchTerm === '' ||
-      `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.doctor_profile?.specialization?.toLowerCase().includes(searchTerm.toLowerCase())
+      `${doctor.first_name || ''} ${doctor.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doctor.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doctor.doctor_profile?.specialization || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesSpecialization = specializationFilter === '' ||
-      doctor.doctor_profile?.specialization?.toLowerCase().includes(specializationFilter.toLowerCase())
+      (doctor.doctor_profile?.specialization || '').toLowerCase().includes(specializationFilter.toLowerCase())
 
     return matchesSearch && matchesSpecialization
   })

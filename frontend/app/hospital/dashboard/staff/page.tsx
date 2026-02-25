@@ -107,8 +107,8 @@ export default function StaffManagementPage() {
 
   const filteredStaff = staff.filter(member => {
     const matchesSearch = searchTerm === '' ||
-      `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase())
+      `${member.first_name || ''} ${member.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (member.email || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchesSearch
   })
@@ -277,8 +277,8 @@ export default function StaffManagementPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
                         }`}>
                         {member.is_active ? 'Active' : 'Inactive'}
                       </span>
@@ -288,8 +288,8 @@ export default function StaffManagementPage() {
                         <button
                           onClick={() => toggleStaffStatus(member.id)}
                           className={`px-3 py-1 rounded text-xs font-medium ${member.is_active
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
                             }`}
                         >
                           {member.is_active ? 'Deactivate' : 'Activate'}

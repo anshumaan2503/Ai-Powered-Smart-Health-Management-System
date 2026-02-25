@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from hospital import db
 from hospital.models.doctor import Doctor
 from hospital.models.user import User
+from sqlalchemy.orm import joinedload
 
 doctors_bp = Blueprint('doctors', __name__)
 
@@ -16,7 +17,7 @@ def get_doctors():
         specialization = request.args.get('specialization', '')
         available_only = request.args.get('available_only', 'false').lower() == 'true'
         
-        query = Doctor.query.join(User)
+        query = Doctor.query.options(joinedload(Doctor.user)).join(User)
         
         # Apply filters
         if specialization:

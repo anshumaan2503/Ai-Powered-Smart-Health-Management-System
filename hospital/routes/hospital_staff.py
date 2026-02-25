@@ -8,6 +8,7 @@ from hospital.models.hospital import Hospital
 from hospital.models.hospital_subscription import HospitalSubscription
 from hospital.utils.validators import validate_email, validate_password
 import uuid
+from sqlalchemy.orm import joinedload
 
 hospital_staff_bp = Blueprint('hospital_staff', __name__)
 
@@ -35,7 +36,7 @@ def get_hospital_staff():
         per_page = request.args.get('per_page', 100, type=int)  # Increased default to 100
         role_filter = request.args.get('role', '')
         
-        query = User.query.filter_by(hospital_id=user.hospital_id)
+        query = User.query.options(joinedload(User.doctor_profile)).filter_by(hospital_id=user.hospital_id)
         
         if role_filter:
             query = query.filter(User.role == role_filter)
@@ -46,9 +47,8 @@ def get_hospital_staff():
         staff_with_profiles = []
         for staff_member in staff.items:
             staff_dict = staff_member.to_dict()
-            if staff_member.role == 'doctor':
-                doctor_profile = Doctor.query.filter_by(user_id=staff_member.id).first()
-                staff_dict['doctor_profile'] = doctor_profile.to_dict() if doctor_profile else None
+            # doctor_profile is already included in staff_member.to_dict() 
+            # and eagerly loaded via joinedload above
             staff_with_profiles.append(staff_dict)
         
         return jsonify({

@@ -53,9 +53,13 @@ class User(db.Model):
             }
         
         if hasattr(self, 'doctor_profile') and self.doctor_profile:
-            data['doctor_profile'] = {
-                'id': self.doctor_profile[0].id if isinstance(self.doctor_profile, list) else self.doctor_profile.id,
-                'doctor_id': self.doctor_profile[0].doctor_id if isinstance(self.doctor_profile, list) else self.doctor_profile.doctor_id
-            }
+            profile = self.doctor_profile
+            if isinstance(profile, list) and len(profile) > 0:
+                profile = profile[0]
+            
+            if not isinstance(profile, list) and profile:
+                data['doctor_profile'] = profile.to_dict()
+            else:
+                data['doctor_profile'] = None
             
         return data

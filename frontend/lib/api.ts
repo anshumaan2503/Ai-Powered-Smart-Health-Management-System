@@ -220,7 +220,7 @@ export const adminAPI = {
 
 export const hospitalAPI = {
   // Staff/Doctors
-  getStaff: () => api.get('/hospital/staff'),
+  getStaff: (params?: any) => api.get('/hospital/staff', { params }),
   getStaffById: (id: number) => api.get(`/hospital/staff/${id}`),
   createStaff: (data: any) => api.post('/hospital/staff', data),
   updateStaff: (id: number, data: any) => api.put(`/hospital/staff/${id}`, data),

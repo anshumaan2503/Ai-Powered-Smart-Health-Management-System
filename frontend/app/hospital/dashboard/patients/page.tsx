@@ -189,12 +189,14 @@ export default function HospitalPatientsPage() {
   }
 
   const getGenderColor = (gender: string) => {
+    if (!gender) return 'bg-gray-100 text-gray-800'
     return gender.toLowerCase() === 'male'
       ? 'bg-blue-100 text-blue-800'
       : 'bg-pink-100 text-pink-800'
   }
 
   const getBloodGroupColor = (bloodGroup: string) => {
+    if (!bloodGroup) return 'bg-gray-100 text-gray-800'
     const colors: { [key: string]: string } = {
       'A+': 'bg-red-100 text-red-800',
       'A-': 'bg-red-200 text-red-900',
