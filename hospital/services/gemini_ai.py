@@ -9,7 +9,12 @@ from typing import List, Dict, Optional
 # Load environment variables
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    import os
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+    else:
+        load_dotenv() # Fallback to default search
 except ImportError:
     pass
 
@@ -69,9 +74,9 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             try:
                 self.groq_client = Groq(api_key=self.groq_key)
                 self.active_provider = "groq"
-                print("[AI] ✅ Successfully initialized GROQ!")
+                print("[AI] Successfully initialized GROQ!")
             except Exception as e:
-                print(f"[AI] ⚠️  GROQ initialization failed: {e}")
+                print(f"[AI] GROQ initialization failed: {e}")
                 self.groq_client = None
         
         # Fallback to Gemini if GROQ not available
@@ -81,14 +86,14 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
                 # Use the stable Gemini model
                 self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
                 self.active_provider = "gemini"
-                print("[AI] ✅ Successfully initialized Gemini AI!")
+                print("[AI] Successfully initialized Gemini AI!")
             except Exception as e:
-                print(f"[AI] ⚠️  Gemini initialization failed: {e}")
+                print(f"[AI] Gemini initialization failed: {e}")
                 self.gemini_model = None
         
         if not self.active_provider:
             self.init_error = "No AI provider available. Please configure GROQ_API_KEY or GEMINI_API_KEY"
-            print(f"[AI] ❌ {self.init_error}")
+            print(f"[AI] Error: {self.init_error}")
     
     def is_available(self) -> bool:
         """Check if any AI provider is available."""
@@ -146,7 +151,13 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             elif self.active_provider == "gemini":
                 return self._gemini_respond(message, context)
         except Exception as e:
-            print(f"[AI] ❌ {self.active_provider} error: {e}")
+            print(f"[AI] Error: {self.active_provider} error: {str(e)}")
+            # Log the specific error to help with debugging
+            try:
+                import traceback
+                traceback.print_exc()
+            except:
+                pass
             return self._fallback_response(message)
     
     def _groq_respond(self, message: str, context: List[Dict]) -> Dict:
@@ -173,7 +184,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         )
         
         reply_text = response.choices[0].message.content
-        print(f"[AI] ✅ Received response from GROQ")
+        print(f"[AI] Received response from GROQ")
         
         # Generate suggestions
         suggestions = self._generate_suggestions(message, reply_text)
@@ -215,7 +226,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         print(f"[AI] Sending message to Gemini...")
         response = chat.send_message(message)
         reply_text = response.text
-        print(f"[AI] ✅ Received response from Gemini")
+        print(f"[AI] Received response from Gemini")
         
         suggestions = self._generate_suggestions(message, reply_text)
         
