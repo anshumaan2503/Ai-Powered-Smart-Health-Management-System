@@ -166,23 +166,14 @@ export function LandingPage() {
               </span>
             </Link>
 
-            {/* Desktop nav links — guests only */}
-            {!isPatientLoggedIn && !isHospitalLoggedIn && (
-              <nav className="hidden md:flex items-center space-x-1">
-                <a href="#features" className="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Features</a>
-                <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Pricing</a>
-                <a href="#about" className="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">About</a>
-              </nav>
-            )}
-
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
               <ThemeToggleButton />
 
               {isPatientLoggedIn && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Hi, {patientName}!</span>
-                  <Link href="/patient/dashboard" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold text-sm">
+                  <Link href="/patient/dashboard" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold">
                     Dashboard
                   </Link>
                   <button onClick={() => handleLogout('patient')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
@@ -192,32 +183,14 @@ export function LandingPage() {
               )}
 
               {isHospitalLoggedIn && (
-                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-3">
+                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-4">
                   <span className="text-sm text-gray-600 dark:text-gray-400">{hospitalName}</span>
-                  <Link href="/hospital/dashboard" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold text-sm">
+                  <Link href="/hospital/dashboard" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold">
                     Dashboard
                   </Link>
                   <button onClick={() => handleLogout('hospital')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
                     Logout
                   </button>
-                </div>
-              )}
-
-              {/* Guest CTA buttons */}
-              {!isPatientLoggedIn && !isHospitalLoggedIn && (
-                <div className="flex items-center space-x-2">
-                  <Link
-                    href="/login"
-                    className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="inline-flex items-center px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm shadow-blue-500/30 hover:shadow-blue-500/50"
-                  >
-                    Get Started
-                  </Link>
                 </div>
               )}
             </div>

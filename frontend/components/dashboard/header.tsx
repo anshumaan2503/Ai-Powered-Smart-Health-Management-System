@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { 
-  BellIcon, 
+import {
+  BellIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   UserCircleIcon,
   CogIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function DashboardHeader() {
   const { user, logout } = useAuth()
@@ -43,6 +44,8 @@ export function DashboardHeader() {
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
+          <ThemeToggle className="scale-75 sm:scale-95" />
+
           {/* Notifications */}
           <button className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg">
             <BellIcon className="h-6 w-6" />
