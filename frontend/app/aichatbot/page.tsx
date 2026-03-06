@@ -8,6 +8,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { ThemeToggleButton } from '@/components/ui/ThemeToggle';
+import { TypingAnimation } from '@/components/ui/typing-animation';
 
 interface Message {
   id: string;
@@ -258,12 +259,18 @@ export default function AIChatbot() {
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="ml-2 text-sm">AI is thinking...</span>
+                      <TypingAnimation className="ml-2 text-sm">AI is thinking...</TypingAnimation>
                     </div>
                   ) : (
                     <>
-                      {/* Message text */}
-                      <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                      {/* Message text with typing effect for AI */}
+                      {!message.isUser ? (
+                        <TypingAnimation className="text-sm whitespace-pre-wrap block">
+                          {message.text}
+                        </TypingAnimation>
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                      )}
                       <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-100' : 'text-gray-500'}`}>
                         {message.timestamp ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </p>
