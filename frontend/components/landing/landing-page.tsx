@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { useRef, useState, useEffect } from 'react'
-import { PremiumThemeToggle } from '@/components/ui/premium-theme-toggle'
-import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 import {
   HeartIcon,
   UserGroupIcon,
@@ -167,24 +166,14 @@ export function LandingPage() {
               </span>
             </Link>
 
-            {/* Desktop nav links — guests only */}
-            {!isPatientLoggedIn && !isHospitalLoggedIn && (
-              <nav className="hidden md:flex items-center space-x-1">
-                <Link href="/ai/chatbot" className="px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center group">
-                  <SparklesIcon className="h-4 w-4 mr-2 text-blue-500 group-hover:animate-pulse" />
-                  AI Chatbot
-                </Link>
-              </nav>
-            )}
-
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
-              <PremiumThemeToggle />
+              <ThemeToggleButton />
 
               {isPatientLoggedIn && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Hi, {patientName}!</span>
-                  <Link href="/patient/dashboard" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold text-sm">
+                  <Link href="/patient/dashboard" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold">
                     Dashboard
                   </Link>
                   <button onClick={() => handleLogout('patient')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
@@ -194,32 +183,14 @@ export function LandingPage() {
               )}
 
               {isHospitalLoggedIn && (
-                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-3">
+                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-4">
                   <span className="text-sm text-gray-600 dark:text-gray-400">{hospitalName}</span>
-                  <Link href="/hospital/dashboard" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold text-sm">
+                  <Link href="/hospital/dashboard" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold">
                     Dashboard
                   </Link>
                   <button onClick={() => handleLogout('hospital')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
                     Logout
                   </button>
-                </div>
-              )}
-
-              {/* Guest CTA buttons */}
-              {!isPatientLoggedIn && !isHospitalLoggedIn && (
-                <div className="flex items-center space-x-2">
-                  <Link
-                    href="/login"
-                    className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                  >
-                    Log in
-                  </Link>
-                  <InteractiveHoverButton
-                    href="/register"
-                    className="w-auto h-10 px-6 text-sm"
-                  >
-                    Get Started
-                  </InteractiveHoverButton>
                 </div>
               )}
             </div>
@@ -248,6 +219,13 @@ export function LandingPage() {
             <span className="text-purple-600 dark:text-purple-400 font-semibold"> advanced analytics</span>.
           </p>
 
+          <button
+            onClick={scrollToAccess}
+            className="group relative inline-flex items-center justify-center px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-xl transition-all duration-300 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 mb-8"
+          >
+            <span>Get Started</span>
+            <ArrowRightIcon className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
 
           {/* AI Chatbot Quick Access */}
           <div className="mt-8 mb-12">
@@ -330,12 +308,13 @@ export function LandingPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <InteractiveHoverButton
+                  <Link
                     href="/login"
-                    className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition-all flex items-center justify-center group/btn hover:scale-105"
                   >
                     Login
-                  </InteractiveHoverButton>
+                    <ArrowRightIcon className="ml-2 h-5 w-5 group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
                   <Link
                     href="/register"
                     className="w-full border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-bold py-4 px-8 rounded-xl transition-all text-center block"
@@ -370,12 +349,13 @@ export function LandingPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <InteractiveHoverButton
+                  <Link
                     href="/hospital/login"
-                    className="w-full h-14 bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700 text-white"
+                    className="w-full bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-700 hover:to-cyan-700 text-white font-bold py-4 px-8 rounded-xl transition-all flex items-center justify-center group/btn hover:scale-105"
                   >
                     Login
-                  </InteractiveHoverButton>
+                    <ArrowRightIcon className="ml-2 h-5 w-5 group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
                   <Link
                     href="/hospital/register"
                     className="w-full border-2 border-green-600 dark:border-green-400 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 font-bold py-4 px-8 rounded-xl transition-all text-center block"
@@ -430,12 +410,13 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <InteractiveHoverButton
+                <Link
                   href="/login"
-                  className="w-auto px-8 h-12 bg-white text-slate-950 hover:bg-slate-100"
+                  className="inline-flex items-center px-8 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-bold rounded-xl transition-all shadow-xl hover:scale-105"
                 >
                   Try AI Chatbot
-                </InteractiveHoverButton>
+                  <ArrowRightIcon className="ml-2 h-5 w-5" />
+                </Link>
               </div>
             </div>
           </div>
@@ -478,10 +459,10 @@ export function LandingPage() {
             </div>
           </div>
         </div>
-      </section >
+      </section>
 
       {/* Footer */}
-      < footer className="bg-gradient-to-br from-gray-900 to-black text-white py-12" >
+      <footer className="bg-gradient-to-br from-gray-900 to-black text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center mb-6">
             <HeartIcon className="h-8 w-8 text-blue-400 dark:text-blue-300" />
@@ -496,7 +477,7 @@ export function LandingPage() {
             © 2025 MediCare Pro. All rights reserved.
           </div>
         </div>
-      </footer >
-    </div >
+      </footer>
+    </div>
   )
 }
