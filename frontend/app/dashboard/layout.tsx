@@ -16,6 +16,14 @@ const DashboardHeader = dynamic(() => import('@/components/dashboard/header').th
 
 import dynamic from 'next/dynamic'
 
+/**
+ * Provides the authenticated dashboard page layout (sidebar, header, and main content) and enforces redirect to the login page for unauthenticated users.
+ *
+ * The component renders the full dashboard markup and uses React Suspense fallbacks for lazily loaded sidebar, header, and main content areas. If authentication finishes and there is no user, the component triggers a client-side redirect to `/login`.
+ *
+ * @param children - Page content rendered in the dashboard's main area
+ * @returns The dashboard layout element containing the sidebar, header, and main content
+ */
 export default function DashboardLayout({
   children,
 }: {
@@ -30,17 +38,6 @@ export default function DashboardLayout({
     }
   }, [user, isLoading, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -22,6 +22,9 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import useSWR, { useSWRConfig } from 'swr'
+import { useCallback, useMemo, memo } from 'react'
+import { debounce } from 'lodash'
 
 interface Patient {
   id: number
@@ -38,14 +41,30 @@ interface Patient {
   created_at: string
 }
 
+/**
+ * Renders the Hospital Patients management page with search, filtering, pagination, selection, CSV import, and delete controls.
+ *
+ * The component manages UI state for searching (with debounce), filtering by gender and blood group, pagination, single and bulk deletion flows, CSV import (with template download and import result reporting), and adding sample data. It fetches patient data via SWR keyed by page, debounced search term, and filters, and refreshes related analytics when the list is mutated. Authentication errors (401) trigger a redirect to the hospital login route.
+ *
+ * @returns The React element for the Hospital Patients management page.
+ */
 export default function HospitalPatientsPage() {
-  const [patients, setPatients] = useState<Patient[]>([])
-  const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterGender, setFilterGender] = useState('')
   const [filterBloodGroup, setFilterBloodGroup] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+
+  // Debounce search term to prevent excessive API calls
+  const debouncedSetSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchTerm(value)
+      setCurrentPage(1)
+    }, 400),
+    []
+  )
+
   const [showFilters, setShowFilters] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; patient: Patient | null }>({
     show: false,
@@ -67,39 +86,39 @@ export default function HospitalPatientsPage() {
 
   const router = useRouter()
 
-  useEffect(() => {
-    fetchPatients()
-  }, [currentPage, searchTerm, filterGender, filterBloodGroup])
-
-  const fetchPatients = async () => {
-    try {
-      setLoading(true)
-
-      const params = {
-        page: currentPage,
-        per_page: 10,
-        search: searchTerm,
-        gender: filterGender,
-        blood_group: filterBloodGroup
-      }
-
-      const response = await hospitalAPI.getPatients(params)
-      setPatients(response.data.patients || [])
-      setTotalPages(response.data.pages || 1)
-    } catch (error: any) {
-      console.error('Error fetching patients:', error)
-      if (error.response?.status === 401) {
-        router.push('/hospital/login')
-      }
-      setPatients([])
-    } finally {
-      setLoading(false)
+  const { data: patientsResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-patients', currentPage, debouncedSearchTerm, filterGender, filterBloodGroup],
+    () => hospitalAPI.getPatients({
+      page: currentPage,
+      per_page: 10,
+      search: debouncedSearchTerm,
+      gender: filterGender,
+      blood_group: filterBloodGroup
+    }),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 0 
     }
+  )
+
+  const patients: Patient[] = patientsResponse?.data?.patients || []
+  const totalPages = patientsResponse?.data?.pages || 1
+  const loading = !patientsResponse && !fetchError
+
+  useEffect(() => {
+    if (fetchError?.response?.status === 401) {
+      router.push('/hospital/login')
+    }
+  }, [fetchError, router])
+
+  const fetchPatients = () => {
+    mutate()
+    globalMutate('dashboard-analytics')
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    setCurrentPage(1)
+    debouncedSetSearch(e.target.value)
   }
 
   const handleFilterChange = (type: string, value: string) => {
@@ -499,84 +518,16 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {patients.map((patient, index) => (
-                    <motion.tr
+                    <PatientRow
                       key={patient.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedPatients.includes(patient.id)}
-                          onChange={() => handleSelectPatient(patient.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <UserIcon className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {patient.full_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {patient.patient_id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{patient.email}</div>
-                        <div className="text-sm text-gray-500">{patient.phone}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
-                            {patient.gender}
-                          </span>
-                          {patient.blood_group && (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
-                              {patient.blood_group}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          Age: {patient.age}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(patient.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </Link>
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit Patient"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(patient)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Patient"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
+                      patient={patient}
+                      index={index}
+                      isSelected={selectedPatients.includes(patient.id)}
+                      onSelect={handleSelectPatient}
+                      onDelete={handleDeleteClick}
+                      getGenderColor={getGenderColor}
+                      getBloodGroupColor={getBloodGroupColor}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -967,3 +918,104 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
     </div>
   )
 }
+
+// Memoized Row component to prevent unnecessary re-renders
+const PatientRow = memo(({ 
+  patient, 
+  index, 
+  isSelected, 
+  onSelect, 
+  onDelete, 
+  getGenderColor, 
+  getBloodGroupColor 
+}: { 
+  patient: any; 
+  index: number; 
+  isSelected: boolean; 
+  onSelect: (id: number) => void; 
+  onDelete: (p: any) => void;
+  getGenderColor: (g: string) => string;
+  getBloodGroupColor: (bg: string) => string;
+}) => {
+  return (
+    <motion.tr
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.5) }}
+      className="hover:bg-gray-50 transition-colors"
+    >
+      <td className="px-6 py-4 whitespace-nowrap">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onSelect(patient.id)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <UserIcon className="h-6 w-6 text-blue-600" />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {patient.full_name}
+            </div>
+            <div className="text-sm text-gray-500 font-mono text-xs">
+              ID: {patient.patient_id}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        <div className="text-gray-900">{patient.email}</div>
+        <div className="text-gray-500">{patient.phone}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center space-x-2">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
+            {patient.gender}
+          </span>
+          {patient.blood_group && (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
+              {patient.blood_group}
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-gray-500 mt-1">
+          Age: {patient.age}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {new Date(patient.created_at).toLocaleDateString()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end space-x-2">
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}`}
+            className="text-blue-600 hover:text-blue-900 transition-colors"
+            title="View Details"
+          >
+            <EyeIcon className="h-5 w-5" />
+          </Link>
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}/edit`}
+            className="text-green-600 hover:text-green-900 transition-colors"
+            title="Edit Patient"
+          >
+            <PencilIcon className="h-5 w-5" />
+          </Link>
+          <button
+            onClick={() => onDelete(patient)}
+            className="text-red-600 hover:text-red-900 transition-colors"
+            title="Delete Patient"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </td>
+    </motion.tr>
+  )
+})
+
+PatientRow.displayName = 'PatientRow'
