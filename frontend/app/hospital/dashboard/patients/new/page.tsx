@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { patientsAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   UserPlusIcon,
   ArrowLeftIcon,
   UserIcon,
@@ -37,7 +38,7 @@ export default function NewPatientPage() {
     blood_group: '',
     address: ''
   })
-  
+
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const router = useRouter()
@@ -45,7 +46,7 @@ export default function NewPatientPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
@@ -87,7 +88,7 @@ export default function NewPatientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       toast.error('Please fix the errors in the form')
       return
@@ -95,33 +96,16 @@ export default function NewPatientPage() {
 
     try {
       setLoading(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      if (!token) {
-        router.push('/hospital/login')
-        return
-      }
-
-      const response = await fetch('http://localhost:5000/api/patients/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        toast.success('Patient registered successfully!')
-        router.push('/hospital/dashboard/patients')
-      } else {
-        toast.error(data.error || 'Failed to register patient')
-      }
-    } catch (error) {
+      await patientsAPI.create(formData)
+      toast.success('Patient registered successfully!')
+      router.push('/hospital/dashboard/patients')
+    } catch (error: any) {
       console.error('Error registering patient:', error)
-      toast.error('Failed to register patient')
+      if (error.response?.status === 401) {
+        router.push('/hospital/login')
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to register patient')
+      }
     } finally {
       setLoading(false)
     }
@@ -323,7 +307,7 @@ export default function NewPatientPage() {
                   <option value="O-">O-</option>
                 </select>
               </div>
-              
+
               <div className="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <DocumentTextIcon className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0" />
                 <div>

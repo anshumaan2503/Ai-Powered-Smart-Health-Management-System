@@ -4,7 +4,9 @@ from hospital import db
 from hospital.models.appointment import Appointment
 from hospital.models.patient import Patient
 from hospital.models.doctor import Doctor
+from hospital.models.user import User
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 import uuid
 
 appointments_bp = Blueprint('appointments', __name__)
@@ -62,8 +64,14 @@ def create_appointment():
             notes=data.get('notes'),
             priority=data.get('priority', 'normal'),
             estimated_duration=data.get('estimated_duration', 30),
-            consultation_fee=doctor.consultation_fee
+            consultation_fee=doctor.consultation_fee,
+            status='requested',
+            hospital_id=doctor.hospital_id
         )
+
+        # Also associate patient with hospital if not already associated
+        if not patient.hospital_id:
+            patient.hospital_id = doctor.hospital_id
         
         db.session.add(appointment)
         db.session.commit()
@@ -90,19 +98,38 @@ def get_appointments():
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
         
-        query = Appointment.query
+        query = Appointment.query.options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor).joinedload(Doctor.user),
+            joinedload(Appointment.hospital)
+        )
         
-        # Apply filters
+        # ✅ Role-based auto-filtering
+        current_identity = get_jwt_identity()
+        user = User.query.get(int(current_identity))
+        
+        if user:
+            if user.role == 'patient':
+                patient = Patient.query.filter_by(user_id=user.id).first()
+                if patient:
+                    query = query.filter(Appointment.patient_id == patient.id)
+            elif user.role == 'doctor':
+                doctor = Doctor.query.filter_by(user_id=user.id).first()
+                if doctor:
+                    query = query.filter(Appointment.doctor_id == doctor.id)
+            elif user.role in ['admin', 'receptionist', 'nurse']:
+                if user.hospital_id:
+                    query = query.filter(Appointment.hospital_id == user.hospital_id)
+
+        # Apply additional filters from request args
         if status:
             query = query.filter(Appointment.status == status)
         
-        if doctor_id:
+        if doctor_id and user.role != 'doctor': # Prevent bypassing doctor filter
             query = query.filter(Appointment.doctor_id == doctor_id)
         
-        if patient_id:
+        if patient_id and user.role != 'patient': # Prevent bypassing patient filter
             query = query.filter(Appointment.patient_id == patient_id)
-        
-        if date_from:
             try:
                 date_from_obj = datetime.fromisoformat(date_from)
                 query = query.filter(Appointment.appointment_date >= date_from_obj)

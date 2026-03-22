@@ -1,0 +1,3 @@
+#!/bin/bash
+# Railway entry point
+python -m gunicorn --bind 0.0.0.0:$PORT wsgi:app --workers 2 --timeout 120

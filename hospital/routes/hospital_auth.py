@@ -116,8 +116,10 @@ def hospital_login():
         if not user or not user.check_password(password):
             return jsonify({'error': 'Invalid credentials'}), 401
         
+        # Auto-reactivate account if it was deactivated
         if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
+            user.is_active = True
+            db.session.commit()
         
         # Check hospital subscription status
         if user.hospital_id:
@@ -225,7 +227,19 @@ def get_subscription_status():
 def get_all_hospitals():
     """Get all active hospitals for patient dashboard"""
     try:
-        # Filter out deleted hospitals (those with [DELETED] in name) and inactive hospitals
+        from sqlalchemy import func
+        # Get hospitals and doctor counts in a single query
+        # Join Hospital with User (filtered for doctors) to get counts
+        doctor_counts = db.session.query(
+            User.hospital_id,
+            func.count(User.id).label('count')
+        ).filter(
+            User.role == 'doctor',
+            User.is_active == True
+        ).group_by(User.hospital_id).all()
+        
+        doctor_counts_map = {h_id: count for h_id, count in doctor_counts if h_id}
+        
         hospitals = Hospital.query.filter(
             Hospital.is_active == True,
             ~Hospital.name.like('%[DELETED]%')
@@ -233,19 +247,12 @@ def get_all_hospitals():
         
         hospitals_data = []
         for hospital in hospitals:
-            # Skip hospitals with [DELETED] in name as extra safety check
+            # Skip hospitals with [DELETED] in name (already filtered but just in case)
             if '[DELETED]' in hospital.name:
                 continue
                 
-            # Get doctor count for this hospital
-            doctor_count = User.query.filter_by(
-                hospital_id=hospital.id, 
-                role='doctor', 
-                is_active=True
-            ).count()
-            
             hospital_data = hospital.to_dict()
-            hospital_data['total_doctors'] = doctor_count
+            hospital_data['total_doctors'] = doctor_counts_map.get(hospital.id, 0)
             hospital_data['rating'] = 4.5  # Mock rating
             hospital_data['specializations'] = ['General Medicine', 'Cardiology', 'Neurology']  # Mock specializations
             
@@ -317,8 +324,8 @@ def get_hospital_doctors(hospital_id):
             doctor_data['name'] = user.full_name
             doctor_data['email'] = user.email
             doctor_data['phone'] = user.phone
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)  # Dynamic fee based on experience
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))  # Rating based on experience
@@ -368,8 +375,8 @@ def get_all_doctors():
             doctor_data['phone'] = user.phone
             doctor_data['hospital_name'] = hospital.name
             doctor_data['hospital_id'] = hospital.id
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))

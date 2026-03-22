@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   BeakerIcon,
   PlusIcon,
   MagnifyingGlassIcon,
@@ -22,6 +23,10 @@ import {
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
+
+import { useCallback, useMemo, memo } from 'react'
+import { debounce } from 'lodash'
+import useSWR from 'swr'
 
 interface Medicine {
   id: number
@@ -54,17 +59,15 @@ interface DashboardStats {
   expiring_soon: number
   total_inventory_value: number
   recent_movements: number
-  top_categories: Array<{name: string, count: number}>
+  top_categories: Array<{ name: string, count: number }>
 }
 
 export default function PharmacyPage() {
-  const [medicines, setMedicines] = useState<Medicine[]>([])
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
-  const [categories, setCategories] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -74,86 +77,61 @@ export default function PharmacyPage() {
   const [deleteAllModal, setDeleteAllModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deletingAll, setDeletingAll] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    loadDashboardStats()
-    loadMedicines()
-  }, [currentPage, searchTerm, selectedCategory, selectedStatus])
+  // Debounced search handler
+  const debouncedSetSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchTerm(value)
+      setCurrentPage(1)
+    }, 500),
+    []
+  )
 
-  const loadDashboardStats = async () => {
-    try {
-      console.log('Loading dashboard stats...')
-      const response = await fetch('/api/hospital/pharmacy/dashboard-stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('hospital_access_token')}`
-        }
-      })
-      
-      console.log('Dashboard stats response:', response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Dashboard stats data:', data)
-        setStats(data)
-      } else {
-        const errorText = await response.text()
-        console.error('Dashboard stats error:', response.status, errorText)
-        // Don't show error toast here as loadMedicines will handle sample data
-      }
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error)
-      // Don't show error toast here as loadMedicines will handle sample data
-    }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+    debouncedSetSearch(e.target.value)
   }
 
-  const loadMedicines = async () => {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: '20'
-      })
-      
-      if (searchTerm) params.append('search', searchTerm)
-      if (selectedCategory) params.append('category', selectedCategory)
-      if (selectedStatus) params.append('status', selectedStatus)
-      
-      console.log('Loading medicines with params:', params.toString())
-      
-      const response = await fetch(`/api/hospital/pharmacy/medicines?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('hospital_access_token')}`
-        }
-      })
-      
-      console.log('Medicines response:', response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Medicines data:', data)
-        setMedicines(data.medicines)
-        setCategories(data.categories)
-        setTotalPages(data.pagination.pages)
-      } else {
-        const errorText = await response.text()
-        console.error('Medicines error:', response.status, errorText)
-        
-        // Load sample data as fallback
-        console.log('Loading sample medicine data as fallback...')
+  // Fetch Stocks
+  const { data: statsResponse } = useSWR(
+    '/hospital/pharmacy/dashboard-stats',
+    () => api.get('/hospital/pharmacy/dashboard-stats').then(res => res.data),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 2000 
+    }
+  )
+  const stats: DashboardStats | null = statsResponse || null
+
+  // Fetch Medicines
+  const { data: medicinesResponse, error: fetchError, mutate } = useSWR(
+    ['/hospital/pharmacy/medicines', currentPage, debouncedSearchTerm, selectedCategory, selectedStatus],
+    () => api.get('/hospital/pharmacy/medicines', {
+      params: {
+        page: currentPage,
+        per_page: '20',
+        search: debouncedSearchTerm || undefined,
+        category: selectedCategory || undefined,
+        status: selectedStatus || undefined
+      }
+    }).then(res => res.data),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      onError: (err) => {
+        console.error('Error loading medicines:', err)
         loadSampleData()
       }
-    } catch (error) {
-      console.error('Error loading medicines:', error)
-      
-      // Load sample data as fallback
-      console.log('Loading sample medicine data as fallback...')
-      loadSampleData()
-    } finally {
-      setLoading(false)
     }
-  }
+  )
+
+  const medicines: Medicine[] = medicinesResponse?.medicines || []
+  const categories: string[] = medicinesResponse?.categories || []
+  const totalPages = medicinesResponse?.pagination?.pages || 1
+  const loading = !medicinesResponse && !fetchError
+
+  const loadMedicines = () => mutate()
+  const loadDashboardStats = () => { /* revalidation happens automatically or via mutate */ }
 
   const loadSampleData = () => {
     // Sample Indian medicine data for demonstration
@@ -287,10 +265,14 @@ export default function PharmacyPage() {
       ]
     }
 
-    setMedicines(sampleMedicines)
-    setStats(sampleStats)
-    setCategories(['Analgesic', 'Antibiotic', 'Antidiabetic', 'Antihistamine', 'Vitamin'])
-    setTotalPages(1)
+    mutate({
+      medicines: sampleMedicines,
+      categories: ['Analgesic', 'Antibiotic', 'Antidiabetic', 'Antihistamine', 'Vitamin'],
+      pagination: { pages: 1 }
+    } as any, false)
+    
+    // We can't easily mutate the other SWR key for stats here without its mutate,
+    // but we can just let it be null or handle it similarly.
     
     toast.success('Loaded sample medicine data for demonstration')
   }
@@ -321,41 +303,20 @@ export default function PharmacyPage() {
 
   const downloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/import-medicines-template', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await api.get('/hospital/pharmacy/import-medicines-template')
+      const data = response.data
+      const csvContent = data.template || "name,quantity\nParacetamol 500mg,100\nAmoxicillin 250mg,50"
 
-      if (response.ok) {
-        const data = await response.json()
-        const csvContent = data.template || "name,quantity\nParacetamol 500mg,100\nAmoxicillin 250mg,50"
-        
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'medicines_import_template.csv'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-        toast.success('Template downloaded successfully')
-      } else {
-        // Fallback template
-        const csvContent = "name,quantity\nParacetamol 500mg,100\nAmoxicillin 250mg,50\nIbuprofen 400mg,75"
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'medicines_import_template.csv'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-        toast.success('Template downloaded successfully')
-      }
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'medicines_import_template.csv'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      toast.success('Template downloaded successfully')
     } catch (error) {
       console.error('Error downloading template:', error)
       toast.error('Failed to download template')
@@ -381,17 +342,11 @@ export default function PharmacyPage() {
       const formData = new FormData()
       formData.append('file', importFile)
 
-      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/import-medicines', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
+      const response = await api.post('/hospital/pharmacy/import-medicines', formData)
+      const data = response.data
 
-      const data = await response.json()
-
-      if (response.ok) {
+      // Axios success implies 2xx
+      if (true) {
         setImportResults(data)
         toast.success(`Import completed: ${data.imported_count} medicines imported`)
         // Reload medicines list
@@ -407,11 +362,12 @@ export default function PharmacyPage() {
       }
     } catch (error: any) {
       console.error('Import error:', error)
-      toast.error('Import failed: ' + error.message)
+      const msg = error.response?.data?.error || error.message || 'Import failed'
+      toast.error('Import failed: ' + msg)
       setImportResults({
         imported_count: 0,
         errors_count: 1,
-        errors: [error.message || 'Import failed']
+        errors: [msg]
       })
     } finally {
       setImporting(false)
@@ -429,16 +385,10 @@ export default function PharmacyPage() {
         return
       }
 
-      const response = await fetch(`http://localhost:5000/api/hospital/pharmacy/medicines/${deleteModal.medicine.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await api.delete(`/hospital/pharmacy/medicines/${deleteModal.medicine.id}`)
+      const data = response.data
 
-      const data = await response.json()
-
-      if (response.ok) {
+      if (true) {
         toast.success('Medicine deleted successfully')
         setDeleteModal({ show: false, medicine: null })
         // Reload medicines list
@@ -464,16 +414,10 @@ export default function PharmacyPage() {
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/hospital/pharmacy/medicines/delete-all', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await api.delete('/hospital/pharmacy/medicines/delete-all')
+      const data = response.data
 
-      const data = await response.json()
-
-      if (response.ok) {
+      if (true) {
         toast.success(data.message || `Successfully deleted ${data.deleted_count} medicine(s)`)
         setDeleteAllModal(false)
         // Reload medicines list
@@ -625,7 +569,7 @@ export default function PharmacyPage() {
                 type="text"
                 placeholder="Search medicines by name, brand, or manufacturer..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearch}
                 className="input-field pl-10"
               />
             </div>
@@ -753,7 +697,7 @@ export default function PharmacyPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button 
+                      <button
                         onClick={() => {
                           toast('View medicine details feature coming soon')
                         }}
@@ -762,7 +706,7 @@ export default function PharmacyPage() {
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           toast('Edit medicine feature coming soon')
                         }}
@@ -771,7 +715,7 @@ export default function PharmacyPage() {
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => setDeleteModal({ show: true, medicine })}
                         className="text-red-600 hover:text-red-900"
                         title="Delete medicine"
@@ -841,7 +785,7 @@ export default function PharmacyPage() {
           <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No medicines found</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {stats ? 
+            {stats ?
               "Get started by adding your first medicine to the inventory." :
               "Unable to connect to the pharmacy system. Please check your connection and try again."
             }
@@ -899,10 +843,10 @@ export default function PharmacyPage() {
                       Upload a CSV file with medicine data.
                     </p>
                     <p className="text-xs text-gray-500 mb-3">
-                      <strong>Required:</strong> name, quantity<br/>
+                      <strong>Required:</strong> name, quantity<br />
                       <strong>Optional:</strong> mrp, cost_price, selling_price, expiry_date (format: YYYY-MM-DD or DD-MM-YYYY)
                     </p>
-                    
+
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                       <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <div className="text-sm text-gray-600">
@@ -1125,7 +1069,7 @@ export default function PharmacyPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <p className="text-sm text-gray-600 mb-3">
                   Are you absolutely sure you want to delete all medicines? This action:
                 </p>
@@ -1134,7 +1078,7 @@ export default function PharmacyPage() {
                   <li>Cannot be undone</li>
                   <li>Will affect all stock records</li>
                 </ul>
-                
+
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     <strong>Total medicines to delete:</strong> {medicines.length}

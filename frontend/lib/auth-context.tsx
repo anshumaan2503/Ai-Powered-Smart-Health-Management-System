@@ -12,6 +12,14 @@ interface User {
   full_name: string
   role: string
   is_active: boolean
+  patient_profile?: {
+    id: number
+    patient_id: string
+  }
+  doctor_profile?: {
+    id: number
+    doctor_id: string
+  }
 }
 
 interface AuthContextType {
@@ -39,44 +47,51 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(null) // null on both SSR and client (no hydration mismatch)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
-    try {
-      // Check both localStorage and sessionStorage for tokens
-      let token = localStorage.getItem('access_token')
-      if (!token) {
-        token = sessionStorage.getItem('access_token')
-      }
-
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-
-      const response = await api.get('/auth/profile')
-      setUser(response.data.user)
-    } catch (error: any) {
-      // Handle 422 (Unprocessable Entity) and other auth errors
-      if (error.response?.status === 422 || error.response?.status === 401 || error.response?.status === 403) {
-        // Token is invalid or expired, clear it
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('user')
-        sessionStorage.removeItem('access_token')
-        sessionStorage.removeItem('refresh_token')
-        sessionStorage.removeItem('user')
-      }
-      // Silently fail for other errors (network issues, etc.)
-    } finally {
+    // Step 1: Instantly read from localStorage (synchronous, < 1ms)
+    // This resolves isLoading before the user sees a spinner
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    if (!token) {
       setIsLoading(false)
+      return
     }
-  }
+
+    try {
+      const userData = localStorage.getItem('user') || sessionStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch { /* ignore parse errors */ }
+    setIsLoading(false) // Done instantly — no network wait
+
+    // Step 2: Background token validation (non-blocking)
+    // Runs silently after the page is already rendered
+    const validateToken = async () => {
+      try {
+        const response = await api.get('/auth/profile')
+        setUser(response.data.user)
+        // Keep cached copy fresh
+        const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage
+        storage.setItem('user', JSON.stringify(response.data.user))
+      } catch (error: any) {
+        if (error.response?.status === 422 || error.response?.status === 401 || error.response?.status === 403) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('user')
+          sessionStorage.removeItem('access_token')
+          sessionStorage.removeItem('refresh_token')
+          sessionStorage.removeItem('user')
+          setUser(null)
+        }
+        // Network errors: keep existing user, don't log out
+      }
+    }
+
+    validateToken()
+  }, [])
 
   const login = async (loginIdentifier: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {

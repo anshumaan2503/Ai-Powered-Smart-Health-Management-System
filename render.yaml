@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: hospital-management-frontend
+    env: node
+    dir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ai-powered-smart-health-management.onrender.com/api
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://ai-powered-smart-health-management.onrender.com
+      - key: NODE_ENV
+        value: production
+
+  - type: web
+    name: hospital-management-backend
+    env: python
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python wsgi.py
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_CONFIG
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: sqlite:///hospital.db
+

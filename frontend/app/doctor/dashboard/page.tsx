@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   UserIcon,
   CalendarIcon,
   ClockIcon,
@@ -74,11 +74,11 @@ export default function DoctorDashboardPage() {
               Welcome back, Dr. {doctorData.first_name} {doctorData.last_name}
             </h1>
             <p className="text-blue-100 text-lg">
-              Your medical dashboard - {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              Your medical dashboard - {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </p>
             <div className="mt-4 flex items-center space-x-4 text-sm">
@@ -95,9 +95,9 @@ export default function DoctorDashboardPage() {
               <ClockIcon className="h-8 w-8 mb-2" />
               <p className="text-sm">Current Time</p>
               <p className="text-xl font-semibold">
-                {new Date().toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
+                {new Date().toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit'
                 })}
               </p>
             </div>
@@ -107,50 +107,50 @@ export default function DoctorDashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-blue-50">
-              <CalendarIcon className="h-6 w-6 text-blue-600" />
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+              <CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-4">
-              <h3 className="text-2xl font-bold text-gray-900">{stats.todayAppointments}</h3>
-              <p className="text-sm text-gray-600">Today's Appointments</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.todayAppointments}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Today's Appointments</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-green-50">
-              <UserGroupIcon className="h-6 w-6 text-green-600" />
+            <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/30">
+              <UserGroupIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-4">
-              <h3 className="text-2xl font-bold text-gray-900">{stats.totalPatients}</h3>
-              <p className="text-sm text-gray-600">Total Patients</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatients}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Patients</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-yellow-50">
-              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-4">
-              <h3 className="text-2xl font-bold text-gray-900">{stats.pendingReports}</h3>
-              <p className="text-sm text-gray-600">Pending Reports</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingReports}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Pending Reports</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-purple-50">
-              <CurrencyDollarIcon className="h-6 w-6 text-purple-600" />
+            <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/30">
+              <CurrencyDollarIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-4">
-              <h3 className="text-2xl font-bold text-gray-900">{formatINR(stats.monthlyEarnings)}</h3>
-              <p className="text-sm text-gray-600">This Month</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatINR(stats.monthlyEarnings)}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">This Month</p>
             </div>
           </div>
         </div>
@@ -159,106 +159,105 @@ export default function DoctorDashboardPage() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Appointments */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Today's Appointments</h2>
-            <CalendarIcon className="h-6 w-6 text-gray-400" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Today's Appointments</h2>
+            <CalendarIcon className="h-6 w-6 text-gray-400 dark:text-gray-500" />
           </div>
           <div className="space-y-4">
             {upcomingAppointments.map((appointment) => (
-              <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-colors">
                 <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-blue-600" />
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="ml-3">
-                    <p className="font-medium text-gray-900">{appointment.patient}</p>
-                    <p className="text-sm text-gray-600">{appointment.type}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{appointment.patient}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{appointment.type}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-gray-900">{appointment.time}</p>
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                  <p className="font-medium text-gray-900 dark:text-white">{appointment.time}</p>
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                     Scheduled
                   </span>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full mt-4 bg-blue-50 text-blue-700 py-2 rounded-lg hover:bg-blue-100 font-medium">
+          <button className="w-full mt-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 font-medium transition-colors">
             View All Appointments
           </button>
         </div>
 
         {/* Recent Patients */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Patients</h2>
-            <UserGroupIcon className="h-6 w-6 text-gray-400" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Patients</h2>
+            <UserGroupIcon className="h-6 w-6 text-gray-400 dark:text-gray-500" />
           </div>
           <div className="space-y-4">
             {recentPatients.map((patient) => (
-              <div key={patient.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={patient.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-colors">
                 <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-green-600" />
+                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="ml-3">
-                    <p className="font-medium text-gray-900">{patient.name}</p>
-                    <p className="text-sm text-gray-600">Last visit: {patient.lastVisit}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{patient.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Last visit: {patient.lastVisit}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    patient.status === 'Stable' ? 'bg-green-100 text-green-800' :
-                    patient.status === 'Recovered' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${patient.status === 'Stable' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                      patient.status === 'Recovered' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
+                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                    }`}>
                     {patient.status}
                   </span>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full mt-4 bg-green-50 text-green-700 py-2 rounded-lg hover:bg-green-100 font-medium">
+          <button className="w-full mt-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 py-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 font-medium transition-colors">
             View All Patients
           </button>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-            <CalendarIcon className="h-6 w-6 text-blue-600 mr-3" />
+          <button className="flex items-center p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+            <CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3" />
             <div className="text-left">
-              <h3 className="font-medium text-blue-900">Schedule Appointment</h3>
-              <p className="text-sm text-blue-700">Book new patient visit</p>
+              <h3 className="font-medium text-blue-900 dark:text-blue-100">Schedule Appointment</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">Book new patient visit</p>
             </div>
           </button>
 
-          <button className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-            <UserIcon className="h-6 w-6 text-green-600 mr-3" />
+          <button className="flex items-center p-4 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors">
+            <UserIcon className="h-6 w-6 text-green-600 dark:text-green-400 mr-3" />
             <div className="text-left">
-              <h3 className="font-medium text-green-900">Add Patient</h3>
-              <p className="text-sm text-green-700">Register new patient</p>
+              <h3 className="font-medium text-green-900 dark:text-green-100">Add Patient</h3>
+              <p className="text-sm text-green-700 dark:text-green-300">Register new patient</p>
             </div>
           </button>
 
-          <button className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-            <ChartBarIcon className="h-6 w-6 text-purple-600 mr-3" />
+          <button className="flex items-center p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
+            <ChartBarIcon className="h-6 w-6 text-purple-600 dark:text-purple-400 mr-3" />
             <div className="text-left">
-              <h3 className="font-medium text-purple-900">Medical Records</h3>
-              <p className="text-sm text-purple-700">View patient history</p>
+              <h3 className="font-medium text-purple-900 dark:text-purple-100">Medical Records</h3>
+              <p className="text-sm text-purple-700 dark:text-purple-300">View patient history</p>
             </div>
           </button>
 
-          <button className="flex items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
-            <BellIcon className="h-6 w-6 text-yellow-600 mr-3" />
+          <button className="flex items-center p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition-colors">
+            <BellIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400 mr-3" />
             <div className="text-left">
-              <h3 className="font-medium text-yellow-900">Notifications</h3>
-              <p className="text-sm text-yellow-700">Check alerts & reminders</p>
+              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">Notifications</h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">Check alerts & reminders</p>
             </div>
           </button>
         </div>

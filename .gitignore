@@ -87,8 +87,20 @@ instance/
 
 # Uploads
 uploads/
+hospital/static/uploads/*.pdf
+hospital/static/uploads/**/*.pdf
 
 # Python cache (comprehensive)
 **/__pycache__/
 *.py[cod]
 *$py.class
+
+# Archives and compressed files
+*.zip
+*.7z
+*.tar.gz
+*.rar
+
+# Test outputs
+*_test_output.txt
+test_output*.txt

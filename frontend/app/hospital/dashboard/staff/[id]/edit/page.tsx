@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { 
+import {
   UserIcon,
   ArrowLeftIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { api } from '@/lib/api'
 
 interface StaffMember {
   id: number
@@ -63,25 +64,18 @@ export default function EditStaffPage() {
         return
       }
 
-      // First get all staff to find the specific member
-      const response = await fetch('http://localhost:5000/api/hospital/staff', {
+      // Use the dedicated endpoint for fetching a specific staff member
+      const response = await api.get(`/hospital/staff/${staffId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch staff')
+      if (!response?.data) {
+        throw new Error('Failed to fetch staff member')
       }
 
-      const data = await response.json()
-      const staffMember = data.staff?.find((s: StaffMember) => s.id === parseInt(staffId))
-
-      if (!staffMember) {
-        throw new Error('Staff member not found')
-      }
-
+      const staffMember = response.data
       setStaff(staffMember)
       setFormData({
         first_name: staffMember.first_name,
@@ -138,19 +132,16 @@ export default function EditStaffPage() {
         }
       }
 
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${staffId}`, {
-        method: 'PUT',
+      const response = await api.put(`/hospital/staff/${staffId}`, updateData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
+          'Authorization': `Bearer ${token}`
+        }
       })
 
-      const data = await response.json()
+      const data = response.data
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update staff member')
+      if (!data || data.error) {
+        throw new Error(data?.error || 'Failed to update staff member')
       }
 
       setSuccess('Staff member updated successfully!')
@@ -235,19 +226,17 @@ export default function EditStaffPage() {
               {staff.first_name} {staff.last_name}
             </h3>
             <div className="flex items-center space-x-4 mt-1">
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                staff.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${staff.role === 'admin' ? 'bg-purple-100 text-purple-800' :
                 staff.role === 'doctor' ? 'bg-blue-100 text-blue-800' :
-                staff.role === 'nurse' ? 'bg-green-100 text-green-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
+                  staff.role === 'nurse' ? 'bg-green-100 text-green-800' :
+                    'bg-yellow-100 text-yellow-800'
+                }`}>
                 {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
               </span>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                staff.is_active 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${staff.is_active
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+                }`}>
                 {staff.is_active ? 'Active' : 'Inactive'}
               </span>
             </div>

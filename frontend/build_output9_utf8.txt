@@ -1,0 +1,59 @@
+﻿
+> hospital-management-frontend@0.1.0 build
+> next build
+
+  Γû▓ Next.js 14.2.35
+  - Environments: .env.local, .env.production
+
+   Creating an optimized production build ...
+node.exe :  ΓÜá Found lockfile 
+missing swc dependencies, 
+patching...
+At C:\Program 
+Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotS 
+   pecified: ( ΓÜá Found lock...e  
+  s, patching...:String) [], Rem   
+ oteException
+    + FullyQualifiedErrorId : Nati 
+   veCommandError
+ 
+ ΓÜá Found lockfile missing swc 
+dependencies, patching...
+ ΓÜá Found lockfile missing swc 
+dependencies, patching...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./components/ui/new/alert-dialog.ts
+x:5:32
+Type error: Cannot find module 
+'@/components/ui/new/new/button' 
+or its corresponding type 
+declarations.
+
+[0m [90m 3 |[39m[0m
+[0m [90m 4 |[39m 
+[36mimport[39m { cn } 
+[36mfrom[39m [32m"@/lib/utils"[
+39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 5 
+|[39m [36mimport[39m { 
+buttonVariants } [36mfrom[39m [3
+2m"@/components/ui/new/new/button"
+[39m[33m;[39m[0m
+[0m [90m   |[39m                
+                
+[31m[1m^[22m[39m[0m
+[0m [90m 6 |[39m[0m
+[0m [90m 7 |[39m 
+[36mconst[39m 
+[33mAlertDialog[39m [33m=[39m 
+[33mAlertDialogPrimitive[39m[33m.
+[39m[33mRoot[39m[33m;[39m[0m
+[0m [90m 8 |[39m[0m
+Next.js build worker exited with 
+code: 1 and signal: null

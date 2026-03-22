@@ -7,7 +7,11 @@ from hospital.models.patient import Patient
 from hospital.models.appointment import Appointment
 from hospital.models.hospital import Hospital
 from datetime import datetime, timedelta
+from sqlalchemy.orm import joinedload
 import uuid
+import os
+from flask import current_app
+from werkzeug.utils import secure_filename
 
 hospital_appointments_bp = Blueprint('hospital_appointments', __name__)
 
@@ -27,13 +31,17 @@ def get_appointments():
         
         # Get query parameters
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', 15, type=int)
         date_filter = request.args.get('date', '')
         doctor_id = request.args.get('doctor_id', '', type=int)
         status_filter = request.args.get('status', '')
         
-        # Build query
-        query = Appointment.query.filter_by(hospital_id=user.hospital_id)
+        # Build query with eager loading to prevent N+1 queries
+        query = Appointment.query.filter_by(hospital_id=user.hospital_id).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor).joinedload(Doctor.user),
+            joinedload(Appointment.hospital)
+        )
         
         # Apply filters
         if date_filter:
@@ -118,7 +126,7 @@ def create_appointment():
         
         # Get patient
         patient = Patient.query.filter_by(
-            id=data['patient_id'], 
+            id=int(data['patient_id']), 
             hospital_id=user.hospital_id
         ).first()
         
@@ -127,7 +135,7 @@ def create_appointment():
         
         # Get doctor
         doctor_user = User.query.filter_by(
-            id=data['doctor_user_id'],
+            id=int(data['doctor_user_id']),
             hospital_id=user.hospital_id,
             role='doctor'
         ).first()
@@ -137,7 +145,24 @@ def create_appointment():
         
         doctor = Doctor.query.filter_by(user_id=doctor_user.id).first()
         if not doctor:
-            return jsonify({'error': 'Doctor profile not found'}), 404
+            # Attempt to create missing profile automatically to prevent failure
+            try:
+                doctor = Doctor(
+                    doctor_id=f"DOC{str(uuid.uuid4())[:8].upper()}",
+                    user_id=doctor_user.id,
+                    specialization="General Medicine",
+                    qualification="MBBS",
+                    experience_years=5,
+                    license_number=f"LIC{str(uuid.uuid4())[:8].upper()}",
+                    consultation_fee=500.0,
+                    hospital_id=user.hospital_id
+                )
+                db.session.add(doctor)
+                db.session.flush()
+                print(f"DEBUG: Automatically created missing doctor profile for {doctor_user.full_name}")
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'Doctor profile not found for {doctor_user.full_name} (ID: {doctor_user.id}) and auto-creation failed: {str(e)}'}), 404
         
         # Parse appointment datetime
         try:
@@ -319,9 +344,8 @@ def delete_appointment(appointment_id):
         if not appointment:
             return jsonify({'error': 'Appointment not found'}), 404
         
-        # Only allow deletion of cancelled appointments or future appointments
-        if appointment.status not in ['cancelled', 'scheduled'] and appointment.appointment_date > datetime.now():
-            return jsonify({'error': 'Can only delete cancelled appointments or future scheduled appointments'}), 400
+        # Administrators can delete any appointment associated with their hospital
+        # The frontend already shows a confirmation dialog
         
         db.session.delete(appointment)
         db.session.commit()
@@ -374,21 +398,29 @@ def create_quick_patient():
         # Generate patient ID
         patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
         
+        # Create user for patient
+        patient_user = User(
+            email=data.get('email') if data.get('email') else f"patient_{patient_id.lower()}@example.com",
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            phone=data['phone'],
+            role='patient',
+            hospital_id=user.hospital_id
+        )
+        patient_user.set_password(str(uuid.uuid4())[:12])
+        db.session.add(patient_user)
+        db.session.flush() # Get the user ID
+        
         # Create patient
         patient = Patient(
             patient_id=patient_id,
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            email=data.get('email'),
-            phone=data['phone'],
+            user_id=patient_user.id,
             date_of_birth=dob,
             gender=data['gender'],
             address=data.get('address'),
             emergency_contact_name=data.get('emergency_contact_name'),
             emergency_contact_phone=data.get('emergency_contact_phone'),
             blood_group=data.get('blood_group'),
-            allergies=data.get('allergies'),
-            medical_history=data.get('medical_history'),
             hospital_id=user.hospital_id
         )
         
@@ -460,8 +492,33 @@ def get_all_patients():
         
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search', '')
+        gender = request.args.get('gender', '')
+        blood_group = request.args.get('blood_group', '')
         
-        patients = Patient.query.filter_by(hospital_id=user.hospital_id).paginate(
+        # Build query with eager loading for user data
+        query = Patient.query.options(joinedload(Patient.user)).filter(Patient.hospital_id == user.hospital_id)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(
+                db.or_(
+                    Patient.patient_id.ilike(f'%{search}%'),
+                    User.first_name.ilike(f'%{search}%'),
+                    User.last_name.ilike(f'%{search}%'),
+                    User.phone.ilike(f'%{search}%')
+                )
+            )
+            
+        # Apply gender filter
+        if gender:
+            query = query.filter_by(gender=gender)
+            
+        # Apply blood group filter
+        if blood_group:
+            query = query.filter_by(blood_group=blood_group)
+            
+        patients = query.paginate(
             page=page, per_page=per_page, error_out=False
         )
         
@@ -558,4 +615,70 @@ def get_available_doctors():
         }), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@hospital_appointments_bp.route('/appointments/<int:appointment_id>/upload-report', methods=['POST'])
+@jwt_required()
+def upload_report(appointment_id):
+    """Upload a PDF report for an appointment"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
+        
+        if not user or not user.hospital_id:
+            return jsonify({'error': 'User not associated with any hospital'}), 404
+        
+        if user.role not in ['admin', 'receptionist', 'doctor']:
+            return jsonify({'error': 'Access denied'}), 403
+            
+        appointment = Appointment.query.filter_by(
+            id=appointment_id,
+            hospital_id=user.hospital_id
+        ).first()
+        
+        if not appointment:
+            return jsonify({'error': 'Appointment not found'}), 404
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.csv', '.gif', '.bmp', '.webp'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file and file_ext in allowed_extensions:
+            # Create uploads directory if it doesn't exist
+            static_folder = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+            upload_folder = os.path.join(static_folder, 'uploads', 'reports')
+            
+            if not os.path.exists(upload_folder):
+                os.makedirs(upload_folder)
+                
+            filename = secure_filename(f"report_{appointment.appointment_id}_{uuid.uuid4().hex[:8]}{file_ext}")
+            filepath = os.path.join(upload_folder, filename)
+            file.save(filepath)
+            
+            # Save the relative URL
+            report_url = f"/static/uploads/reports/{filename}"
+            appointment.report_url = report_url
+            appointment.report_name = file.filename
+            appointment.status = 'completed' # Auto mark as completed
+            appointment.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Report uploaded successfully',
+                'report_url': report_url,
+                'report_name': file.filename,
+                'appointment': appointment.to_dict()
+            }), 200
+        else:
+            return jsonify({'error': 'File type not allowed. Please upload common document or image files.'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500

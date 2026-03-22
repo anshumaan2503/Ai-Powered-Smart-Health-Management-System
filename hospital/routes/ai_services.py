@@ -55,24 +55,24 @@ def symptom_checker():
             patient_gender=additional_info.get('gender')
         )
         
-        # Save AI diagnosis if patient_id provided (disabled for now)
-        # if patient_id:
-        #     ai_diagnosis = AIDiagnosis(
-        #         patient_id=patient_id,
-        #         symptoms=symptoms,
-        #         predicted_conditions=analysis_result['predicted_conditions'],
-        #         risk_assessment=analysis_result['risk_level'],
-        #         recommended_tests=analysis_result['recommended_tests'],
-        #         recommended_specialists=analysis_result['recommended_specialists'],
-        #         ai_confidence_score=analysis_result['confidence_score'],
-        #         model_version='v1.0',
-        #         input_data=additional_info
-        #     )
-        #     
-        #     db.session.add(ai_diagnosis)
-        #     db.session.commit()
-        #     
-        #     analysis_result['diagnosis_id'] = ai_diagnosis.id
+        # Save AI diagnosis if patient_id provided
+        if patient_id:
+            ai_diagnosis = AIDiagnosis(
+                patient_id=patient_id,
+                symptoms=symptoms,
+                predicted_conditions=analysis_result['predicted_conditions'],
+                risk_assessment=analysis_result['risk_level'],
+                recommended_tests=analysis_result['recommended_tests'],
+                recommended_specialists=analysis_result['recommended_specialists'],
+                ai_confidence_score=analysis_result['confidence_score'],
+                model_version='v1.0',
+                input_data=additional_info
+            )
+            
+            db.session.add(ai_diagnosis)
+            db.session.commit()
+            
+            analysis_result['diagnosis_id'] = ai_diagnosis.id
         
         return jsonify({
             'success': True,
@@ -122,18 +122,15 @@ def risk_assessment():
         if not patient_id:
             return jsonify({'error': 'Patient ID is required'}), 400
         
-        # Patient functionality disabled for now
-        return jsonify({'error': 'Patient functionality temporarily disabled'}), 503
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
         
-        # patient = Patient.query.get(patient_id)
-        # if not patient:
-        #     return jsonify({'error': 'Patient not found'}), 404
-        # 
-        # # Initialize risk assessment service
-        # risk_service = SimpleRiskAssessment()
-        # 
-        # # Perform risk assessment
-        # risk_result = risk_service.assess_patient_risk(patient)
+        # Initialize risk assessment service
+        risk_service = SimpleRiskAssessment()
+        
+        # Perform risk assessment
+        risk_result = risk_service.assess_patient_risk(patient)
         
         return jsonify({
             'success': True,
@@ -206,10 +203,15 @@ def verify_diagnosis(diagnosis_id):
         if not ai_diagnosis:
             return jsonify({'error': 'AI diagnosis not found'}), 404
         
+        # Current user is the doctor (mapped from user_id in JWT)
+        from hospital.models.doctor import Doctor
+        doctor = Doctor.query.filter_by(user_id=int(current_user_id)).first()
+        if doctor:
+            ai_diagnosis.doctor_id = doctor.id
+        
         # Update verification status
         ai_diagnosis.doctor_verified = data.get('verified', False)
         ai_diagnosis.doctor_notes = data.get('notes', '')
-        ai_diagnosis.doctor_id = current_user_id
         
         db.session.commit()
         

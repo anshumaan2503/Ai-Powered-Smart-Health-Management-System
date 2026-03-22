@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   UserGroupIcon,
   PlusIcon,
   MagnifyingGlassIcon,
@@ -13,6 +13,9 @@ import {
   CloudArrowUpIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { api, hospitalAPI } from '@/lib/api'
+import useSWR from 'swr'
+import toast from 'react-hot-toast'
 
 interface StaffMember {
   id: number
@@ -32,87 +35,50 @@ interface StaffMember {
 }
 
 export default function StaffManagementPage() {
-  const [staff, setStaff] = useState<StaffMember[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchStaff()
-  }, [roleFilter])
-
-  const fetchStaff = async () => {
-    try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('No access token found')
-        return
-      }
-
-      const url = new URL('http://localhost:5000/api/hospital/staff')
-      url.searchParams.append('per_page', '100') // Get more results
-      if (roleFilter) {
-        url.searchParams.append('role', roleFilter)
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch staff')
-      }
-
-      const data = await response.json()
-      
-      // Filter out doctors since they have their own management section (case-insensitive)
-      // Also exclude the main hospital admin account
-      const nonDoctorStaff = (data.staff || []).filter((member: StaffMember) => {
-        const role = member.role.toLowerCase()
-        const isDoctor = role === 'doctor'
-        const isMainAdmin = member.email === 'city@hospital.com' // Exclude main hospital admin
-        return !isDoctor && !isMainAdmin
-      })
-      
-      setStaff(nonDoctorStaff)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load staff')
-    } finally {
-      setLoading(false)
+  const { data: staffResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-staff', roleFilter],
+    () => hospitalAPI.getStaff({ role: roleFilter, per_page: 10 }),
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 5000 
     }
-  }
+  )
+
+  const staffCount = staffResponse?.data?.staff?.length || 0
+  const loading = !staffResponse && !fetchError
+  const errorValue = fetchError?.response?.status === 401 
+    ? 'Authentication required. Please login again.' 
+    : (fetchError?.response?.data?.error || fetchError?.message || '')
+
+  useEffect(() => {
+    if (errorValue) setError(errorValue)
+  }, [errorValue])
+
+  // Split staff into non-doctors
+  const staff = (staffResponse?.data?.staff || []).filter((member: StaffMember) => {
+    const role = member.role.toLowerCase()
+    return role !== 'doctor' && member.email !== 'city@hospital.com'
+  })
 
   const toggleStaffStatus = async (staffId: number) => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      const response = await fetch(`http://localhost:5000/api/hospital/staff/${staffId}/toggle-status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update staff status')
-      }
-
-      // Refresh staff list
-      fetchStaff()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update staff status')
+      await hospitalAPI.toggleStaffStatus(staffId)
+      mutate()
+      toast.success('Staff status updated')
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Failed to update staff status')
     }
   }
 
   const filteredStaff = staff.filter(member => {
-    const matchesSearch = searchTerm === '' || 
-      `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
+    const matchesSearch = searchTerm === '' ||
+      `${member.first_name || ''} ${member.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (member.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+
     return matchesSearch
   })
 
@@ -279,11 +245,10 @@ export default function StaffManagementPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        member.is_active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.is_active
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                        }`}>
                         {member.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -291,11 +256,10 @@ export default function StaffManagementPage() {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => toggleStaffStatus(member.id)}
-                          className={`px-3 py-1 rounded text-xs font-medium ${
-                            member.is_active
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
+                          className={`px-3 py-1 rounded text-xs font-medium ${member.is_active
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
                         >
                           {member.is_active ? 'Deactivate' : 'Activate'}
                         </button>

@@ -14,7 +14,8 @@ def simple_add_doctor():
     """Simple doctor addition with minimal validation"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        # Convert string identity to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404

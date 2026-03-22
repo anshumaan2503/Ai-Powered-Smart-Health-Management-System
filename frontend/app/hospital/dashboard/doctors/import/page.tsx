@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { api } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -43,15 +44,15 @@ export default function ImportDoctorsPage() {
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       ]
-      
-      if (!allowedTypes.includes(selectedFile.type) && 
-          !selectedFile.name.toLowerCase().endsWith('.csv') &&
-          !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
-          !selectedFile.name.toLowerCase().endsWith('.xls')) {
+
+      if (!allowedTypes.includes(selectedFile.type) &&
+        !selectedFile.name.toLowerCase().endsWith('.csv') &&
+        !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
+        !selectedFile.name.toLowerCase().endsWith('.xls')) {
         setError('Please select a CSV or Excel file (.csv, .xlsx, .xls)')
         return
       }
-      
+
       setFile(selectedFile)
       setError('')
     }
@@ -59,30 +60,14 @@ export default function ImportDoctorsPage() {
 
   const downloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('Please login first')
-        return
-      }
+      const response = await api.get('/hospital/import-template')
+      const data = response.data
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-template', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to get template')
-      }
-
-      const data = await response.json()
-      
       // Create CSV content
       const headers = ['first_name', 'last_name', 'specialization', 'qualification', 'phone', 'experience_years', 'consultation_fee', 'license_number']
       const csvContent = [
         headers.join(','),
-        ...data.template.first_name.map((_: any, index: number) => 
+        ...data.template.first_name.map((_: any, index: number) =>
           headers.map(header => data.template[header][index] || '').join(',')
         )
       ].join('\n')
@@ -124,25 +109,17 @@ export default function ImportDoctorsPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-doctors', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
+      const response = await api.post('/hospital/import-doctors', formData)
+      const data = response.data
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import doctors')
-      }
+      // Axios throws on non-2xx, so if we are here, it is ok.
 
       setImportResult(data)
       setSuccess(data.message)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import doctors')
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to import doctors'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -155,29 +132,63 @@ export default function ImportDoctorsPage() {
 
   const copyAllCredentials = () => {
     if (!importResult) return
-    
-    const allCredentials = importResult.imported_doctors.map(doctor => 
+    const allCredentials = importResult.imported_doctors.map(doctor =>
       `Name: ${doctor.name}\nEmail: ${doctor.email}\nPassword: ${doctor.password}\nSpecialization: ${doctor.specialization}`
     ).join('\n\n')
-    
     navigator.clipboard.writeText(allCredentials)
   }
 
+  const handleClearAllDoctors = async () => {
+    if (!window.confirm('Are you SURE you want to delete ALL doctors? This action cannot be undone and will remove all fake/stored data.')) {
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setSuccess('')
+    try {
+      const { hospitalAPI } = await import('@/lib/api')
+      const response = await hospitalAPI.deleteAllDoctors()
+      setSuccess(response.data.message)
+      setImportResult(null)
+      setFile(null)
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to clear doctors'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg p-8 text-white">
-        <div className="flex items-center space-x-4">
-          <Link
-            href="/hospital/dashboard/doctors"
-            className="p-2 rounded-lg bg-green-500 bg-opacity-50 hover:bg-opacity-70 transition-colors"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Import Doctors</h1>
-            <p className="text-green-100 text-lg">Bulk import doctors from CSV or Excel file</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/hospital/dashboard/doctors"
+              className="p-2 rounded-lg bg-green-500 bg-opacity-50 hover:bg-opacity-70 transition-colors"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </Link>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight">Import Doctors</h1>
+              <p className="text-green-50 opacity-90 mt-1">Bulk import doctors from CSV or Excel file</p>
+            </div>
           </div>
+          <button
+            onClick={handleClearAllDoctors}
+            disabled={loading}
+            className="flex items-center justify-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ExclamationTriangleIcon className="h-5 w-5" />
+            )}
+            <span>{loading ? 'Processing...' : 'Clear All Doctors'}</span>
+          </button>
         </div>
       </div>
 
@@ -218,7 +229,7 @@ export default function ImportDoctorsPage() {
         </div>
         <div className="mt-4 p-3 bg-blue-100 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Email and password will be automatically generated for each doctor. 
+            <strong>Note:</strong> Email and password will be automatically generated for each doctor.
             You can modify them later from the doctor's profile page.
           </p>
         </div>

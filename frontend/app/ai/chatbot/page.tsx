@@ -6,6 +6,7 @@ import { aiAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { SparklesIcon, ShieldCheckIcon, ExclamationTriangleIcon, BoltIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 type ChatTurn = {
   role: 'user' | 'bot'
@@ -128,7 +129,10 @@ export default function AIChatbotPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggleButton />
+      </div>
       <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
         {/* Hero / Header */}
         <header className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 text-white shadow-2xl">
@@ -185,18 +189,18 @@ export default function AIChatbotPage() {
 
         {/* Chat layout */}
         <div className="grid lg:grid-cols-[2fr_1fr] gap-5">
-          <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-2xl rounded-3xl p-4 md:p-6 flex flex-col gap-4">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/60 dark:border-gray-700 shadow-2xl rounded-3xl p-4 md:p-6 flex flex-col gap-4 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center shadow-md">
                   🤖
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Chatbot</p>
-                  <p className="text-sm text-gray-600">Safe guidance • Non-diagnostic</p>
+                  <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-400 font-semibold">Chatbot</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Safe guidance • Non-diagnostic</p>
                 </div>
               </div>
-              <span className="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+              <span className="text-xs px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
                 Online
               </span>
             </div>
@@ -216,7 +220,7 @@ export default function AIChatbotPage() {
                     <div
                       className={`flex-1 rounded-2xl p-4 shadow-md ${turn.role === 'user'
                         ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white ml-auto'
-                        : 'bg-white border border-gray-100 text-gray-800'
+                        : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-800 dark:text-gray-100'
                         }`}
                     >
                       <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">
@@ -243,7 +247,7 @@ export default function AIChatbotPage() {
               ))}
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-md text-gray-500 flex items-center gap-2">
+                  <div className="bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl px-4 py-3 shadow-md text-gray-500 dark:text-gray-300 flex items-center gap-2 transition-colors">
                     <span className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
                     Typing...
                   </div>
@@ -267,7 +271,7 @@ export default function AIChatbotPage() {
               </div>
               <div className="flex gap-3">
                 <input
-                  className="flex-1 input-field"
+                  className="flex-1 input-field bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-blue-500 dark:focus:ring-blue-400"
                   placeholder="Describe symptoms, ask for visit prep tips, or request guidance..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -286,28 +290,28 @@ export default function AIChatbotPage() {
 
           {/* Side panel */}
           <aside className="space-y-4">
-            <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-5 space-y-3">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/60 dark:border-gray-700 shadow-xl rounded-3xl p-5 space-y-3 transition-colors">
               <div className="flex items-center gap-2">
-                <ShieldCheckIcon className="h-5 w-5 text-blue-600" />
-                <p className="text-sm font-semibold text-gray-800">Safety notes</p>
+                <ShieldCheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">Safety notes</p>
               </div>
-              <ul className="text-sm text-gray-600 space-y-2">
+              <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
                 <li>Not a medical professional; for guidance only.</li>
                 <li>If you mention red-flag symptoms, it will advise urgent care.</li>
                 <li>Keep PHI minimal; avoid sharing sensitive identifiers.</li>
               </ul>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-5 space-y-3">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/60 dark:border-gray-700 shadow-xl rounded-3xl p-5 space-y-3 transition-colors">
               <div className="flex items-center gap-2">
                 <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
-                <p className="text-sm font-semibold text-gray-800">Best prompts</p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">Best prompts</p>
               </div>
-              <div className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+              <div className="flex flex-col gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <span className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
                   “List what a doctor will ask for chest pain at night.”
                 </span>
-                <span className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+                <span className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
                   “Help me summarize these symptoms before my visit.”
                 </span>
               </div>

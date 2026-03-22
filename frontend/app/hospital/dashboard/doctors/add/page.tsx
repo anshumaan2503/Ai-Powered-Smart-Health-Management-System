@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
+import { hospitalAPI } from '@/lib/api'
+import {
   UserPlusIcon,
   ArrowLeftIcon,
   EyeIcon,
@@ -32,15 +33,15 @@ export default function AddDoctorPage() {
     consultation_fee: '',
     license_number: ''
   })
-  
+
   const [useManualEmail, setUseManualEmail] = useState(false)
-  const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string, password: string } | null>(null)
 
   // Check authentication on page load
   useEffect(() => {
     const token = localStorage.getItem('hospital_access_token')
     const user = localStorage.getItem('hospital_user') // Fixed: use hospital_user instead of user
-    
+
     if (!token || !user) {
       setError('Please login first to access this page')
       setTimeout(() => {
@@ -84,15 +85,6 @@ export default function AddDoctorPage() {
     setSuccess('')
 
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('Please login first to add doctors')
-        setTimeout(() => {
-          router.push('/hospital/login')
-        }, 2000)
-        return
-      }
-
       // Validate required fields
       if (!formData.first_name || !formData.last_name || !formData.specialization || !formData.qualification) {
         setError('Please fill in all required fields')
@@ -133,65 +125,49 @@ export default function AddDoctorPage() {
         consultation_fee: Number(formData.consultation_fee) || 0,
         license_number: formData.license_number || undefined
       }
-      
+
       // Only include email if manually provided and toggle is ON
       if (useManualEmail && formData.email && formData.email.trim()) {
         submitData.email = formData.email.trim()
       }
-      
+
       // Explicitly ensure email is NOT in submitData if manual mode is off
       if (!useManualEmail) {
         delete submitData.email
       }
 
       console.log('Sending data to backend:', submitData)
-      
-      const response = await fetch('http://localhost:5000/api/hospital/staff', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(submitData)
-      })
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', response.headers)
-      
-      const data = await response.json()
-      console.log('Response data:', data)
-
-      if (!response.ok) {
-        console.error('API Error:', data)
-        console.error('Response Status:', response.status)
-        console.error('Submit Data:', submitData)
-        
-        // Handle specific error cases
-        if (response.status === 422) {
-          if (data.error && data.error.includes('limit')) {
-            throw new Error('Staff limit reached. Please upgrade your subscription to add more doctors.')
-          } else if (data.error && data.error.includes('email') && data.error.includes('exists')) {
-            // Email already exists error
-            if (useManualEmail) {
-              throw new Error(data.error || 'This email address is already in use. Please use a different email or uncheck "Set email manually" to auto-generate one.')
-            } else {
-              throw new Error('Unable to generate unique email. Please try with a different name or enable "Set email manually" to specify an email.')
-            }
-          } else {
-            throw new Error(data.error || 'Validation error: Please check all fields are filled correctly.')
-          }
-        }
-        
-        throw new Error(data.error || `Failed to add doctor (${response.status})`)
-      }
+      const response = await hospitalAPI.createStaff(submitData)
+      console.log('Response data:', response.data)
 
       setSuccess('Doctor added successfully!')
       setTimeout(() => {
         router.push('/hospital/dashboard/doctors')
       }, 2000)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add doctor')
+    } catch (err: any) {
+      console.error('API Error:', err)
+      const data = err.response?.data || {}
+      const status = err.response?.status
+
+      // Handle specific error cases
+      if (status === 422) {
+        if (data.error && data.error.includes('limit')) {
+          setError('Staff limit reached. Please upgrade your subscription to add more doctors.')
+        } else if (data.error && data.error.includes('email') && data.error.includes('exists')) {
+          // Email already exists error
+          if (useManualEmail) {
+            setError(data.error || 'This email address is already in use. Please use a different email or uncheck "Set email manually" to auto-generate one.')
+          } else {
+            setError('Unable to generate unique email. Please try with a different name or enable "Set email manually" to specify an email.')
+          }
+        } else {
+          setError(data.error || 'Validation error: Please check all fields are filled correctly.')
+        }
+      } else {
+        setError(data.error || err.message || 'Failed to add doctor')
+      }
     } finally {
       setLoading(false)
     }
@@ -337,7 +313,7 @@ export default function AddDoctorPage() {
                   </div>
                 ) : (
                   <p className="text-sm text-blue-700">
-                    Email and password will be automatically generated. You can set and view the login credentials 
+                    Email and password will be automatically generated. You can set and view the login credentials
                     by editing the doctor's profile after registration.
                   </p>
                 )}

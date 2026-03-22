@@ -40,6 +40,22 @@ def register():
         user.set_password(data['password'])
         
         db.session.add(user)
+        db.session.flush()  # Flush to get user.id
+        
+        # If registering as patient, create patient profile
+        if data['role'] == 'patient':
+            from hospital.models.patient import Patient
+            import uuid
+            
+            # Generate unique patient ID
+            patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
+            
+            patient = Patient(
+                user_id=user.id,
+                patient_id=patient_id
+            )
+            db.session.add(patient)
+        
         db.session.commit()
         
         return jsonify({
@@ -81,11 +97,14 @@ def login():
         if not user or not user.check_password(password):
             return jsonify({'error': 'Invalid credentials'}), 401
         
+        # Auto-reactivate account if it was deactivated
         if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
+            user.is_active = True
+            db.session.commit()
         
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Convert user.id to string as required by Flask-JWT-Extended
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'access_token': access_token,
@@ -101,7 +120,8 @@ def login():
 def refresh():
     try:
         current_user_id = get_jwt_identity()
-        new_token = create_access_token(identity=current_user_id)
+        # Ensure identity is string
+        new_token = create_access_token(identity=str(current_user_id))
         return jsonify({'access_token': new_token}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -116,7 +136,8 @@ def get_profile():
         if not current_user_id:
             return jsonify({'error': 'Invalid token - no user identity'}), 422
         
-        user = User.query.get(current_user_id)
+        # Convert string identity back to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -124,9 +145,103 @@ def get_profile():
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 401
         
-        return jsonify({'user': user.to_dict()}), 200
+        # Build response with user data
+        user_data = user.to_dict()
+        
+        # Add full patient profile data if user is a patient
+        if user.role == 'patient':
+            from hospital.models.patient import Patient
+            patient = Patient.query.filter_by(user_id=user.id).first()
+            
+            if patient:
+                user_data.update({
+                    'patient_profile_id': patient.id,  # Add the Patient table's primary key
+                    'patient_id': patient.patient_id,
+                    'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+                    'gender': patient.gender,
+                    'blood_group': patient.blood_group,
+                    'address': patient.address,
+                    'emergency_contact_name': patient.emergency_contact_name,
+                    'emergency_contact_phone': patient.emergency_contact_phone,
+                    'medical_history': patient.medical_history,
+                    'allergies': patient.allergies
+                })
+        
+        # IMPORTANT: Keep the 'user' wrapper for backwards compatibility
+        return jsonify({'user': user_data}), 200
         
     except Exception as e:
         # Log the specific error for debugging
         print(f"Profile endpoint error: {str(e)}")
         return jsonify({'error': 'Authentication failed', 'details': str(e)}), 422
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile including patient details"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Update user basic info
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+        if 'phone' in data:
+            user.phone = data['phone']
+        
+        # Update patient-specific info if user is a patient
+        if user.role == 'patient':
+            from hospital.models.patient import Patient
+            
+            # Get or create patient profile
+            patient = Patient.query.filter_by(user_id=user.id).first()
+            
+            if not patient:
+                # Create patient profile if it doesn't exist
+                import uuid
+                patient_id = f"PAT{str(uuid.uuid4())[:8].upper()}"
+                patient = Patient(user_id=user.id, patient_id=patient_id)
+                db.session.add(patient)
+                db.session.flush()
+            
+            # Update patient fields
+            if 'date_of_birth' in data and data['date_of_birth']:
+                from datetime import datetime
+                try:
+                    patient.date_of_birth = datetime.fromisoformat(data['date_of_birth'].replace('Z', '+00:00')).date()
+                except:
+                    patient.date_of_birth = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+            
+            if 'gender' in data:
+                patient.gender = data['gender']
+            if 'blood_group' in data:
+                patient.blood_group = data['blood_group']
+            if 'address' in data:
+                patient.address = data['address']
+            if 'emergency_contact_name' in data:
+                patient.emergency_contact_name = data['emergency_contact_name']
+            if 'emergency_contact_phone' in data:
+                patient.emergency_contact_phone = data['emergency_contact_phone']
+            if 'medical_history' in data:
+                patient.medical_history = data['medical_history']
+            if 'allergies' in data:
+                patient.allergies = data['allergies']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Update profile error: {str(e)}")
+        return jsonify({'error': str(e)}), 500

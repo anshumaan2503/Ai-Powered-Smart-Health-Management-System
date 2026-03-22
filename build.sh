@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build script for Vercel deployment
+# Build script for Render deployment
 
 echo "🏗️ Building frontend..."
 cd frontend
-npm install
+npm ci
 npm run build
 cd ..
 

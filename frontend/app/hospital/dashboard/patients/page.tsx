@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { patientsAPI, hospitalAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   UserGroupIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -15,11 +16,15 @@ import {
   ExclamationTriangleIcon,
   CloudArrowUpIcon,
   DocumentArrowDownIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import useSWR, { useSWRConfig } from 'swr'
+import { useCallback, useMemo, memo } from 'react'
+import { debounce } from 'lodash'
 
 interface Patient {
   id: number
@@ -37,13 +42,22 @@ interface Patient {
 }
 
 export default function HospitalPatientsPage() {
-  const [patients, setPatients] = useState<Patient[]>([])
-  const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterGender, setFilterGender] = useState('')
   const [filterBloodGroup, setFilterBloodGroup] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+
+  // Debounce search term to prevent excessive API calls
+  const debouncedSetSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchTerm(value)
+      setCurrentPage(1)
+    }, 400),
+    []
+  )
+
   const [showFilters, setShowFilters] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; patient: Patient | null }>({
     show: false,
@@ -61,56 +75,43 @@ export default function HospitalPatientsPage() {
     failed: number
     errors: string[]
   } | null>(null)
-  
+  const [addingSample, setAddingSample] = useState(false)
+
   const router = useRouter()
 
-  useEffect(() => {
-    fetchPatients()
-  }, [currentPage, searchTerm, filterGender, filterBloodGroup])
-
-  const fetchPatients = async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        router.push('/hospital/login')
-        return
-      }
-
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: '10',
-        search: searchTerm,
-        gender: filterGender,
-        blood_group: filterBloodGroup
-      })
-      
-      const response = await fetch(`http://localhost:5000/api/patients/?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPatients(data.patients || [])
-        setTotalPages(data.pages || 1)
-      } else {
-        console.error('Failed to fetch patients')
-        setPatients([])
-      }
-    } catch (error) {
-      console.error('Error fetching patients:', error)
-      setPatients([])
-    } finally {
-      setLoading(false)
+  const { data: patientsResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-patients', currentPage, debouncedSearchTerm, filterGender, filterBloodGroup],
+    () => hospitalAPI.getPatients({
+      page: currentPage,
+      per_page: 10,
+      search: debouncedSearchTerm,
+      gender: filterGender,
+      blood_group: filterBloodGroup
+    }),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 0 
     }
+  )
+
+  const patients: Patient[] = patientsResponse?.data?.patients || []
+  const totalPages = patientsResponse?.data?.pages || 1
+  const loading = !patientsResponse && !fetchError
+
+  useEffect(() => {
+    if (fetchError?.response?.status === 401) {
+      router.push('/hospital/login')
+    }
+  }, [fetchError, router])
+
+  const fetchPatients = () => {
+    mutate()
+    globalMutate('dashboard-analytics')
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    setCurrentPage(1)
+    debouncedSetSearch(e.target.value)
   }
 
   const handleFilterChange = (type: string, value: string) => {
@@ -138,27 +139,13 @@ export default function HospitalPatientsPage() {
 
     try {
       setDeleting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      const response = await fetch(`http://localhost:5000/api/patients/${deleteModal.patient.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        toast.success('Patient deleted successfully')
-        setDeleteModal({ show: false, patient: null })
-        fetchPatients()
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to delete patient')
-      }
+      await patientsAPI.deletePatient(deleteModal.patient.id)
+      toast.success('Patient deleted successfully')
+      setDeleteModal({ show: false, patient: null })
+      fetchPatients()
     } catch (error: any) {
       console.error('Error deleting patient:', error)
-      toast.error('Failed to delete patient')
+      toast.error(error.response?.data?.error || 'Failed to delete patient')
     } finally {
       setDeleting(false)
     }
@@ -169,8 +156,8 @@ export default function HospitalPatientsPage() {
   }
 
   const handleSelectPatient = (patientId: number) => {
-    setSelectedPatients(prev => 
-      prev.includes(patientId) 
+    setSelectedPatients(prev =>
+      prev.includes(patientId)
         ? prev.filter(id => id !== patientId)
         : [...prev, patientId]
     )
@@ -192,30 +179,18 @@ export default function HospitalPatientsPage() {
   const handleBulkDeleteConfirm = async () => {
     try {
       setBulkDeleting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      for (const patientId of selectedPatients) {
-        const response = await fetch(`http://localhost:5000/api/patients/${patientId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(`Failed to delete patient ${patientId}: ${data.error}`)
-        }
+      for (const patientId of selectedPatients) {
+        await patientsAPI.deletePatient(patientId)
       }
-      
+
       toast.success(`${selectedPatients.length} patient(s) deleted successfully`)
       setBulkDeleteModal(false)
       setSelectedPatients([])
       fetchPatients()
     } catch (error: any) {
       console.error('Error deleting patients:', error)
-      toast.error(error.message || 'Failed to delete patients')
+      toast.error(error.response?.data?.error || error.message || 'Failed to delete patients')
     } finally {
       setBulkDeleting(false)
     }
@@ -226,12 +201,14 @@ export default function HospitalPatientsPage() {
   }
 
   const getGenderColor = (gender: string) => {
-    return gender.toLowerCase() === 'male' 
-      ? 'bg-blue-100 text-blue-800' 
+    if (!gender) return 'bg-gray-100 text-gray-800'
+    return gender.toLowerCase() === 'male'
+      ? 'bg-blue-100 text-blue-800'
       : 'bg-pink-100 text-pink-800'
   }
 
   const getBloodGroupColor = (bloodGroup: string) => {
+    if (!bloodGroup) return 'bg-gray-100 text-gray-800'
     const colors: { [key: string]: string } = {
       'A+': 'bg-red-100 text-red-800',
       'A-': 'bg-red-200 text-red-900',
@@ -249,7 +226,7 @@ export default function HospitalPatientsPage() {
     const csvContent = `first_name,last_name,date_of_birth,gender,phone,email,address,blood_group
 John,Doe,15-01-1990,Male,9876543210,john.doe@example.com,"123 Main St, City, 12345",O+
 Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Town, 67890",A+`
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -266,69 +243,30 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
 
     try {
       setImporting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      if (!token) {
-        toast.error('Please login first')
-        setImportResults({
-          success: 0,
-          failed: 1,
-          errors: ['Please login first']
-        })
-        return
-      }
-      
+
       const formData = new FormData()
       formData.append('file', importFile)
 
-      const response = await fetch('http://localhost:5000/api/hospital/patients/import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+      const response = await hospitalAPI.importPatients(formData)
+
+      setImportResults({
+        success: response.data.success || 0,
+        failed: response.data.failed || 0,
+        errors: response.data.errors || []
       })
 
-      // Check if response is ok before trying to parse JSON
-      let data
-      try {
-        const text = await response.text()
-        if (!text) {
-          throw new Error('Empty response from server')
-        }
-        data = JSON.parse(text)
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError)
-        throw new Error(`Server error: ${response.status} ${response.statusText}. Please make sure the backend server is running.`)
-      }
-
-      if (response.ok) {
-        setImportResults({
-          success: data.success || 0,
-          failed: data.failed || 0,
-          errors: data.errors || []
-        })
-        if (data.success > 0) {
-          toast.success(`Import completed: ${data.success} patients imported`)
-          fetchPatients() // Refresh the patient list
-        } else {
-          toast(`Import completed: ${data.success} patients imported, ${data.failed} failed`, {
-            icon: '⚠️',
-            duration: 4000
-          })
-        }
-      } else {
-        const errorMsg = data.error || data.message || 'Import failed'
-        toast.error(errorMsg)
-        setImportResults({
-          success: data.success || 0,
-          failed: data.failed || 1,
-          errors: data.errors || [errorMsg]
+      if (response.data.success > 0) {
+        toast.success(`Import completed: ${response.data.success} patients imported`)
+        fetchPatients()
+      } else if (response.data.failed > 0) {
+        toast(`Import completed: ${response.data.success} patients imported, ${response.data.failed} failed`, {
+          icon: '⚠️',
+          duration: 4000
         })
       }
     } catch (error: any) {
       console.error('Import error:', error)
-      const errorMessage = error.message || 'Failed to connect to server. Please check if the backend is running.'
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to import patients'
       toast.error(errorMessage)
       setImportResults({
         success: 0,
@@ -337,6 +275,20 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
       })
     } finally {
       setImporting(false)
+    }
+  }
+
+  const handleAddSamplePatients = async () => {
+    try {
+      setAddingSample(true)
+      const response = await hospitalAPI.addSamplePatients()
+      toast.success(response.data.message || 'Sample patients added successfully')
+      fetchPatients()
+    } catch (error: any) {
+      console.error('Error adding sample patients:', error)
+      toast.error(error.response?.data?.error || 'Failed to add sample patients')
+    } finally {
+      setAddingSample(false)
     }
   }
 
@@ -362,6 +314,18 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
+          <button
+            onClick={handleAddSamplePatients}
+            disabled={addingSample}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-white text-green-700 border border-green-200 rounded-lg font-medium hover:bg-green-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          >
+            {addingSample ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <CheckCircleIcon className="h-5 w-5" />
+            )}
+            <span>{addingSample ? 'Processing...' : 'Add Sample Data'}</span>
+          </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary flex items-center"
@@ -547,84 +511,16 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {patients.map((patient, index) => (
-                    <motion.tr
+                    <PatientRow
                       key={patient.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedPatients.includes(patient.id)}
-                          onChange={() => handleSelectPatient(patient.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <UserIcon className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {patient.full_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {patient.patient_id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{patient.email}</div>
-                        <div className="text-sm text-gray-500">{patient.phone}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
-                            {patient.gender}
-                          </span>
-                          {patient.blood_group && (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
-                              {patient.blood_group}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          Age: {patient.age}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(patient.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </Link>
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit Patient"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(patient)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Patient"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
+                      patient={patient}
+                      index={index}
+                      isSelected={selectedPatients.includes(patient.id)}
+                      onSelect={handleSelectPatient}
+                      onDelete={handleDeleteClick}
+                      getGenderColor={getGenderColor}
+                      getBloodGroupColor={getBloodGroupColor}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -679,7 +575,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Contact</p>
@@ -781,7 +677,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                     <p className="text-sm text-gray-600 mb-3">
                       Upload a CSV file with patient data. Required columns: first_name, last_name, phone
                     </p>
-                    
+
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                       <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <div className="text-sm text-gray-600">
@@ -1015,3 +911,104 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
     </div>
   )
 }
+
+// Memoized Row component to prevent unnecessary re-renders
+const PatientRow = memo(({ 
+  patient, 
+  index, 
+  isSelected, 
+  onSelect, 
+  onDelete, 
+  getGenderColor, 
+  getBloodGroupColor 
+}: { 
+  patient: any; 
+  index: number; 
+  isSelected: boolean; 
+  onSelect: (id: number) => void; 
+  onDelete: (p: any) => void;
+  getGenderColor: (g: string) => string;
+  getBloodGroupColor: (bg: string) => string;
+}) => {
+  return (
+    <motion.tr
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.5) }}
+      className="hover:bg-gray-50 transition-colors"
+    >
+      <td className="px-6 py-4 whitespace-nowrap">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onSelect(patient.id)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <UserIcon className="h-6 w-6 text-blue-600" />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {patient.full_name}
+            </div>
+            <div className="text-sm text-gray-500 font-mono text-xs">
+              ID: {patient.patient_id}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        <div className="text-gray-900">{patient.email}</div>
+        <div className="text-gray-500">{patient.phone}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center space-x-2">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
+            {patient.gender}
+          </span>
+          {patient.blood_group && (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
+              {patient.blood_group}
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-gray-500 mt-1">
+          Age: {patient.age}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {new Date(patient.created_at).toLocaleDateString()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end space-x-2">
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}`}
+            className="text-blue-600 hover:text-blue-900 transition-colors"
+            title="View Details"
+          >
+            <EyeIcon className="h-5 w-5" />
+          </Link>
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}/edit`}
+            className="text-green-600 hover:text-green-900 transition-colors"
+            title="Edit Patient"
+          >
+            <PencilIcon className="h-5 w-5" />
+          </Link>
+          <button
+            onClick={() => onDelete(patient)}
+            className="text-red-600 hover:text-red-900 transition-colors"
+            title="Delete Patient"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </td>
+    </motion.tr>
+  )
+})
+
+PatientRow.displayName = 'PatientRow'

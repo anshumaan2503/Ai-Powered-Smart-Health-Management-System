@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { adminAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   ArrowLeftIcon,
@@ -29,7 +30,7 @@ export default function EditHospitalPage() {
   const [success, setSuccess] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  
+
   const router = useRouter()
   const params = useParams()
   const hospitalId = params.id
@@ -40,29 +41,16 @@ export default function EditHospitalPage() {
 
   const loadHospital = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${hospitalId}`, { headers })
-
-      if (response.ok) {
-        const data = await response.json()
-        setHospital(data.hospital)
-        setFormData({
-          name: data.hospital.name,
-          email: data.hospital.email,
-          phone: data.hospital.phone,
-          address: data.hospital.address
-        })
-      } else {
-        setError('Failed to load hospital details')
-      }
-    } catch (error) {
+      const response = await adminAPI.getHospitalById(Number(hospitalId))
+      const hospitalData = response.data.hospital
+      setHospital(hospitalData)
+      setFormData({
+        name: hospitalData.name,
+        email: hospitalData.email,
+        phone: hospitalData.phone,
+        address: hospitalData.address
+      })
+    } catch (error: any) {
       console.error('Error loading hospital:', error)
       setError('Error loading hospital details')
     } finally {
@@ -77,41 +65,22 @@ export default function EditHospitalPage() {
     setSuccess('')
 
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
+      const response = await adminAPI.updateHospital(Number(hospitalId), formData)
+      setSuccess('Hospital updated successfully!')
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+      // Update local hospital data
+      setHospital(prev => ({
+        ...prev,
+        ...response.data.hospital
+      }))
 
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${hospitalId}/edit`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(formData)
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setSuccess('Hospital updated successfully!')
-        
-        // Update local hospital data
-        setHospital(prev => ({
-          ...prev,
-          ...result.hospital
-        }))
-
-        // Redirect back to hospitals list after 2 seconds
-        setTimeout(() => {
-          router.push('/anshuman/dashboard/hospitals')
-        }, 2000)
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Failed to update hospital')
-      }
-    } catch (error) {
+      // Redirect back to hospitals list after 2 seconds
+      setTimeout(() => {
+        router.push('/anshuman/dashboard/hospitals')
+      }, 2000)
+    } catch (error: any) {
       console.error('Error updating hospital:', error)
-      setError('Error updating hospital')
+      setError(error.response?.data?.error || 'Failed to update hospital')
     } finally {
       setSaving(false)
     }
@@ -122,31 +91,14 @@ export default function EditHospitalPage() {
     setError('')
 
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${hospitalId}/delete`, {
-        method: 'DELETE',
-        headers
-      })
-
-      if (response.ok) {
-        setSuccess('Hospital deactivated successfully!')
-        setTimeout(() => {
-          router.push('/anshuman/dashboard/hospitals')
-        }, 2000)
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Failed to delete hospital')
-      }
-    } catch (error) {
+      await adminAPI.deleteHospital(Number(hospitalId), hospital.name)
+      setSuccess('Hospital deactivated successfully!')
+      setTimeout(() => {
+        router.push('/anshuman/dashboard/hospitals')
+      }, 2000)
+    } catch (error: any) {
       console.error('Error deleting hospital:', error)
-      setError('Error deleting hospital')
+      setError(error.response?.data?.error || 'Failed to delete hospital')
     } finally {
       setDeleting(false)
       setShowDeleteModal(false)
@@ -193,7 +145,7 @@ export default function EditHospitalPage() {
             <p className="text-gray-600">Update hospital information and settings</p>
           </div>
         </div>
-        
+
         <button
           onClick={() => setShowDeleteModal(true)}
           className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -374,21 +326,19 @@ export default function EditHospitalPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Current Plan</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  hospital.subscription?.plan === 'enterprise' ? 'bg-purple-100 text-purple-800' :
-                  hospital.subscription?.plan === 'standard' ? 'bg-green-100 text-green-800' :
-                  hospital.subscription?.plan === 'premium' ? 'bg-blue-100 text-blue-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${hospital.subscription?.plan === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                    hospital.subscription?.plan === 'standard' ? 'bg-green-100 text-green-800' :
+                      hospital.subscription?.plan === 'premium' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                  }`}>
                   {hospital.subscription?.plan || 'trial'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Status</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  hospital.subscription?.status === 'active' ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${hospital.subscription?.status === 'active' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
                   {hospital.subscription?.status || 'inactive'}
                 </span>
               </div>
@@ -401,14 +351,14 @@ export default function EditHospitalPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Expires</span>
                 <span className="text-sm text-gray-900">
-                  {hospital.subscription?.expiryDate ? 
-                    new Date(hospital.subscription.expiryDate).toLocaleDateString() : 
+                  {hospital.subscription?.expiryDate ?
+                    new Date(hospital.subscription.expiryDate).toLocaleDateString() :
                     'N/A'
                   }
                 </span>
               </div>
             </div>
-            
+
             <Link
               href={`/anshuman/dashboard/subscriptions?hospital=${hospital.id}`}
               className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-center block"
@@ -438,7 +388,7 @@ export default function EditHospitalPage() {
             </div>
 
             <p className="text-gray-700 mb-6">
-              Are you sure you want to deactivate <strong>{hospital.name}</strong>? 
+              Are you sure you want to deactivate <strong>{hospital.name}</strong>?
               This will disable all subscriptions and mark the hospital as inactive.
             </p>
 

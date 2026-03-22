@@ -87,7 +87,8 @@ def main():
             debug=True,
             host='0.0.0.0',
             port=5000,
-            use_reloader=True
+            use_reloader=False,  # Reloader adds overhead and slows startup
+            threaded=True        # Handle multiple requests concurrently
         )
         
     except ImportError as e:
