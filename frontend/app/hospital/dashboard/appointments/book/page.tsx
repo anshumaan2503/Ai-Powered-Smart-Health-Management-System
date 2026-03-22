@@ -13,6 +13,9 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import useSWR from 'swr'
+import { useCallback, useMemo } from 'react'
+import { debounce } from 'lodash'
 
 interface Patient {
   id: number
@@ -47,10 +50,6 @@ export default function BookAppointmentPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [showNewPatientForm, setShowNewPatientForm] = useState(false)
 
-  // Doctors
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-
-  // Appointment form
   const [appointmentData, setAppointmentData] = useState({
     doctor_user_id: '',
     appointment_date: '',
@@ -60,6 +59,31 @@ export default function BookAppointmentPage() {
     notes: '',
     priority: 'normal'
   })
+
+  // Fetch Doctors using SWR for caching and automatic deduplication
+  const { data: doctorsData } = useSWR('/hospital/doctors/available', (url) => api.get(url).then(res => res.data.doctors || []))
+  const doctors = doctorsData || []
+
+  // Memoize search function with debounce
+  const debouncedSearch = useCallback(
+    debounce(async (term: string) => {
+      if (term.length < 2) {
+        setSearchResults([])
+        return
+      }
+      try {
+        const response = await api.get(`/hospital/patients/search?q=${encodeURIComponent(term)}`)
+        setSearchResults(response.data.patients || [])
+      } catch (err) {
+        console.error('Failed to search patients:', err)
+      }
+    }, 300),
+    []
+  )
+
+  useEffect(() => {
+    debouncedSearch(searchTerm)
+  }, [searchTerm, debouncedSearch])
 
   // New patient form
   const [newPatientData, setNewPatientData] = useState({
@@ -74,41 +98,6 @@ export default function BookAppointmentPage() {
     emergency_contact_phone: ''
   })
 
-  useEffect(() => {
-    fetchDoctors()
-  }, [])
-
-  useEffect(() => {
-    if (searchTerm.length >= 2) {
-      searchPatients()
-    } else {
-      setSearchResults([])
-    }
-  }, [searchTerm])
-
-  const fetchDoctors = async () => {
-    try {
-      const response = await api.get('/hospital/doctors/available')
-      if (true) {
-        const data = response.data
-        setDoctors(data.doctors || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch doctors:', err)
-    }
-  }
-
-  const searchPatients = async () => {
-    try {
-      const response = await api.get(`/hospital/patients/search?q=${encodeURIComponent(searchTerm)}`)
-      if (true) {
-        const data = response.data
-        setSearchResults(data.patients || [])
-      }
-    } catch (err) {
-      console.error('Failed to search patients:', err)
-    }
-  }
 
   const handleNewPatientSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -505,11 +494,11 @@ export default function BookAppointmentPage() {
                         className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:ring-3 focus:ring-indigo-200 dark:focus:ring-indigo-800 focus:border-indigo-400 dark:focus:border-indigo-500 transition-all duration-200 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm"
                       >
                         <option value="" className="dark:bg-slate-800 dark:text-slate-100">Choose a doctor...</option>
-                        {doctors.map((doctor) => (
+                        {useMemo(() => doctors.map((doctor) => (
                           <option key={doctor.id} value={doctor.id} className="dark:bg-slate-800 dark:text-slate-100">
                             Dr. {doctor.name} • {doctor.specialization} • ₹{doctor.consultation_fee}
                           </option>
-                        ))}
+                        )), [doctors])}
                       </select>
                     </div>
                     {appointmentData.doctor_user_id && (

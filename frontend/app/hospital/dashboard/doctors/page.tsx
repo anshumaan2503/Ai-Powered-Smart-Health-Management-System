@@ -13,10 +13,15 @@ import {
   ClockIcon,
   PencilIcon,
   EyeIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
+import useSWR, { useSWRConfig } from 'swr'
+import { useCallback, useMemo, memo } from 'react'
+import { debounce } from 'lodash'
+import toast from 'react-hot-toast'
 
 interface Doctor {
   id: number
@@ -37,44 +42,175 @@ interface Doctor {
   }
 }
 
+const DoctorCard = memo(({ doctor, onToggle, renderStars }: { doctor: any, onToggle: (id: number) => void, renderStars: (r: number) => JSX.Element }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    {/* Doctor Header */}
+    <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6">
+      <div className="flex items-center">
+        <div className="h-16 w-16 rounded-full bg-blue-200 flex items-center justify-center">
+          <UserIcon className="h-8 w-8 text-blue-600" />
+        </div>
+        <div className="ml-4 flex-1">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Dr. {doctor.first_name} {doctor.last_name}
+          </h3>
+          <p className="text-blue-600 font-medium">
+            {doctor.doctor_profile?.specialization || 'General Medicine'}
+          </p>
+          <div className="mt-1">
+            {renderStars(doctor.doctor_profile?.rating || 0)}
+          </div>
+        </div>
+        <div className={`px-2 py-1 rounded-full text-xs font-semibold ${doctor.is_active
+          ? 'bg-green-100 text-green-800'
+          : 'bg-red-100 text-red-800'
+          }`}>
+          {doctor.is_active ? 'Active' : 'Inactive'}
+        </div>
+      </div>
+    </div>
+
+    {/* Doctor Details */}
+    <div className="p-6 space-y-4">
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="flex items-center text-gray-600">
+          <AcademicCapIcon className="h-4 w-4 mr-2" />
+          <span>{doctor.doctor_profile?.qualification || 'MBBS'}</span>
+        </div>
+        <div className="flex items-center text-gray-600">
+          <ClockIcon className="h-4 w-4 mr-2" />
+          <span>{doctor.doctor_profile?.experience_years || 0} years</span>
+        </div>
+        <div className="flex items-center text-gray-600">
+          <span className="text-green-600 font-medium mr-1">₹</span>
+          <span>{(doctor.doctor_profile?.consultation_fee || 0).toLocaleString('en-IN')} INR</span>
+        </div>
+        <div className="flex items-center text-gray-600">
+          <UserIcon className="h-4 w-4 mr-2" />
+          <span>{doctor.doctor_profile?.total_patients || 0} patients</span>
+        </div>
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <div className="flex items-center text-gray-600">
+          <EnvelopeIcon className="h-4 w-4 mr-2" />
+          <span className="truncate">{doctor.email}</span>
+        </div>
+        {doctor.phone && (
+          <div className="flex items-center text-gray-600">
+            <PhoneIcon className="h-4 w-4 mr-2" />
+            <span>{doctor.phone}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex space-x-2 pt-4 border-t border-gray-100">
+        <Link
+          href={`/hospital/dashboard/doctors/${doctor.id}`}
+          className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-1"
+        >
+          <EyeIcon className="h-4 w-4" />
+          <span>View</span>
+        </Link>
+        <Link
+          href={`/hospital/dashboard/doctors/${doctor.id}/edit`}
+          className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-1"
+        >
+          <PencilIcon className="h-4 w-4" />
+          <span>Edit</span>
+        </Link>
+        <button
+          onClick={() => onToggle(doctor.id)}
+          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${doctor.is_active
+            ? 'bg-red-50 text-red-700 hover:bg-red-100'
+            : 'bg-green-50 text-green-700 hover:bg-green-100'
+            }`}
+        >
+          {doctor.is_active ? 'Deactivate' : 'Activate'}
+        </button>
+      </div>
+    </div>
+  </div>
+))
+
+DoctorCard.displayName = 'DoctorCard'
+
 export default function DoctorsManagementPage() {
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
   const [searchTerm, setSearchTerm] = useState('')
   const [specializationFilter, setSpecializationFilter] = useState('')
   const [error, setError] = useState('')
+  const [clearingAll, setClearingAll] = useState(false)
+
+  const { data: doctorsResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-doctors', specializationFilter],
+    () => hospitalAPI.getStaff({ role: 'doctor', per_page: 12 }),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 0 
+    }
+  )
+
+  const doctors = doctorsResponse?.data?.staff || []
+  const loading = !doctorsResponse && !fetchError
+  const errorValue = fetchError?.response?.status === 401 
+    ? 'Authentication required. Please login again.' 
+    : (fetchError?.response?.data?.error || fetchError?.message || '')
 
   useEffect(() => {
-    fetchDoctors()
-  }, [])
+    if (errorValue) setError(errorValue)
+  }, [errorValue])
 
-  const fetchDoctors = async () => {
+  const toggleDoctorStatus = useCallback(async (doctorId: number) => {
     try {
-      const response = await hospitalAPI.getStaff({ role: 'doctor', per_page: 100 })
-      setDoctors(response.data.staff || [])
-    } catch (err: any) {
-      console.error('Fetch doctors error:', err)
-      if (err.response?.status === 401) {
-        setError('Authentication required. Please login again.')
-      } else {
-        setError(err.response?.data?.error || err.message || 'Failed to load doctors')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const toggleDoctorStatus = async (doctorId: number) => {
-    try {
+      // Optimistic update
+      const updatedDoctors = doctors.map((d: Doctor) => 
+        d.id === doctorId ? { ...d, is_active: !d.is_active } : d
+      )
+      mutate({ data: { staff: updatedDoctors } } as any, false)
+      
       await hospitalAPI.toggleStaffStatus(doctorId)
-      fetchDoctors()
+      mutate() // Revalidate with server after success
+      globalMutate('dashboard-analytics')
     } catch (err: any) {
       console.error('Toggle status error:', err)
       setError(err.response?.data?.error || err.message || 'Failed to update doctor status')
+      mutate() // Revert on failure
+    }
+  }, [doctors, mutate, globalMutate])
+
+  const handleClearAllDoctors = async () => {
+    if (!doctors.length) {
+      toast.error('Medical team is already empty')
+      return
+    }
+
+    const firstConfirm = confirm('DANGER: This will permanently delete ALL doctors and their profiles in this hospital. This action cannot be undone. Are you absolutely sure?')
+    if (!firstConfirm) return
+
+    const secondConfirm = confirm('TRIPLE CONFIRMATION: You are about to wipe the entire medical directory. This will break all existing appointments associated with these doctors. Continue?')
+    if (!secondConfirm) return
+
+    try {
+      setClearingAll(true)
+      await hospitalAPI.deleteAllDoctors() // We need to add this to lib/api
+      toast.success('Medical directory cleared successfully')
+      mutate({ data: { staff: [] } } as any, false)
+      mutate()
+      globalMutate('dashboard-analytics')
+    } catch (err: any) {
+      console.error('Clear all error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to clear medical directory')
+      toast.error('Failed to wipe medical team')
+    } finally {
+      setClearingAll(false)
     }
   }
 
-  const filteredDoctors = doctors.filter(doctor => {
+
+
+  const filteredDoctors = useMemo(() => doctors.filter(doctor => {
     const matchesSearch = searchTerm === '' ||
       `${doctor.first_name || ''} ${doctor.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (doctor.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,7 +220,7 @@ export default function DoctorsManagementPage() {
       (doctor.doctor_profile?.specialization || '').toLowerCase().includes(specializationFilter.toLowerCase())
 
     return matchesSearch && matchesSpecialization
-  })
+  }), [doctors, searchTerm, specializationFilter])
 
   const renderStars = (rating: number = 0) => {
     return (
@@ -103,16 +239,6 @@ export default function DoctorsManagementPage() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Loading doctors...</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -146,6 +272,14 @@ export default function DoctorsManagementPage() {
               <PlusIcon className="h-5 w-5" />
               <span>Add Doctor</span>
             </Link>
+            <button
+              onClick={handleClearAllDoctors}
+              disabled={clearingAll}
+              className="bg-red-600/20 text-red-100 px-6 py-3 rounded-lg hover:bg-red-600/40 flex items-center space-x-2 font-semibold border border-red-500/50 backdrop-blur-sm shadow-lg disabled:opacity-50"
+            >
+              <TrashIcon className="h-5 w-5" />
+              <span>{clearingAll ? 'Clearing...' : 'Wipe All'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -184,7 +318,37 @@ export default function DoctorsManagementPage() {
       </div>
 
       {/* Doctors Grid */}
-      {filteredDoctors.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-pulse">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6">
+                <div className="flex items-center">
+                  <div className="h-16 w-16 rounded-full bg-blue-200"></div>
+                  <div className="ml-4 flex-1">
+                    <div className="h-5 bg-blue-200 rounded w-36 mb-2"></div>
+                    <div className="h-4 bg-blue-100 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+                <div className="h-4 bg-gray-100 rounded w-full"></div>
+                <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                  <div className="h-9 bg-blue-100 rounded-lg flex-1"></div>
+                  <div className="h-9 bg-gray-100 rounded-lg flex-1"></div>
+                  <div className="h-9 bg-red-100 rounded-lg flex-1"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredDoctors.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
           <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No doctors found</h3>
@@ -200,95 +364,12 @@ export default function DoctorsManagementPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDoctors.map((doctor) => (
-            <div key={doctor.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              {/* Doctor Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6">
-                <div className="flex items-center">
-                  <div className="h-16 w-16 rounded-full bg-blue-200 flex items-center justify-center">
-                    <UserIcon className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Dr. {doctor.first_name} {doctor.last_name}
-                    </h3>
-                    <p className="text-blue-600 font-medium">
-                      {doctor.doctor_profile?.specialization || 'General Medicine'}
-                    </p>
-                    <div className="mt-1">
-                      {renderStars(doctor.doctor_profile?.rating || 0)}
-                    </div>
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${doctor.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                    }`}>
-                    {doctor.is_active ? 'Active' : 'Inactive'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Doctor Details */}
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center text-gray-600">
-                    <AcademicCapIcon className="h-4 w-4 mr-2" />
-                    <span>{doctor.doctor_profile?.qualification || 'MBBS'}</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <ClockIcon className="h-4 w-4 mr-2" />
-                    <span>{doctor.doctor_profile?.experience_years || 0} years</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <span className="text-green-600 font-medium mr-1">₹</span>
-                    <span>{(doctor.doctor_profile?.consultation_fee || 0).toLocaleString('en-IN')} INR</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <UserIcon className="h-4 w-4 mr-2" />
-                    <span>{doctor.doctor_profile?.total_patients || 0} patients</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center text-gray-600">
-                    <EnvelopeIcon className="h-4 w-4 mr-2" />
-                    <span className="truncate">{doctor.email}</span>
-                  </div>
-                  {doctor.phone && (
-                    <div className="flex items-center text-gray-600">
-                      <PhoneIcon className="h-4 w-4 mr-2" />
-                      <span>{doctor.phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex space-x-2 pt-4 border-t border-gray-100">
-                  <Link
-                    href={`/hospital/dashboard/doctors/${doctor.id}`}
-                    className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-1"
-                  >
-                    <EyeIcon className="h-4 w-4" />
-                    <span>View</span>
-                  </Link>
-                  <Link
-                    href={`/hospital/dashboard/doctors/${doctor.id}/edit`}
-                    className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-1"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                    <span>Edit</span>
-                  </Link>
-                  <button
-                    onClick={() => toggleDoctorStatus(doctor.id)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium ${doctor.is_active
-                      ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                      : 'bg-green-50 text-green-700 hover:bg-green-100'
-                      }`}
-                  >
-                    {doctor.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DoctorCard 
+              key={doctor.id} 
+              doctor={doctor} 
+              onToggle={toggleDoctorStatus} 
+              renderStars={renderStars} 
+            />
           ))}
         </div>
       )}
