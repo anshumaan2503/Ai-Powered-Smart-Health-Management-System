@@ -30,17 +30,6 @@ export default function DashboardLayout({
     }
   }, [user, isLoading, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

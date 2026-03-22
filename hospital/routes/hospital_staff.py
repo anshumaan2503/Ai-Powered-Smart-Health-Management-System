@@ -6,6 +6,9 @@ from hospital.models.patient import Patient
 from hospital.models.doctor import Doctor
 from hospital.models.hospital import Hospital
 from hospital.models.hospital_subscription import HospitalSubscription
+from hospital.models.appointment import Appointment
+from hospital.models.medical_record import MedicalRecord
+from hospital.models.prescription import Prescription
 from hospital.utils.validators import validate_email, validate_password
 import uuid
 from sqlalchemy.orm import joinedload
@@ -33,9 +36,10 @@ def get_hospital_staff():
             return jsonify({'error': 'Admin access required'}), 403
         
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 100, type=int)  # Increased default to 100
+        per_page = request.args.get('per_page', 50, type=int)  # Optimized default
         role_filter = request.args.get('role', '')
         
+        # Optimized query with eager loading to prevent N+1
         query = User.query.options(joinedload(User.doctor_profile)).filter_by(hospital_id=user.hospital_id)
         
         if role_filter:
@@ -43,12 +47,17 @@ def get_hospital_staff():
         
         staff = query.paginate(page=page, per_page=per_page, error_out=False)
         
-        # Get doctor profiles for doctor users
+        # Use summary=True for list view to reduce payload size
         staff_with_profiles = []
         for staff_member in staff.items:
-            staff_dict = staff_member.to_dict()
-            # doctor_profile is already included in staff_member.to_dict() 
-            # and eagerly loaded via joinedload above
+            staff_dict = staff_member.to_dict(summary=True)
+            # Only add doctor profile summary if role is doctor
+            if staff_member.role == 'doctor' and staff_member.doctor_profile:
+                profile = staff_member.doctor_profile
+                if isinstance(profile, list) and len(profile) > 0:
+                    profile = profile[0]
+                if not isinstance(profile, list) and profile:
+                    staff_dict['doctor_profile'] = profile.to_dict(summary=True)
             staff_with_profiles.append(staff_dict)
         
         return jsonify({
@@ -537,27 +546,44 @@ def delete_all_doctors():
         # Find all doctor users for this hospital
         doctor_users = User.query.filter_by(hospital_id=user.hospital_id, role='doctor').all()
         doctor_user_ids = [d.id for d in doctor_users]
+        
+        # Get doctor profile ids too for clinical data cleanup
+        doctor_profiles = Doctor.query.filter_by(hospital_id=user.hospital_id).all()
+        doctor_profile_ids = [dp.id for dp in doctor_profiles]
 
         deleted_doctors = 0
         deleted_profiles = 0
+        deleted_clinical = 0
 
-        # Delete doctor profiles first (foreign key constraint)
+        if doctor_profile_ids:
+            # 1. Delete dependent clinical data for these doctors in this hospital
+            # (Otherwise foreign key constraints will fail)
+            
+            # Delete Prescriptions linked to these doctors
+            Prescription.query.filter(Prescription.doctor_id.in_(doctor_profile_ids)).delete(synchronize_session='fetch')
+            
+            # Delete Medical Records linked to these doctors
+            deleted_clinical += MedicalRecord.query.filter(MedicalRecord.doctor_id.in_(doctor_profile_ids)).delete(synchronize_session='fetch')
+            
+            # Delete Appointments linked to these doctors
+            deleted_clinical += Appointment.query.filter(Appointment.doctor_id.in_(doctor_profile_ids)).delete(synchronize_session='fetch')
+
+        # 2. Delete doctor profiles
         if doctor_user_ids:
             profiles_deleted = Doctor.query.filter(Doctor.user_id.in_(doctor_user_ids)).delete(synchronize_session='fetch')
             deleted_profiles = profiles_deleted
 
-            # Delete doctor user accounts
-            users_deleted = User.query.filter(
-                User.id.in_(doctor_user_ids)
-            ).delete(synchronize_session='fetch')
+            # 3. Delete doctor user accounts
+            users_deleted = User.query.filter(User.id.in_(doctor_user_ids)).delete(synchronize_session='fetch')
             deleted_doctors = users_deleted
 
         db.session.commit()
 
         return jsonify({
-            'message': f'Successfully deleted {deleted_doctors} doctors and {deleted_profiles} doctor profiles.',
+            'message': f'Successfully deleted {deleted_doctors} doctors, {deleted_profiles} doctor profiles and {deleted_clinical} clinical records.',
             'deleted_doctors': deleted_doctors,
-            'deleted_profiles': deleted_profiles
+            'deleted_profiles': deleted_profiles,
+            'deleted_clinical_records': deleted_clinical
         }), 200
 
     except Exception as e:
@@ -620,8 +646,10 @@ def get_hospital_patients():
         per_page = request.args.get('per_page', 50, type=int)
         search = request.args.get('search', '')
         
-        # Query patients for this hospital
-        query = db.session.query(Patient, User).join(User, Patient.user_id == User.id).filter(
+        # Optimized query with eager loading to prevent N+1
+        query = db.session.query(Patient).join(User, Patient.user_id == User.id).options(
+            joinedload(Patient.user)
+        ).filter(
             Patient.hospital_id == user.hospital_id
         )
         
@@ -640,12 +668,8 @@ def get_hospital_patients():
         
         patients = query.paginate(page=page, per_page=per_page, error_out=False)
         
-        # Format patient data
-        patients_data = []
-        for patient, patient_user in patients.items:
-            patient_dict = patient.to_dict()
-            patient_dict['user'] = patient_user.to_dict()
-            patients_data.append(patient_dict)
+        # Use summary=True for list view to reduce payload size
+        patients_data = [patient.to_dict(summary=True) for patient in patients.items]
         
         return jsonify({
             'patients': patients_data,

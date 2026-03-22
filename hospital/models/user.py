@@ -5,19 +5,26 @@ import bcrypt
 class User(db.Model):
     __tablename__ = 'users'
     
+    # Composite indexes for performance optimization
+    __table_args__ = (
+        db.Index('idx_hospital_role', 'hospital_id', 'role'),
+        db.Index('idx_hospital_created', 'hospital_id', 'created_at'),
+        db.Index('idx_hospital_active', 'hospital_id', 'is_active'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    phone = db.Column(db.String(15))
-    role = db.Column(db.String(20), nullable=False)  # admin, doctor, nurse, receptionist, patient
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    first_name = db.Column(db.String(50), nullable=False, index=True)
+    last_name = db.Column(db.String(50), nullable=False, index=True)
+    phone = db.Column(db.String(15), index=True)
+    role = db.Column(db.String(20), nullable=False, index=True)  # admin, doctor, nurse, receptionist, patient
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), index=True)
     
     def set_password(self, password):
         """Hash and set password"""
@@ -31,7 +38,26 @@ class User(db.Model):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
     
-    def to_dict(self):
+    def to_dict(self, summary=False):
+        """
+        Convert user to dictionary.
+        
+        Args:
+            summary (bool): If True, return minimal fields for list views (performance optimization)
+        """
+        if summary:
+            # Minimal payload for list views
+            return {
+                'id': self.id,
+                'first_name': self.first_name,
+                'last_name': self.last_name,
+                'full_name': self.full_name,
+                'email': self.email,
+                'role': self.role,
+                'is_active': self.is_active,
+            }
+        
+        # Full payload for detail views
         data = {
             'id': self.id,
             'email': self.email,

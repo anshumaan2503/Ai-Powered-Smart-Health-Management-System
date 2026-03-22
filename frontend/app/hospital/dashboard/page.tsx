@@ -13,8 +13,10 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { api } from '@/lib/api'
+import { api, hospitalAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
+
+import useSWR from 'swr'
 
 interface HospitalUser {
   id: number
@@ -33,51 +35,65 @@ interface Hospital {
   email: string
 }
 
+interface DashboardOverview {
+  totalPatients: number
+  totalDoctors: number
+  totalAppointments: number
+  totalRevenue: number
+  monthlyGrowth: {
+    patients: number
+    appointments: number
+    revenue: number
+  }
+}
+
 export default function HospitalDashboard() {
   const [user, setUser] = useState<HospitalUser | null>(null)
-  const [hospital, setHospital] = useState<Hospital | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // SWR for Profile
+  const { data: hospitalResponse, error: profileError } = useSWR(
+    'hospital-profile',
+    async () => {
+      const token = localStorage.getItem('hospital_access_token')
+      if (!token) return null
+      const res = await api.get('/hospital-auth/hospital-profile')
+      return res.data.hospital
+    },
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 0 
+    }
+  )
+
+  // SWR for Stats
+  const { data: analyticsResponse } = useSWR(
+    hospitalResponse ? 'dashboard-analytics' : null,
+    () => hospitalAPI.getAnalyticsOverview('30d').then(res => res.data.overview),
+    { 
+      revalidateOnFocus: true, 
+      dedupingInterval: 0 
+    }
+  )
+
   useEffect(() => {
-    checkAuth()
+    const userData = localStorage.getItem('hospital_user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    } else {
+      router.push('/hospital/login')
+    }
   }, [])
 
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('hospital_access_token')
-      const userData = localStorage.getItem('hospital_user')
-
-      if (!token || !userData) {
-        router.push('/hospital/login')
-        return
-      }
-
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-
-      // Fetch hospital profile using API client
-      const response = await api.get('/hospital-auth/hospital-profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response?.data?.hospital) {
-        setHospital(response.data.hospital)
-      } else {
-        throw new Error('Failed to fetch hospital profile')
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      localStorage.removeItem('hospital_access_token')
-      localStorage.removeItem('hospital_refresh_token')
-      localStorage.removeItem('hospital_user')
+  useEffect(() => {
+    if (profileError?.response?.status === 401) {
       router.push('/hospital/login')
-    } finally {
-      setIsLoading(false)
     }
-  }
+  }, [profileError])
+
+  const hospital = hospitalResponse
+  const stats: DashboardOverview | null = analyticsResponse || null
+  const isLoading = !hospital && !profileError
 
   const handleLogout = () => {
     localStorage.removeItem('hospital_access_token')
@@ -133,7 +149,9 @@ export default function HospitalDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Patients</p>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">1,234</p>
+              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                {stats ? stats.totalPatients.toLocaleString() : '...'}
+              </p>
             </div>
           </div>
         </div>
@@ -145,7 +163,9 @@ export default function HospitalDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Doctors</p>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">45</p>
+              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                {stats ? stats.totalDoctors.toLocaleString() : '...'}
+              </p>
             </div>
           </div>
         </div>
@@ -156,8 +176,10 @@ export default function HospitalDashboard() {
               <CalendarIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Today's Appts</p>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">28</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Appts</p>
+              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                {stats ? stats.totalAppointments.toLocaleString() : '...'}
+              </p>
             </div>
           </div>
         </div>
@@ -168,8 +190,10 @@ export default function HospitalDashboard() {
               <ChartBarIcon className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Revenue (Month)</p>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">₹4.56L</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Revenue</p>
+              <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                {stats ? `₹${(stats.totalRevenue / 100000).toFixed(2)}L` : '...'}
+              </p>
             </div>
           </div>
         </div>
@@ -181,6 +205,7 @@ export default function HospitalDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link
             href="/hospital/dashboard/patients"
+            prefetch={true}
             className="group flex flex-col p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all border border-blue-100/50 dark:border-blue-900/20"
           >
             <div className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-4 w-fit group-hover:scale-110 transition-transform">
@@ -194,6 +219,7 @@ export default function HospitalDashboard() {
 
           <Link
             href="/hospital/dashboard/doctors"
+            prefetch={true}
             className="group flex flex-col p-6 bg-green-50 dark:bg-green-900/10 rounded-2xl hover:bg-green-100 dark:hover:bg-green-900/20 transition-all border border-green-100/50 dark:border-green-900/20"
           >
             <div className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-4 w-fit group-hover:scale-110 transition-transform">
@@ -207,6 +233,7 @@ export default function HospitalDashboard() {
 
           <Link
             href="/hospital/dashboard/appointments"
+            prefetch={true}
             className="group flex flex-col p-6 bg-purple-50 dark:bg-purple-900/10 rounded-2xl hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-all border border-purple-100/50 dark:border-purple-900/20"
           >
             <div className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-4 w-fit group-hover:scale-110 transition-transform">

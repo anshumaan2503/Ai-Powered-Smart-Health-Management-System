@@ -24,6 +24,10 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
 
+import { useCallback, useMemo, memo } from 'react'
+import { debounce } from 'lodash'
+import useSWR from 'swr'
+
 interface Medicine {
   id: number
   name: string
@@ -59,13 +63,11 @@ interface DashboardStats {
 }
 
 export default function PharmacyPage() {
-  const [medicines, setMedicines] = useState<Medicine[]>([])
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
-  const [categories, setCategories] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -75,62 +77,61 @@ export default function PharmacyPage() {
   const [deleteAllModal, setDeleteAllModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deletingAll, setDeletingAll] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    loadDashboardStats()
-    loadMedicines()
-  }, [currentPage, searchTerm, selectedCategory, selectedStatus])
+  // Debounced search handler
+  const debouncedSetSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchTerm(value)
+      setCurrentPage(1)
+    }, 500),
+    []
+  )
 
-  const loadDashboardStats = async () => {
-    try {
-      console.log('Loading dashboard stats...')
-      const response = await api.get('/hospital/pharmacy/dashboard-stats')
-      console.log('Dashboard stats response:', response.status)
-
-      const data = response.data
-      console.log('Dashboard stats data:', data)
-      setStats(data)
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error)
-      // Don't show error toast here as loadMedicines will handle sample data
-    }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+    debouncedSetSearch(e.target.value)
   }
 
-  const loadMedicines = async () => {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: '20'
-      })
-
-      if (searchTerm) params.append('search', searchTerm)
-      if (selectedCategory) params.append('category', selectedCategory)
-      if (selectedStatus) params.append('status', selectedStatus)
-
-      console.log('Loading medicines with params:', params.toString())
-
-      const response = await api.get('/hospital/pharmacy/medicines', { params })
-
-      console.log('Medicines response:', response.status)
-
-      const data = response.data
-      console.log('Medicines data:', data)
-      setMedicines(data.medicines)
-      setCategories(data.categories)
-      setTotalPages(data.pagination.pages)
-    } catch (error) {
-      console.error('Error loading medicines:', error)
-
-      // Load sample data as fallback
-      console.log('Loading sample medicine data as fallback...')
-      loadSampleData()
-    } finally {
-      setLoading(false)
+  // Fetch Stocks
+  const { data: statsResponse } = useSWR(
+    '/hospital/pharmacy/dashboard-stats',
+    () => api.get('/hospital/pharmacy/dashboard-stats').then(res => res.data),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 2000 
     }
-  }
+  )
+  const stats: DashboardStats | null = statsResponse || null
+
+  // Fetch Medicines
+  const { data: medicinesResponse, error: fetchError, mutate } = useSWR(
+    ['/hospital/pharmacy/medicines', currentPage, debouncedSearchTerm, selectedCategory, selectedStatus],
+    () => api.get('/hospital/pharmacy/medicines', {
+      params: {
+        page: currentPage,
+        per_page: '20',
+        search: debouncedSearchTerm || undefined,
+        category: selectedCategory || undefined,
+        status: selectedStatus || undefined
+      }
+    }).then(res => res.data),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+      onError: (err) => {
+        console.error('Error loading medicines:', err)
+        loadSampleData()
+      }
+    }
+  )
+
+  const medicines: Medicine[] = medicinesResponse?.medicines || []
+  const categories: string[] = medicinesResponse?.categories || []
+  const totalPages = medicinesResponse?.pagination?.pages || 1
+  const loading = !medicinesResponse && !fetchError
+
+  const loadMedicines = () => mutate()
+  const loadDashboardStats = () => { /* revalidation happens automatically or via mutate */ }
 
   const loadSampleData = () => {
     // Sample Indian medicine data for demonstration
@@ -264,11 +265,15 @@ export default function PharmacyPage() {
       ]
     }
 
-    setMedicines(sampleMedicines)
-    setStats(sampleStats)
-    setCategories(['Analgesic', 'Antibiotic', 'Antidiabetic', 'Antihistamine', 'Vitamin'])
-    setTotalPages(1)
-
+    mutate({
+      medicines: sampleMedicines,
+      categories: ['Analgesic', 'Antibiotic', 'Antidiabetic', 'Antihistamine', 'Vitamin'],
+      pagination: { pages: 1 }
+    } as any, false)
+    
+    // We can't easily mutate the other SWR key for stats here without its mutate,
+    // but we can just let it be null or handle it similarly.
+    
     toast.success('Loaded sample medicine data for demonstration')
   }
 
@@ -564,7 +569,7 @@ export default function PharmacyPage() {
                 type="text"
                 placeholder="Search medicines by name, brand, or manufacturer..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearch}
                 className="input-field pl-10"
               />
             </div>

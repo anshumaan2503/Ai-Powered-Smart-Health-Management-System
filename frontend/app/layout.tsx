@@ -1,5 +1,5 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
 import { ClientThemeProvider } from '@/components/ui/ClientThemeProvider'
@@ -7,29 +7,30 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' }
+  ],
+}
+
 export const metadata: Metadata = {
   title: 'MediCare Pro - AI-Powered Hospital Management',
   description: 'Advanced hospital management system with AI-powered diagnosis and patient care',
   keywords: 'hospital, management, AI, healthcare, diagnosis, patient care',
   authors: [{ name: 'Your Name' }],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: 'cover', // For notched devices
-  },
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#020617' }
-  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'MediCare Pro'
   },
   formatDetection: {
-    telephone: false, // Prevent auto-detection of phone numbers
+    telephone: false,
   },
   openGraph: {
     title: 'MediCare Pro - AI-Powered Hospital Management',

@@ -5,25 +5,34 @@ from sqlalchemy import func
 class Medicine(db.Model):
     __tablename__ = 'medicines'
     
+    # Composite indexes for performance optimization
+    __table_args__ = (
+        db.Index('idx_medicine_hospital_category', 'hospital_id', 'category'),
+        db.Index('idx_medicine_hospital_active', 'hospital_id', 'is_active'),
+        db.Index('idx_medicine_hospital_stock', 'hospital_id', 'quantity_in_stock'),
+        db.Index('idx_medicine_hospital_expiry', 'hospital_id', 'expiry_date'),
+        db.Index('idx_medicine_name_search', 'hospital_id', 'name'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), nullable=False, index=True)
     
     # Basic Information
-    name = db.Column(db.String(200), nullable=False)
-    generic_name = db.Column(db.String(200))
-    brand_name = db.Column(db.String(200))
-    manufacturer = db.Column(db.String(200))
+    name = db.Column(db.String(200), nullable=False, index=True)
+    generic_name = db.Column(db.String(200), index=True)
+    brand_name = db.Column(db.String(200), index=True)
+    manufacturer = db.Column(db.String(200), index=True)
     
     # Medical Information
-    category = db.Column(db.String(100))  # Tablet, Syrup, Injection, etc.
+    category = db.Column(db.String(100), index=True)  # Tablet, Syrup, Injection, etc.
     therapeutic_class = db.Column(db.String(100))  # Antibiotic, Painkiller, etc.
     composition = db.Column(db.Text)  # Active ingredients
     strength = db.Column(db.String(50))  # 500mg, 10ml, etc.
     dosage_form = db.Column(db.String(50))  # Tablet, Capsule, Syrup, etc.
     
     # Inventory Information
-    batch_number = db.Column(db.String(100))
-    quantity_in_stock = db.Column(db.Integer, default=0)
+    batch_number = db.Column(db.String(100), index=True)
+    quantity_in_stock = db.Column(db.Integer, default=0, index=True)
     unit_of_measurement = db.Column(db.String(20), default='pieces')  # pieces, bottles, vials
     reorder_level = db.Column(db.Integer, default=10)
     max_stock_level = db.Column(db.Integer, default=1000)
@@ -35,8 +44,8 @@ class Medicine(db.Model):
     discount_percentage = db.Column(db.Float, default=0)
     
     # Dates
-    manufacturing_date = db.Column(db.Date)
-    expiry_date = db.Column(db.Date)
+    manufacturing_date = db.Column(db.Date, index=True)
+    expiry_date = db.Column(db.Date, index=True)
     
     # Storage Information
     storage_location = db.Column(db.String(100))  # Rack A1, Cold Storage, etc.
@@ -48,11 +57,11 @@ class Medicine(db.Model):
     prescription_required = db.Column(db.Boolean, default=True)
     
     # Status
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
     is_banned = db.Column(db.Boolean, default=False)
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
@@ -101,7 +110,26 @@ class Medicine(db.Model):
             return ((self.selling_price - self.cost_price) / self.cost_price) * 100
         return 0
     
-    def to_dict(self):
+    def to_dict(self, summary=False):
+        """
+        Convert medicine to dictionary.
+        
+        Args:
+            summary (bool): If True, return minimal fields for list views (performance optimization)
+        """
+        if summary:
+            # Minimal payload for list views - only essential fields for table display
+            return {
+                'id': self.id,
+                'name': self.name,
+                'category': self.category,
+                'quantity_in_stock': self.quantity_in_stock,
+                'stock_status': self.stock_status,
+                'selling_price': self.selling_price,
+                'expiry_date': self.expiry_date.isoformat() if self.expiry_date else None,
+            }
+        
+        # Full payload for detail views
         return {
             'id': self.id,
             'hospital_id': self.hospital_id,
