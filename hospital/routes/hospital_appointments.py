@@ -31,7 +31,7 @@ def get_appointments():
         
         # Get query parameters
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', 15, type=int)
         date_filter = request.args.get('date', '')
         doctor_id = request.args.get('doctor_id', '', type=int)
         status_filter = request.args.get('status', '')
@@ -39,7 +39,8 @@ def get_appointments():
         # Build query with eager loading to prevent N+1 queries
         query = Appointment.query.filter_by(hospital_id=user.hospital_id).options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor).joinedload(Doctor.user)
+            joinedload(Appointment.doctor).joinedload(Doctor.user),
+            joinedload(Appointment.hospital)
         )
         
         # Apply filters

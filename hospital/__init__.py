@@ -18,54 +18,43 @@ def create_app(config_name="default"):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
-    # ✅ Database Connection Fixes for Production (Render/Postgres)
+    # ✅ Optimized Database Connection Pool for High Performance
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_size": 10,
-        "max_overflow": 20
+        "pool_pre_ping": True,  # Verify connections before using
+        "pool_recycle": 280,  # Recycle connections before 5 min (AWS RDS timeout is 300s)
+        "pool_size": 20,  # Increased from 10 - number of persistent connections
+        "max_overflow": 40,  # Increased from 20 - additional connections when pool is full
+        "pool_timeout": 30,  # Wait 30s for connection from pool before failing
+        "echo_pool": False,  # Disable pool logging in production
     }
 
     # ✅ Logging (so Render logs show real errors)
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
-    # ✅ Bullet-proof CORS Fix for Railway deployment
-    # Flask-CORS handles the main setup, but the after_request handler below
-    # guarantees CORS headers are stamped on EVERY response (including errors).
+    # ✅ Professional CORS Configuration
+    # Uses whitelisted origins from config.py and handles credentials correctly.
+    origins = app.config.get('CORS_ORIGINS', '*')
+    if isinstance(origins, str) and ',' in origins:
+        origins = [o.strip() for o in origins.split(',')]
+    
     CORS(
         app,
-        resources={r"/api/*": {"origins": "*"}, r"/static/*": {"origins": "*"}},
-        supports_credentials=False,
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        resources={
+            r"/api/*": {"origins": origins},
+            r"/static/*": {"origins": origins}
+        },
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
         methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        expose_headers=["Content-Type", "Authorization"]
     )
 
-    @app.after_request
-    def add_cors_headers(response):
-        """Guarantee CORS headers on every response, including errors and OPTIONS."""
-        origin = request.headers.get('Origin', '')
-        if origin:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
+    # Note: Flask-CORS 3.0+ automatically handles OPTIONS preflights and 
+    # attaches headers to error responses if properly initialized on the app.
+    # The redundant manual handlers below were causing duplicate headers
+    # and invalid "Credentials + Origin: *" combinations in some environments.
 
-    @app.before_request
-    def handle_options_preflight():
-        """Immediately respond to OPTIONS preflight requests."""
-        if request.method == 'OPTIONS':
-            origin = request.headers.get('Origin', '*')
-            resp = make_response('', 204)
-            resp.headers['Access-Control-Allow-Origin'] = origin
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-            resp.headers['Access-Control-Allow-Credentials'] = 'true'
-            resp.headers['Access-Control-Max-Age'] = '86400'
-            return resp
 
     # ✅ Initialize extensions
     db.init_app(app)
@@ -220,8 +209,13 @@ def create_app(config_name="default"):
     app.register_blueprint(migration_bp, url_prefix="/api/migration")
 
     # ✅ Catch ALL backend exceptions and show them in Render logs
+    from werkzeug.exceptions import HTTPException
     @app.errorhandler(Exception)
     def handle_exception(e):
+        # Pass through HTTP errors
+        if isinstance(e, HTTPException):
+            return e
+        
         app.logger.exception("🔥 UNHANDLED EXCEPTION")
         return {"error": str(e)}, 500
 

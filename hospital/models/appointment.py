@@ -4,27 +4,35 @@ from hospital import db
 class Appointment(db.Model):
     __tablename__ = 'appointments'
     
+    # Composite indexes for performance optimization
+    __table_args__ = (
+        db.Index('idx_appointment_hospital_date', 'hospital_id', 'appointment_date'),
+        db.Index('idx_appointment_hospital_status', 'hospital_id', 'status'),
+        db.Index('idx_appointment_doctor_date', 'doctor_id', 'appointment_date'),
+        db.Index('idx_appointment_patient_date', 'patient_id', 'appointment_date'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
-    appointment_date = db.Column(db.DateTime, nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False, index=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False, index=True)
+    appointment_date = db.Column(db.DateTime, nullable=False, index=True)
     appointment_type = db.Column(db.String(50))  # consultation, follow-up, emergency
-    status = db.Column(db.String(20), default='scheduled')  # requested, scheduled, confirmed, completed, cancelled, no-show
+    status = db.Column(db.String(20), default='scheduled', index=True)  # requested, scheduled, confirmed, completed, cancelled, no-show
     symptoms = db.Column(db.Text)
     notes = db.Column(db.Text)
     priority = db.Column(db.String(10), default='normal')  # low, normal, high, emergency
     estimated_duration = db.Column(db.Integer, default=30)  # minutes
     actual_duration = db.Column(db.Integer)
     consultation_fee = db.Column(db.Float)
-    payment_status = db.Column(db.String(20), default='pending')  # pending, paid, cancelled
+    payment_status = db.Column(db.String(20), default='pending', index=True)  # pending, paid, cancelled
     report_url = db.Column(db.String(255))
     report_name = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), index=True)
     patient = db.relationship('Patient', backref='appointments', lazy=True)
     hospital = db.relationship('Hospital', backref='appointments', lazy=True)
     

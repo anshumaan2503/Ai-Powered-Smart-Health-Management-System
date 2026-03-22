@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
 import {
@@ -11,7 +11,8 @@ import {
   MapPinIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -36,24 +37,120 @@ export default function PatientAppointmentsPage() {
   const { user, isLoading: isAuthLoading } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [isPageVisible, setIsPageVisible] = useState(true)
+  const appointmentsRef = useRef<Appointment[]>([])
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Detect if changes occurred
+  const hasAppointmentChanged = (oldApts: Appointment[], newApts: Appointment[]): boolean => {
+    if (oldApts.length !== newApts.length) return true
+    return oldApts.some(oldApt => {
+      const newApt = newApts.find(a => a.id === oldApt.id)
+      return !newApt || 
+        oldApt.status !== newApt.status || 
+        oldApt.appointment_date !== newApt.appointment_date
+    })
+  }
+
+  const fetchAppointments = async (showToast = false) => {
+    try {
+      if (!showToast) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+      
+      const response = await api.get('/appointments/')
+      const newAppointments = response.data.appointments || []
+      
+      // Check if appointments changed
+      if (hasAppointmentChanged(appointmentsRef.current, newAppointments)) {
+        setAppointments(newAppointments)
+        appointmentsRef.current = newAppointments
+        
+        // Show notification only if there were changes and it's not the first load
+        if (appointmentsRef.current.length > 0 && lastUpdated !== null) {
+          toast.success('Your appointments have been updated!', {
+            duration: 3,
+            icon: '🔄'
+          })
+        }
+      } else if (appointmentsRef.current.length === 0) {
+        setAppointments(newAppointments)
+        appointmentsRef.current = newAppointments
+      }
+      
+      setLastUpdated(new Date())
+    } catch (error) {
+      console.error('Error fetching appointments:', error)
+      // Don't show error toast for auto-refresh
+      if (showToast) {
+        toast.error('Failed to load appointments')
+      }
+    } finally {
+      setRefreshing(false)
+      setLoading(false)
+    }
+  }
+
+  // Setup auto-refresh with smart polling
   useEffect(() => {
-    if (user) {
-      fetchAppointments()
+    if (!user) return
+
+    // Initial fetch
+    fetchAppointments()
+
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden
+      setIsPageVisible(isVisible)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [user])
 
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true)
-      const response = await api.get('/appointments/')
-      setAppointments(response.data.appointments || [])
-    } catch (error) {
-      console.error('Error fetching appointments:', error)
-      toast.error('Failed to load appointments')
-    } finally {
-      setLoading(false)
+  // Setup polling interval based on page visibility
+  useEffect(() => {
+    if (!user || !isPageVisible) {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current)
+        refreshIntervalRef.current = null
+      }
+      return
     }
+
+    // Refresh every 10 seconds when page is visible
+    const interval = setInterval(() => {
+      fetchAppointments(false)
+    }, 10000) // 10 seconds
+
+    refreshIntervalRef.current = interval
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current)
+      }
+    }
+  }, [user, isPageVisible])
+
+  const handleManualRefresh = async () => {
+    await fetchAppointments(true)
+    toast.success('Appointments updated!', { duration: 2 })
+  }
+
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return 'Never'
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000)
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    return lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   const handleDownloadHistory = async () => {
@@ -280,20 +377,50 @@ export default function PatientAppointmentsPage() {
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/patient/dashboard"
-              className="btn-primary text-center"
-            >
-              Book New Appointment
-            </Link>
-            <button
-              onClick={handleDownloadHistory}
-              className="btn-secondary flex items-center justify-center"
-            >
-              <CalendarIcon className="h-5 w-5 mr-2" />
-              Download Appointment History
-            </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <Link
+                href="/patient/dashboard"
+                className="btn-primary text-center"
+              >
+                Book New Appointment
+              </Link>
+              <button
+                onClick={handleDownloadHistory}
+                className="btn-secondary flex items-center justify-center"
+              >
+                <CalendarIcon className="h-5 w-5 mr-2" />
+                Download Appointment History
+              </button>
+            </div>
+            
+            {/* Auto-refresh indicator and manual refresh button */}
+            <div className="flex items-center gap-4 w-full sm:w-auto sm:justify-end">
+              <div className="text-sm text-gray-500">
+                Last updated: <span className="font-medium text-gray-700">{formatLastUpdated()}</span>
+              </div>
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+                  refreshing
+                    ? 'bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed'
+                    : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                }`}
+                title="Click to refresh appointments"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-medium">Refresh</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Auto-refresh status indicator */}
+          <div className="mt-4 flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-200">
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+              Live updates enabled - Refreshing every 10 seconds
+            </div>
           </div>
         </div>
 

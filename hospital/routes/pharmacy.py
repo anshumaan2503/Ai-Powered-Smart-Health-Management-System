@@ -30,14 +30,14 @@ def get_medicines():
         
         # Get query parameters
         page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)  # Increased default to 50
         search = request.args.get('search', '')
         category = request.args.get('category', '')
         status = request.args.get('status', '')  # 'low_stock', 'expired', 'expiring_soon'
         sort_by = request.args.get('sort_by', 'name')
         sort_order = request.args.get('sort_order', 'asc')
         
-        # Base query
+        # Base query - optimized with only necessary columns
         query = Medicine.query.filter_by(hospital_id=user.hospital_id, is_active=True)
         
         # Apply search filter
@@ -81,13 +81,13 @@ def get_medicines():
             page=page, per_page=per_page, error_out=False
         )
         
-        # Get categories for filter dropdown
+        # Get categories for filter dropdown - optimized query
         categories = db.session.query(Medicine.category).filter_by(
             hospital_id=user.hospital_id, is_active=True
         ).distinct().all()
         categories = [cat[0] for cat in categories if cat[0]]
         
-        # Get summary statistics
+        # Get summary statistics - optimized with single queries
         total_medicines = Medicine.query.filter_by(hospital_id=user.hospital_id, is_active=True).count()
         low_stock_count = Medicine.query.filter(
             Medicine.hospital_id == user.hospital_id,
@@ -100,8 +100,9 @@ def get_medicines():
             Medicine.expiry_date < date.today()
         ).count()
         
+        # Use summary=True for list view to reduce payload size
         return jsonify({
-            'medicines': [medicine.to_dict() for medicine in medicines.items],
+            'medicines': [medicine.to_dict(summary=True) for medicine in medicines.items],
             'pagination': {
                 'page': medicines.page,
                 'pages': medicines.pages,

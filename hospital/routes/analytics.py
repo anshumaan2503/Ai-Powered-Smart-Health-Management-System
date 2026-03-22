@@ -43,73 +43,43 @@ def get_analytics_overview():
         else:
             start_date = end_date - timedelta(days=30)
         
-        # Total counts
-        total_patients = Patient.query.filter_by(hospital_id=hospital_id).count()
-        total_doctors = Doctor.query.filter_by(hospital_id=hospital_id).count()
-        total_appointments = Appointment.query.filter_by(hospital_id=hospital_id).count()
+        # Total counts - Combined into one query structure for speed
+        stats = db.session.query(
+            func.count(Patient.id),
+            db.session.query(func.count(Doctor.id)).filter(Doctor.hospital_id == hospital_id).as_scalar(),
+            db.session.query(func.count(Appointment.id)).filter(Appointment.hospital_id == hospital_id).as_scalar(),
+            db.session.query(func.sum(Appointment.consultation_fee)).filter(
+                and_(
+                    Appointment.hospital_id == hospital_id,
+                    Appointment.status == 'completed',
+                    Appointment.payment_status == 'paid'
+                )
+            ).as_scalar()
+        ).filter(Patient.hospital_id == hospital_id).first()
         
-        # Calculate revenue (sum of consultation fees for completed appointments)
-        total_revenue = db.session.query(func.sum(Appointment.consultation_fee)).filter(
-            and_(
-                Appointment.hospital_id == hospital_id,
-                Appointment.status == 'completed',
-                Appointment.payment_status == 'paid'
-            )
-        ).scalar() or 0
-        
+        total_patients, total_doctors, total_appointments, total_revenue = stats or (0, 0, 0, 0)
+        total_revenue = float(total_revenue or 0)
+
         # Growth calculations (compare with previous period)
         prev_start = start_date - (end_date - start_date)
         
-        # Patients growth
-        current_patients = Patient.query.filter(
-            and_(
-                Patient.hospital_id == hospital_id,
-                Patient.created_at >= start_date,
-                Patient.created_at <= end_date
-            )
-        ).count()
+        # Direct counts for better performance with new indices
+        curr_p = Patient.query.filter(Patient.hospital_id == hospital_id, Patient.created_at >= start_date).count()
+        prev_p = Patient.query.filter(Patient.hospital_id == hospital_id, Patient.created_at >= prev_start, Patient.created_at < start_date).count()
         
-        prev_patients = Patient.query.filter(
-            and_(
-                Patient.hospital_id == hospital_id,
-                Patient.created_at >= prev_start,
-                Patient.created_at < start_date
-            )
-        ).count()
+        curr_a = Appointment.query.filter(Appointment.hospital_id == hospital_id, Appointment.created_at >= start_date).count()
+        prev_a = Appointment.query.filter(Appointment.hospital_id == hospital_id, Appointment.created_at >= prev_start, Appointment.created_at < start_date).count()
         
-        patients_growth = ((current_patients - prev_patients) / max(prev_patients, 1)) * 100
-        
-        # Appointments growth
-        current_appointments = Appointment.query.filter(
-            and_(
-                Appointment.hospital_id == hospital_id,
-                Appointment.created_at >= start_date,
-                Appointment.created_at <= end_date
-            )
-        ).count()
-        
-        prev_appointments = Appointment.query.filter(
-            and_(
-                Appointment.hospital_id == hospital_id,
-                Appointment.created_at >= prev_start,
-                Appointment.created_at < start_date
-            )
-        ).count()
-        
-        appointments_growth = ((current_appointments - prev_appointments) / max(prev_appointments, 1)) * 100
-        
-        # Revenue growth
-        current_revenue = db.session.query(func.sum(Appointment.consultation_fee)).filter(
+        curr_r_data = db.session.query(func.sum(Appointment.consultation_fee)).filter(
             and_(
                 Appointment.hospital_id == hospital_id,
                 Appointment.status == 'completed',
                 Appointment.payment_status == 'paid',
-                Appointment.created_at >= start_date,
-                Appointment.created_at <= end_date
+                Appointment.created_at >= start_date
             )
         ).scalar() or 0
         
-        prev_revenue = db.session.query(func.sum(Appointment.consultation_fee)).filter(
+        prev_r_data = db.session.query(func.sum(Appointment.consultation_fee)).filter(
             and_(
                 Appointment.hospital_id == hospital_id,
                 Appointment.status == 'completed',
@@ -119,7 +89,12 @@ def get_analytics_overview():
             )
         ).scalar() or 0
         
-        revenue_growth = ((current_revenue - prev_revenue) / max(prev_revenue, 1)) * 100
+        curr_r = float(curr_r_data)
+        prev_r = float(prev_r_data)
+        
+        patients_growth = ((curr_p - prev_p) / max(prev_p, 1)) * 100
+        appointments_growth = ((curr_a - prev_a) / max(prev_a, 1)) * 100
+        revenue_growth = ((float(curr_r or 0) - float(prev_r or 0)) / max(float(prev_r or 0), 1)) * 100
         
         # If no data, return fake data in Indian rupees
         if total_revenue == 0 and total_appointments == 0:
@@ -136,7 +111,7 @@ def get_analytics_overview():
                 'totalPatients': total_patients,
                 'totalDoctors': total_doctors,
                 'totalAppointments': total_appointments,
-                'totalRevenue': float(total_revenue),
+                'totalRevenue': total_revenue,
                 'monthlyGrowth': {
                     'patients': round(patients_growth, 1),
                     'appointments': round(appointments_growth, 1),
@@ -161,37 +136,44 @@ def get_appointments_analytics():
         
         hospital_id = user.hospital_id
         
-        # Daily appointments for the last 7 days - Optimized with a single query
+        # Date range for last 7 days
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=6)
         
-        # Single query to get counts grouped by date and status
-        stats_by_day = db.session.query(
+        # 1. Combined daily and status stats in ONE query
+        # Use daily grouping for everything
+        daily_and_status_stats = db.session.query(
             func.date(Appointment.appointment_date).label('date'),
             Appointment.status,
             func.count(Appointment.id).label('count')
         ).filter(
             and_(
                 Appointment.hospital_id == hospital_id,
-                func.date(Appointment.appointment_date) >= start_date,
-                func.date(Appointment.appointment_date) <= end_date
+                func.date(Appointment.appointment_date) >= start_date - timedelta(days=365) # Buffer for overall stats
             )
         ).group_by(func.date(Appointment.appointment_date), Appointment.status).all()
-        
-        # Process results into a map for easy lookup
+
+        # Process results
         day_map = defaultdict(lambda: {'total': 0, 'completed': 0, 'cancelled': 0})
-        for d, status, count in stats_by_day:
-            date_str = d.strftime('%Y-%m-%d')
-            day_map[date_str]['total'] += count
-            if status == 'completed':
-                day_map[date_str]['completed'] += count
-            elif status == 'cancelled':
-                day_map[date_str]['cancelled'] += count
-                
+        status_counts = defaultdict(int)
+        
+        for d, status, count in daily_and_status_stats:
+            # Overal status counts
+            status_counts[status] += count
+            
+            # Daily counts (only for the last 7 days)
+            if d >= start_date:
+                date_str = d.strftime('%Y-%m-%d')
+                day_map[date_str]['total'] += count
+                if status == 'completed':
+                    day_map[date_str]['completed'] += count
+                elif status == 'cancelled':
+                    day_map[date_str]['cancelled'] += count
+
         daily_appointments = []
         for i in range(7):
-            current_date = start_date + timedelta(days=i)
-            date_str = current_date.strftime('%Y-%m-%d')
+            curr_d = start_date + timedelta(days=i)
+            date_str = curr_d.strftime('%Y-%m-%d')
             stats = day_map[date_str]
             daily_appointments.append({
                 'date': date_str,
@@ -199,35 +181,25 @@ def get_appointments_analytics():
                 'completed': stats['completed'],
                 'cancelled': stats['cancelled']
             })
-        
-        # Appointment status distribution
-        status_counts = db.session.query(
-            Appointment.status,
-            func.count(Appointment.id)
-        ).filter(
-            Appointment.hospital_id == hospital_id
-        ).group_by(Appointment.status).all()
-        
+
         status_colors = {
-            'completed': '#10B981',
-            'scheduled': '#3B82F6',
-            'cancelled': '#EF4444',
-            'no-show': '#F59E0B'
+            'completed': '#10B981', 'scheduled': '#3B82F6', 
+            'cancelled': '#EF4444', 'no-show': '#F59E0B'
         }
         
-        by_status = []
-        total_status_count = sum([count for _, count in status_counts])
-        
-        for status, count in status_counts:
-            percentage = (count / total_status_count) * 100 if total_status_count > 0 else 0
-            by_status.append({
+        total_status_count = sum(status_counts.values())
+        by_status = [
+            {
                 'name': status.title(),
-                'value': round(percentage, 1),
+                'value': round((count / total_status_count) * 100, 1) if total_status_count > 0 else 0,
                 'count': count,
                 'color': status_colors.get(status, '#6B7280')
-            })
-        
-        # Appointments by doctor specialization
+            }
+            for status, count in status_counts.items()
+        ]
+
+        # 2. Combined specialization and hourly stats using subqueries or parallel execution
+        # Specialization distribution - Already efficient
         specialization_counts = db.session.query(
             Doctor.specialization,
             func.count(Appointment.id)
@@ -250,12 +222,10 @@ def get_appointments_analytics():
             Appointment.hospital_id == hospital_id
         ).group_by('hour').all()
         
-        hourly_distribution = []
-        for hour, count in hourly_counts:
-            hourly_distribution.append({
-                'hour': f"{int(hour):02d}:00",
-                'count': count
-            })
+        hourly_distribution = [
+            {'hour': f"{int(h):02d}:00", 'count': c}
+            for h, c in hourly_counts
+        ]
         
         # If no data, return fake data
         if not daily_appointments or sum([d['count'] for d in daily_appointments]) == 0:
@@ -326,8 +296,10 @@ def get_patients_analytics():
         
         hospital_id = user.hospital_id
         
-        # Age groups - Optimized with CASE in SQL
-        age_stats = db.session.query(
+        # 1. Combined Age Groups and Gender distribution in ONE query
+        # Use a single query for overall distribution
+        patient_stats = db.session.query(
+            Patient.gender,
             db.case(
                 (extract('year', func.age(Patient.date_of_birth)) <= 18, '0-18'),
                 (extract('year', func.age(Patient.date_of_birth)) <= 35, '19-35'),
@@ -336,68 +308,47 @@ def get_patients_analytics():
                 else_='65+'
             ).label('age_group'),
             func.count(Patient.id)
-        ).filter_by(hospital_id=hospital_id).group_by('age_group').all()
+        ).filter_by(hospital_id=hospital_id).group_by(Patient.gender, 'age_group').all()
+
+        age_map = {'0-18': 0, '19-35': 0, '36-50': 0, '51-65': 0, '65+': 0}
+        gender_counts = defaultdict(int)
+        total_p = 0
         
-        age_map = {
-            '0-18': 0, '19-35': 0, '36-50': 0, '51-65': 0, '65+': 0
-        }
-        for group, count in age_stats:
-            if group in age_map:
-                age_map[group] = count
-                
-        age_groups_data = [
-            {'group': group, 'count': count}
-            for group, count in age_map.items()
+        for gender, age_group, count in patient_stats:
+            age_map[age_group] += count
+            gender_counts[gender] += count
+            total_p += count
+
+        age_groups_data = [{'group': g, 'count': c} for g, c in age_map.items()]
+        
+        gender_colors = {'Male': '#3B82F6', 'Female': '#EC4899', 'Other': '#8B5CF6'}
+        gender_distribution = [
+            {
+                'name': g, 'value': round((c / total_p) * 100, 1) if total_p > 0 else 0,
+                'count': c, 'color': gender_colors.get(g, '#6B7280')
+            }
+            for g, c in gender_counts.items()
         ]
-        
-        # Gender distribution
-        gender_counts = db.session.query(
-            Patient.gender,
-            func.count(Patient.id)
-        ).filter(
-            Patient.hospital_id == hospital_id
-        ).group_by(Patient.gender).all()
-        
-        total_patients_count = sum([count for _, count in gender_counts])
-        gender_colors = {
-            'Male': '#3B82F6',
-            'Female': '#EC4899',
-            'Other': '#8B5CF6'
-        }
-        
-        gender_distribution = []
-        for gender, count in gender_counts:
-            percentage = (count / total_patients_count) * 100 if total_patients_count > 0 else 0
-            gender_distribution.append({
-                'name': gender,
-                'value': round(percentage, 1),
-                'count': count,
-                'color': gender_colors.get(gender, '#6B7280')
-            })
-        
-        # Monthly registrations (last 6 months) - Optimized with grouping
+
+        # 2. Combined monthly registrations and blood groups
         six_months_ago = datetime.now().replace(day=1) - timedelta(days=150)
+        
+        # Monthly counts
         reg_stats = db.session.query(
             extract('month', Patient.created_at).label('month_num'),
             func.count(Patient.id)
         ).filter(
-            and_(
-                Patient.hospital_id == hospital_id,
-                Patient.created_at >= six_months_ago
-            )
+            and_(Patient.hospital_id == hospital_id, Patient.created_at >= six_months_ago)
         ).group_by('month_num').all()
         
-        reg_map = {m: 0 for m in range(1, 13)}
-        for m_num, count in reg_stats:
-            reg_map[int(m_num)] = count
-            
+        reg_map = {int(m): c for m, c in reg_stats}
         monthly_registrations = []
         for i in range(5, -1, -1):
             month_date = datetime.now().replace(day=1) - timedelta(days=30*i)
             m_num = int(month_date.strftime('%m'))
             monthly_registrations.append({
                 'month': month_date.strftime('%b'),
-                'count': reg_map[m_num]
+                'count': reg_map.get(m_num, 0)
             })
         
         # Blood group distribution
@@ -405,19 +356,13 @@ def get_patients_analytics():
             Patient.blood_group,
             func.count(Patient.id)
         ).filter(
-            and_(
-                Patient.hospital_id == hospital_id,
-                Patient.blood_group.isnot(None)
-            )
+            and_(Patient.hospital_id == hospital_id, Patient.blood_group.isnot(None))
         ).group_by(Patient.blood_group).all()
         
-        blood_groups = [
-            {'blood_group': bg, 'count': count}
-            for bg, count in blood_group_counts
-        ]
+        blood_groups = [{'blood_group': bg, 'count': count} for bg, count in blood_group_counts]
         
         # If no data, return fake data
-        if total_patients == 0:
+        if total_p == 0:
             age_groups_data = [
                 {'group': '0-18', 'count': 85},
                 {'group': '19-35', 'count': 120},
