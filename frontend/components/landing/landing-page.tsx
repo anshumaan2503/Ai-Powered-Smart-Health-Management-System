@@ -14,6 +14,16 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/outline'
 
+/**
+ * Landing page component that renders the public homepage and initializes local auth state.
+ *
+ * On mount it performs a synchronous, local-only check of patient and hospital tokens to set
+ * logged-in state and hydrate display names from stored user data. The component renders
+ * navigation, hero, access cards for patients and hospitals, an AI assistant section, feature
+ * highlights, and a footer. Logout clears relevant storage keys and redirects to the site root.
+ *
+ * @returns The React element for the landing page.
+ */
 export function LandingPage() {
   const accessSectionRef = useRef<HTMLDivElement>(null);
   const [isPatientLoggedIn, setIsPatientLoggedIn] = useState(false);
@@ -22,103 +32,38 @@ export function LandingPage() {
   const [hospitalName, setHospitalName] = useState('');
 
   useEffect(() => {
-    const checkTokens = async () => {
-      // Check patient token
-      const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (patientToken) {
-        try {
-          // Validate token by making a test request
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-          const response = await fetch(`${backendUrl}/api/auth/profile`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${patientToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
+    // Fast synchronous check — no network calls, no waiting for backend
+    // Token validation happens on the actual dashboard/protected pages
 
-          if (response.ok) {
-            setIsPatientLoggedIn(true);
-            try {
-              const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-              if (userData) {
-                const user = JSON.parse(userData);
-                setPatientName(user.first_name || 'Patient');
-              }
-            } catch (e) {
-              setPatientName('Patient');
-            }
-            // Redirect to patient dashboard if on homepage
-            if (window.location.pathname === '/') {
-              window.location.href = '/patient/dashboard';
-            }
-          } else {
-            // Token is invalid, clear it
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('access_token');
-            sessionStorage.removeItem('refresh_token');
-            sessionStorage.removeItem('user');
-          }
-        } catch (error) {
-          // Token validation failed, clear it
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('user');
+    // Check patient token
+    const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (patientToken) {
+      setIsPatientLoggedIn(true);
+      try {
+        const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setPatientName(user.first_name || 'Patient');
         }
+      } catch (e) {
+        setPatientName('Patient');
       }
+    }
 
-      // Check hospital token
-      const hospitalToken = localStorage.getItem('hospital_access_token');
-      if (hospitalToken) {
-        try {
-          // Validate token by making a test request
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-          const response = await fetch(`${backendUrl}/api/hospital-auth/hospital-profile`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${hospitalToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (response.ok) {
-            setIsHospitalLoggedIn(true);
-            try {
-              const hospitalData = localStorage.getItem('hospital_data');
-              if (hospitalData) {
-                const hospital = JSON.parse(hospitalData);
-                setHospitalName(hospital.name || 'Hospital');
-              }
-            } catch (e) {
-              setHospitalName('Hospital');
-            }
-            // Redirect to hospital dashboard if on homepage
-            if (window.location.pathname === '/') {
-              window.location.href = '/hospital/dashboard';
-            }
-          } else {
-            // Token is invalid, clear it
-            localStorage.removeItem('hospital_access_token');
-            localStorage.removeItem('hospital_refresh_token');
-            localStorage.removeItem('hospital_user');
-            localStorage.removeItem('hospital_data');
-          }
-        } catch (error) {
-          // Token validation failed, clear it
-          localStorage.removeItem('hospital_access_token');
-          localStorage.removeItem('hospital_refresh_token');
-          localStorage.removeItem('hospital_user');
-          localStorage.removeItem('hospital_data');
+    // Check hospital token
+    const hospitalToken = localStorage.getItem('hospital_access_token');
+    if (hospitalToken) {
+      setIsHospitalLoggedIn(true);
+      try {
+        const hospitalData = localStorage.getItem('hospital_data');
+        if (hospitalData) {
+          const hospital = JSON.parse(hospitalData);
+          setHospitalName(hospital.name || 'Hospital');
         }
+      } catch (e) {
+        setHospitalName('Hospital');
       }
-    };
-
-    checkTokens();
+    }
   }, []);
 
   const handleLogout = (type: 'patient' | 'hospital') => {
@@ -411,7 +356,7 @@ export function LandingPage() {
                 </div>
 
                 <Link
-                  href="/login"
+                  href="/aichatbot"
                   className="inline-flex items-center px-8 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-bold rounded-xl transition-all shadow-xl hover:scale-105"
                 >
                   Try AI Chatbot

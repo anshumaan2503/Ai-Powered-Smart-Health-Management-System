@@ -31,6 +31,15 @@ import Link from 'next/link'
 
 import { api } from '@/lib/api'
 
+/**
+ * Render the subscription management page for hospital users.
+ *
+ * Loads the current subscription and usage statistics on mount, persists subscription updates to localStorage,
+ * and provides UI to view current plan details and usage, browse available plans (monthly/annual), perform upgrades,
+ * and view a static billing history.
+ *
+ * @returns A React element rendering subscription management UI including current plan, usage cards and warnings, available plans with upgrade actions, billing information, and billing history.
+ */
 export default function SubscriptionPage() {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null)
   const [hospitalData, setHospitalData] = useState<any>(null)
@@ -174,40 +183,25 @@ export default function SubscriptionPage() {
       if (token) {
         const headers = { 'Authorization': `Bearer ${token}` }
 
-        // 1. Fetch Live Subscription Data from Backend
+        // 1. Fetch Subscription & Usage Data from Backend
         const subResponse = await api.get('/subscription', { headers })
         if (subResponse.data?.subscription) {
           const sub = subResponse.data.subscription
           setCurrentSubscription(sub)
-          localStorage.setItem('subscription', JSON.stringify(sub)) // Keep localStorage in sync
+          localStorage.setItem('subscription', JSON.stringify(sub)) 
+          
+          // Use stats from backend
+          if (subResponse.data.usage_stats) {
+            const usage = {
+              patients: subResponse.data.usage_stats.patients?.current || 0,
+              doctors: subResponse.data.usage_stats.doctors?.current || 0,
+              staff: subResponse.data.usage_stats.staff?.current || 0,
+              monthly_appointments: subResponse.data.usage_stats.monthly_appointments || 0,
+              storage_used_gb: subResponse.data.usage_stats.storage_used_gb || 0
+            }
+            setUsageStats(usage)
+          }
         }
-
-        // 2. Load usage statistics (Keep existing robust logic)
-        const [patientsRes, doctorsRes, staffRes] = await Promise.all([
-          api.get('/hospital/patients?per_page=1', { headers }).catch(() => null),
-          api.get('/hospital/staff?role=doctor', { headers }).catch(() => null),
-          api.get('/hospital/staff', { headers }).catch(() => null)
-        ])
-
-        const usage = {
-          patients: 0,
-          doctors: 0,
-          staff: 0
-        }
-
-        if (patientsRes?.data) {
-          usage.patients = patientsRes.data.total || 0
-        }
-
-        if (doctorsRes?.data) {
-          usage.doctors = doctorsRes.data.staff?.length || 0
-        }
-
-        if (staffRes?.data) {
-          usage.staff = staffRes.data.staff?.length || 0
-        }
-
-        setUsageStats(usage)
       }
 
     } catch (error) {

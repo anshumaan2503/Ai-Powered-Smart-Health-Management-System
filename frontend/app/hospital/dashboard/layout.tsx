@@ -33,32 +33,38 @@ const navigation = [
   { name: 'Subscription', href: '/hospital/dashboard/subscription', icon: CreditCardIcon },
 ]
 
+/**
+ * Layout component that renders the hospital dashboard shell with a responsive sidebar, header, and content area.
+ *
+ * On mount it reads authentication and hospital data from localStorage; if required auth values are missing or the user data cannot be parsed, it redirects to /hospital/login. Provides a logout handler that clears related keys from localStorage and sessionStorage and redirects to /hospital/login.
+ *
+ * @param children - The page content to render inside the layout's main area.
+ * @returns The dashboard layout element containing the sidebar, header, and main content container.
+ */
 export default function HospitalDashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<any>(null) // null on SSR and client — no hydration mismatch
   const [hospital, setHospital] = useState<any>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    // Check authentication — login always writes to localStorage
+    // Instant read from localStorage (< 1ms) — no blocking spinner
+    const token = localStorage.getItem('hospital_access_token')
     const userData = localStorage.getItem('hospital_user')
     const hospitalData = localStorage.getItem('hospital_data')
-    const token = localStorage.getItem('hospital_access_token')
 
-    if (!userData || !token) {
+    if (!token || !userData) {
       router.push('/hospital/login')
       return
     }
 
-    setUser(JSON.parse(userData))
-    if (hospitalData) {
-      setHospital(JSON.parse(hospitalData))
-    }
+    try { setUser(JSON.parse(userData)) } catch { router.push('/hospital/login'); return }
+    try { if (hospitalData) setHospital(JSON.parse(hospitalData)) } catch { /* ignore */ }
   }, [router])
 
   const handleLogout = () => {
@@ -78,11 +84,8 @@ export default function HospitalDashboardLayout({
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <BuildingOffice2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -120,6 +123,7 @@ export default function HospitalDashboardLayout({
             <Link
               key={item.name}
               href={item.href}
+              prefetch={true}
               className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
                 ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
