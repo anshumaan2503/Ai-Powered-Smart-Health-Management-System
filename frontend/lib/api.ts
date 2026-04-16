@@ -5,7 +5,12 @@ import toast from 'react-hot-toast'
 const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
 const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
-const BASE_DOMAIN = NEXT_PUBLIC_API_URL || NEXT_PUBLIC_BACKEND_URL
+const rawUrl = NEXT_PUBLIC_API_URL || NEXT_PUBLIC_BACKEND_URL
+let BASE_DOMAIN = rawUrl
+
+if (BASE_DOMAIN && !BASE_DOMAIN.startsWith('http') && !BASE_DOMAIN.includes('localhost')) {
+  BASE_DOMAIN = `https://${BASE_DOMAIN}`
+}
 
 if (!BASE_DOMAIN) {
   throw new Error(
