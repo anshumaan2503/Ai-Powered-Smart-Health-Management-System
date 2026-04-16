@@ -51,6 +51,28 @@ python start.py
 cd frontend && npm run dev
 ```
 
+## 🚀 Deployment (Railway)
+
+### Backend (Flask)
+1.  **New Service** > **GitHub Repo**.
+2.  **Settings** > **Root Directory**: Leave as `/`.
+3.  **Settings** > **Build Command**: Leave empty (uses `requirements.txt`).
+4.  **Settings** > **Start Command**: `gunicorn wsgi:app`.
+5.  **Variables**:
+    *   `DATABASE_URL`: Your PostgreSQL connection string.
+    *   `FLASK_CONFIG`: `production`
+    *   `SECRET_KEY`: A long random string.
+    *   `JWT_SECRET_KEY`: A long random string.
+    *   `CORS_ORIGINS`: Your frontend URL (e.g., `https://hms-frontend.up.railway.app`).
+
+### Frontend (Next.js)
+1.  **New Service** > **GitHub Repo**.
+2.  **Settings** > **Root Directory**: `/frontend`.
+3.  **Variables**:
+    *   `NEXT_PUBLIC_API_URL`: Your backend URL (e.g., `https://hms-backend.up.railway.app`).
+
+---
+
 ### Access Points
 - **Backend API**: http://localhost:5000
 - **Frontend**: http://localhost:3000
