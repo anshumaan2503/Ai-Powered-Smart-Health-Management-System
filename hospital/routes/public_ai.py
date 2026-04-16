@@ -92,8 +92,15 @@ def public_ai_chatbot():
         }), 200
         
     except Exception as e:
+        # ✅ Log the FULL error for Railway/Production debugging
+        current_app.logger.error(f"❌ Chatbot Error: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        
         return jsonify({
+            'success': False,
             'error': 'Service temporarily unavailable',
+            'details': str(e) if current_app.debug else "Internal AI error",
             'message': 'Please try again later or consult a healthcare professional',
             'timestamp': datetime.utcnow().isoformat()
         }), 500

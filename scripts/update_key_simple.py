@@ -4,7 +4,7 @@
 
 # Replace "PASTE_YOUR_NEW_KEY_HERE" with your actual new API key
 # Make sure to keep it between the quotes
-NEW_API_KEY = "AIzaSyAURjteqtCUbzvrZ6mhfGqNf4cpi4WhOFY"
+NEW_API_KEY = "PASTE_YOUR_NEW_KEY_HERE"
 
 # ========================================
 # DO NOT EDIT BELOW THIS LINE

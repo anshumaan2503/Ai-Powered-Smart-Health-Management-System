@@ -161,7 +161,7 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         
         # If no AI is available, return fallback
         if not self.is_available():
-            print("[AI] No provider available, using fallback")
+            print(f"[AI] No provider available. Init error: {self.init_error}")
             return self._fallback_response(message)
         
         # Try active provider
@@ -171,40 +171,56 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             elif self.active_provider == "gemini":
                 return self._gemini_respond(message, context)
         except Exception as e:
-            print(f"[AI] Error: {self.active_provider} error: {str(e)}")
+            error_msg = str(e)
+            print(f"[AI] Critical Error in {self.active_provider}: {error_msg}")
+            
+            # If it's an API key error, let the user know
+            if "api_key" in error_msg.lower() or "authentication" in error_msg.lower() or "401" in error_msg:
+                return {
+                    'reply': f"AI Authentication Error: Please check if your {self.active_provider.upper()}_API_KEY is correct in Railway variables.",
+                    'type': 'error',
+                    'provider': self.active_provider,
+                    'suggestions': ['Check Railway environment variables', 'Verify API key on provider dashboard'],
+                    'disclaimer': 'System configuration error detected.'
+                }
+                
             # Log the specific error to help with debugging
             try:
                 import traceback
                 traceback.print_exc()
             except:
                 pass
-            return self._fallback_response(message)
+            return self._fallback_response(message, error_msg)
     
     def _groq_respond(self, message: str, context: List[Dict]) -> Dict:
         """Generate response using GROQ."""
         # Build conversation history
         messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
         
-        # Add recent context
+        # Add recent context - handle both backend 'message' and frontend 'text' keys
         for turn in context[-6:]:
-            role = "user" if turn.get('role') == 'user' else "assistant"
-            messages.append({"role": role, "content": turn.get('message', '')})
+            # Determine role
+            is_user = turn.get('isUser', turn.get('role') == 'user')
+            role = "user" if is_user else "assistant"
+            
+            # Determine content
+            content = turn.get('text', turn.get('message', ''))
+            
+            if content: # Only add if not empty
+                messages.append({"role": role, "content": content})
         
         # Add current message
         messages.append({"role": "user", "content": message})
         
-        print(f"[AI] Sending message to GROQ...")
-        
         # Get response from GROQ
         response = self.groq_client.chat.completions.create(
             messages=messages,
-            model="llama-3.3-70b-versatile",  # Fast and high quality
-            max_tokens=500,
+            model="llama-3.3-70b-versatile",
+            max_tokens=600,
             temperature=0.7
         )
         
         reply_text = response.choices[0].message.content
-        print(f"[AI] Received response from GROQ")
         
         # Extract suggestions from AI response if present
         ai_suggestions = []
@@ -218,8 +234,6 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
                 clean_reply.append(line)
         
         final_reply = '\n'.join(clean_reply).strip()
-        
-        # Merge with rule-based suggestions if AI didn't provide enough
         suggestions = ai_suggestions if ai_suggestions else self._generate_suggestions(message, final_reply)
         
         return {
@@ -247,21 +261,31 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
             })
         
         for turn in context[-6:]:
-            role = 'user' if turn.get('role') == 'user' else 'model'
-            chat_history.append({
-                'role': role,
-                'parts': [turn.get('message', '')]
-            })
+            # Determine role
+            is_user = turn.get('isUser', turn.get('role') == 'user')
+            role = 'user' if is_user else 'model'
+            
+            # Determine content
+            content = turn.get('text', turn.get('message', ''))
+            
+            if content:
+                chat_history.append({
+                    'role': role,
+                    'parts': [content]
+                })
         
         # Start chat
         chat = self.gemini_model.start_chat(history=chat_history)
-        
-        print(f"[AI] Sending message to Gemini...")
         response = chat.send_message(message)
-        reply_text = response.text
-        print(f"[AI] Received response from Gemini")
         
-        # Extract suggestions from AI response if present
+        # Handle cases where safety filters might block the response
+        try:
+            reply_text = response.text
+        except ValueError:
+            # If response is empty/blocked
+            reply_text = "I'm sorry, I cannot provide information on that specific topic as it may fall outside my safety guidelines. Please consult a medical professional for advice."
+        
+        # Extract suggestions
         ai_suggestions = []
         clean_reply = []
         
@@ -273,8 +297,6 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
                 clean_reply.append(line)
         
         final_reply = '\n'.join(clean_reply).strip()
-        
-        # Merge with rule-based suggestions if AI didn't provide enough
         suggestions = ai_suggestions if ai_suggestions else self._generate_suggestions(message, final_reply)
         
         return {
@@ -292,46 +314,26 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         message_lower = user_message.lower()
         
         if any(word in message_lower for word in ['pain', 'ache', 'hurt']):
-            suggestions.extend([
-                'How long have you had this pain?',
-                'On a scale of 1-10, how severe is it?',
-                'Does anything make it better or worse?'
-            ])
-        elif any(word in message_lower for word in ['fever', 'temperature', 'hot']):
-            suggestions.extend([
-                'What is your current temperature?',
-                'How long have you had the fever?',
-                'Are you experiencing any other symptoms?'
-            ])
-        elif any(word in message_lower for word in ['appointment', 'doctor', 'visit']):
-            suggestions.extend([
-                'What symptoms should I mention to my doctor?',
-                'How should I prepare for my appointment?',
-                'What questions should I ask my doctor?'
-            ])
+            suggestions.extend(['How long have you had this pain?', 'Is it getting worse?', 'What makes it feel better?'])
+        elif any(word in message_lower for word in ['fever', 'temperature']):
+            suggestions.extend(['What is your temperature?', 'Any chills or sweating?', 'How long has it lasted?'])
         else:
-            suggestions.extend([
-                'Tell me more about your symptoms',
-                'How can I prepare for a doctor visit?',
-                'What should I do next?'
-            ])
+            suggestions.extend(['Tell me more about your symptoms', 'How to prepare for a doctor visit?', 'What should I do next?'])
         
         return suggestions[:3]
     
-    def _fallback_response(self, message: str) -> Dict:
+    def _fallback_response(self, message: str, error: str = None) -> Dict:
         """Provide a helpful response when AI is not available."""
+        reply = "The AI assistant is having trouble reaching the brain server. Please ensure your API keys are correct in Railway."
+        if error:
+            reply += f" (Technical Detail: {error[:50]}...)"
+            
         return {
-            'reply': (
-                "The AI health assistant is currently unavailable. Please contact your administrator to configure the service."
-            ),
+            'reply': reply,
             'type': 'fallback',
             'provider': 'none',
-            'suggestions': [
-                'Describe your symptoms in detail',
-                'How should I prepare for my doctor visit?',
-                'What should I tell my doctor?'
-            ],
-            'disclaimer': 'AI service is in limited mode. Please consult a healthcare provider for medical advice.'
+            'suggestions': ['Check API keys', 'Try again later', 'Consult a doctor'],
+            'disclaimer': 'AI service is currently in limited mode.'
         }
 
 

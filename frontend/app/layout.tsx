@@ -5,7 +5,10 @@ import { Providers } from './providers'
 import { ClientThemeProvider } from '@/components/ui/ClientThemeProvider'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+})
 
 export const viewport: Viewport = {
   width: 'device-width',
