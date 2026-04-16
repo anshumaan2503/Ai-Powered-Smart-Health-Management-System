@@ -92,16 +92,28 @@ def public_ai_chatbot():
         }), 200
         
     except Exception as e:
-        # ✅ Log the FULL error for Railway/Production debugging
-        current_app.logger.error(f"❌ Chatbot Error: {str(e)}")
-        import traceback
-        current_app.logger.error(traceback.format_exc())
+        # ✅ Log for Railway
+        error_type = type(e).__name__
+        current_app.logger.error(f"❌ Chatbot Fatal Error [{error_type}]: {str(e)}")
         
+        # In production, we should handle this gracefully
+        try:
+            # Last-ditch attempt to return a simple bot response
+            simple_bot = SimpleHealthChatbot()
+            result = simple_bot.respond(message if 'message' in locals() else "Hello", [])
+            return jsonify({
+                'success': True,
+                'response': result,
+                'ai_type': 'fallback-emergency',
+                'warning': 'Primary AI service is currently unavailable'
+            }), 200
+        except:
+            pass
+
         return jsonify({
             'success': False,
-            'error': 'Service temporarily unavailable',
-            'details': str(e) if current_app.debug else "Internal AI error",
-            'message': 'Please try again later or consult a healthcare professional',
+            'error': f'AI Service Error: {error_type}',
+            'message': 'Connecting to AI brain failed. Please ensure your API keys (GROQ_API_KEY/GEMINI_API_KEY) are set in Railway.',
             'timestamp': datetime.utcnow().isoformat()
         }), 500
 

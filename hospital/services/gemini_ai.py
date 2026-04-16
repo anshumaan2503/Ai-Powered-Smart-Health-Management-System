@@ -56,64 +56,57 @@ IMPORTANT RULES:
 Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patients communicate better with their healthcare providers. My name is MediCare Pro AI Assistant."""
 
     def __init__(self):
-        global genai, Groq, GEMINI_AVAILABLE, GROQ_AVAILABLE
-        self.gemini_key = os.environ.get('GEMINI_API_KEY')
-        self.groq_key = os.environ.get('GROQ_API_KEY')
-        
-        self.gemini_model = None
-        self.groq_client = None
-        self.active_provider = None
-        self.init_error = None
-        
-        # Lazy imports to prevent server crash during startup if libraries are broken
-        if Groq is None:
-            try:
-                from groq import Groq as GroqClient
-                Groq = GroqClient
-                GROQ_AVAILABLE = True
-            except ImportError:
-                GROQ_AVAILABLE = False
-                print("[AI] GROQ library NOT found.")
-        
-        if genai is None:
-            try:
-                import google.generativeai as genai_lib
-                genai = genai_lib
-                GEMINI_AVAILABLE = True
-            except Exception as e:
-                GEMINI_AVAILABLE = False
-                print(f"[AI] Gemini library error: {e}")
+        try:
+            global genai, Groq, GEMINI_AVAILABLE, GROQ_AVAILABLE
+            self.gemini_key = os.environ.get('GEMINI_API_KEY')
+            self.groq_key = os.environ.get('GROQ_API_KEY')
+            
+            self.gemini_model = None
+            self.groq_client = None
+            self.active_provider = None
+            self.init_error = None
+            
+            # Lazy imports
+            if Groq is None:
+                try:
+                    from groq import Groq as GroqClient
+                    Groq = GroqClient
+                    GROQ_AVAILABLE = True
+                except ImportError:
+                    GROQ_AVAILABLE = False
+            
+            if genai is None:
+                try:
+                    import google.generativeai as genai_lib
+                    genai = genai_lib
+                    GEMINI_AVAILABLE = True
+                except:
+                    GEMINI_AVAILABLE = False
 
-        print(f"[AI] GEMINI_AVAILABLE: {GEMINI_AVAILABLE}")
-        print(f"[AI] GROQ_AVAILABLE: {GROQ_AVAILABLE}")
-        print(f"[AI] Gemini Key present: {bool(self.gemini_key)}")
-        print(f"[AI] GROQ Key present: {bool(self.groq_key)}")
-        
-        # Try to initialize GROQ first (more reliable)
-        if GROQ_AVAILABLE and self.groq_key:
-            try:
-                self.groq_client = Groq(api_key=self.groq_key)
-                self.active_provider = "groq"
-                print("[AI] Successfully initialized GROQ!")
-            except Exception as e:
-                print(f"[AI] GROQ initialization failed: {e}")
-                self.groq_client = None
-        
-        # Fallback to Gemini if GROQ not available
-        if not self.active_provider and GEMINI_AVAILABLE and self.gemini_key:
-            try:
-                genai.configure(api_key=self.gemini_key)
-                # Use the stable Gemini model
-                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-                self.active_provider = "gemini"
-                print("[AI] Successfully initialized Gemini AI!")
-            except Exception as e:
-                print(f"[AI] Gemini initialization failed: {e}")
-                self.gemini_model = None
-        
-        if not self.active_provider:
-            self.init_error = "No AI provider available. Please configure GROQ_API_KEY or GEMINI_API_KEY"
-            print(f"[AI] Error: {self.init_error}")
+            # Try GROQ
+            if GROQ_AVAILABLE and self.groq_key:
+                try:
+                    self.groq_client = Groq(api_key=self.groq_key.strip())
+                    self.active_provider = "groq"
+                except Exception as e:
+                    print(f"[AI] Groq init failed: {e}")
+            
+            # Try Gemini
+            if not self.active_provider and GEMINI_AVAILABLE and self.gemini_key:
+                try:
+                    genai.configure(api_key=self.gemini_key.strip())
+                    self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+                    self.active_provider = "gemini"
+                except Exception as e:
+                    print(f"[AI] Gemini init failed: {e}")
+            
+            if not self.active_provider:
+                self.init_error = "No AI provider configured successfully"
+        except Exception as e:
+            self.init_error = f"Fatal Init Error: {str(e)}"
+            self.active_provider = None
+            print(f"[AI] CRITICAL INIT ERROR: {e}")
+
     
     def is_available(self) -> bool:
         """Check if any AI provider is available."""
