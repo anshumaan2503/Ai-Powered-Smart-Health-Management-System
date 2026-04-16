@@ -40,6 +40,11 @@ class Config:
     # AI Model settings
     AI_MODEL_PATH = os.environ.get('AI_MODEL_PATH') or 'models/'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
+    
+    # Razorpay Configuration
+    RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+    RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+    RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
 
 
 class DevelopmentConfig(Config):

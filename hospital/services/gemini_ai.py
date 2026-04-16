@@ -18,20 +18,11 @@ try:
 except ImportError:
     pass
 
-# Try to import both AI libraries
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    genai = None
-
-try:
-    from groq import Groq
-    GROQ_AVAILABLE = True
-except ImportError:
-    GROQ_AVAILABLE = False
-    Groq = None
+# AI availability check will happen during initialization
+GEMINI_AVAILABLE = True # Assume potentially available
+GROQ_AVAILABLE = True
+genai = None
+Groq = None
 
 
 class MultiAIHealthChatbot:
@@ -52,10 +43,20 @@ IMPORTANT RULES:
 - Keep responses concise but helpful (2-4 paragraphs max)
 - Be empathetic and supportive
 - Use simple language that patients can understand
+- LANGUAGE ADAPTABILITY: Always respond in the SAME language as the user's query. 
+    - If the user asks in English, reply in **English**.
+    - If the user asks in Hindi, reply in **Hindi**.
+    - If the user asks in Hinglish (English+Hindi), reply in **Hinglish**.
+- FOLLOW-UP QUESTIONS: At the VERY END of your response, provide exactly 3 helpful follow-up questions in the SAME language as your response. 
+  Format them like this:
+  Suggestion: [First suggestion]
+  Suggestion: [Second suggestion]
+  Suggestion: [Third suggestion]
 
-Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patients communicate better with their healthcare providers."""
+Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patients communicate better with their healthcare providers. My name is MediCare Pro AI Assistant."""
 
     def __init__(self):
+        global genai, Groq, GEMINI_AVAILABLE, GROQ_AVAILABLE
         self.gemini_key = os.environ.get('GEMINI_API_KEY')
         self.groq_key = os.environ.get('GROQ_API_KEY')
         
@@ -64,6 +65,25 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         self.active_provider = None
         self.init_error = None
         
+        # Lazy imports to prevent server crash during startup if libraries are broken
+        if Groq is None:
+            try:
+                from groq import Groq as GroqClient
+                Groq = GroqClient
+                GROQ_AVAILABLE = True
+            except ImportError:
+                GROQ_AVAILABLE = False
+                print("[AI] GROQ library NOT found.")
+        
+        if genai is None:
+            try:
+                import google.generativeai as genai_lib
+                genai = genai_lib
+                GEMINI_AVAILABLE = True
+            except Exception as e:
+                GEMINI_AVAILABLE = False
+                print(f"[AI] Gemini library error: {e}")
+
         print(f"[AI] GEMINI_AVAILABLE: {GEMINI_AVAILABLE}")
         print(f"[AI] GROQ_AVAILABLE: {GROQ_AVAILABLE}")
         print(f"[AI] Gemini Key present: {bool(self.gemini_key)}")
@@ -186,11 +206,24 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         reply_text = response.choices[0].message.content
         print(f"[AI] Received response from GROQ")
         
-        # Generate suggestions
-        suggestions = self._generate_suggestions(message, reply_text)
+        # Extract suggestions from AI response if present
+        ai_suggestions = []
+        clean_reply = []
+        
+        for line in reply_text.split('\n'):
+            if line.strip().lower().startswith('suggestion:'):
+                sug = line.split(':', 1)[1].strip()
+                if sug: ai_suggestions.append(sug)
+            else:
+                clean_reply.append(line)
+        
+        final_reply = '\n'.join(clean_reply).strip()
+        
+        # Merge with rule-based suggestions if AI didn't provide enough
+        suggestions = ai_suggestions if ai_suggestions else self._generate_suggestions(message, final_reply)
         
         return {
-            'reply': reply_text,
+            'reply': final_reply,
             'type': 'ai_response',
             'provider': 'groq',
             'model': 'llama-3.3-70b-versatile',
@@ -228,10 +261,24 @@ Remember: You are a health ASSISTANT, not a doctor. Your goal is to help patient
         reply_text = response.text
         print(f"[AI] Received response from Gemini")
         
-        suggestions = self._generate_suggestions(message, reply_text)
+        # Extract suggestions from AI response if present
+        ai_suggestions = []
+        clean_reply = []
+        
+        for line in reply_text.split('\n'):
+            if line.strip().lower().startswith('suggestion:'):
+                sug = line.split(':', 1)[1].strip()
+                if sug: ai_suggestions.append(sug)
+            else:
+                clean_reply.append(line)
+        
+        final_reply = '\n'.join(clean_reply).strip()
+        
+        # Merge with rule-based suggestions if AI didn't provide enough
+        suggestions = ai_suggestions if ai_suggestions else self._generate_suggestions(message, final_reply)
         
         return {
-            'reply': reply_text,
+            'reply': final_reply,
             'type': 'ai_response',
             'provider': 'gemini',
             'model': 'gemini-1.5-flash',

@@ -38,11 +38,10 @@ export default function HospitalDashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<any>(null) // null on SSR and client — no hydration mismatch
+  const [user, setUser] = useState<any>(null)
   const [hospital, setHospital] = useState<any>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => {
     // Instant read from localStorage (< 1ms) — no blocking spinner
@@ -109,24 +108,7 @@ export default function HospitalDashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              prefetch={true}
-              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
-                ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <item.icon className="h-5 w-5 mr-3" />
-              {item.name}
-            </Link>
-          )
-        })}
+        <NavLinks setIsMobileMenuOpen={setIsMobileMenuOpen} />
       </nav>
 
       {/* User Info & Logout */}
@@ -241,5 +223,32 @@ export default function HospitalDashboardLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+function NavLinks({ setIsMobileMenuOpen }: { setIsMobileMenuOpen: (o: boolean) => void }) {
+  const pathname = usePathname()
+  
+  return (
+    <>
+      {navigation.map((item) => {
+        const isActive = pathname === item.href
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            prefetch={true}
+            className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
+              ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <item.icon className="h-5 w-5 mr-3" />
+            {item.name}
+          </Link>
+        )
+      })}
+    </>
   )
 }

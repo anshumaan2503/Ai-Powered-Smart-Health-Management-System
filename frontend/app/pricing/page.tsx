@@ -29,6 +29,7 @@ import {
 import Link from 'next/link'
 import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 import PricingToggle from '@/components/pricing/pricing-toggle'
+import { processPayment } from '@/lib/razorpay-service'
 import FeaturesComparison from '@/components/pricing/features-comparison'
 
 export default function PricingPage() {
@@ -185,6 +186,28 @@ export default function PricingPage() {
     }).format(price)
   }
 
+  const handlePlanSelection = (plan: any) => {
+    if (plan.name === 'Custom') {
+      window.location.href = 'mailto:sales@smart-hospital.com'
+      return
+    }
+
+    const price = getPrice(plan)
+    if (!price || price === 0) {
+      window.location.href = `/register?plan=${plan.name.toLowerCase()}`
+      return
+    }
+
+    processPayment({
+      amount: price,
+      paymentType: 'subscription',
+      referenceId: plan.name.toLowerCase(),
+      onSuccess: () => {
+        window.location.href = '/hospital/dashboard?payment=success'
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
       {/* Header */}
@@ -317,7 +340,10 @@ export default function PricingPage() {
                 </div>
 
                 {/* CTA Button */}
-                <button className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 ${plan.buttonStyle}`}>
+                <button 
+                  onClick={() => handlePlanSelection(plan)}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 ${plan.buttonStyle}`}
+                >
                   {plan.buttonText}
                 </button>
 

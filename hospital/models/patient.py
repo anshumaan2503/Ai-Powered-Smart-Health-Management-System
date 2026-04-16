@@ -15,7 +15,7 @@ class Patient(db.Model):
     emergency_contact_phone = db.Column(db.String(15))
     medical_history = db.Column(db.Text)
     allergies = db.Column(db.Text)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

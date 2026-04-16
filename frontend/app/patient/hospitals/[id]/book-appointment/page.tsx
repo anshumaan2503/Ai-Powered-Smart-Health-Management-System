@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
+import { processPayment } from '@/lib/razorpay-service'
 
 interface Doctor {
   id: number
@@ -37,6 +38,7 @@ export default function BookAppointmentPage() {
   const [symptoms, setSymptoms] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isBooking, setIsBooking] = useState(false)
+  const [hospital, setHospital] = useState<any>(null)
 
   useEffect(() => {
     fetchDoctors()
@@ -47,6 +49,7 @@ export default function BookAppointmentPage() {
       // Fetch real doctors for this hospital
       const response = await api.get(`/hospital-auth/hospitals/${params.id}/doctors`)
       setDoctors(response.data.doctors || [])
+      setHospital(response.data.hospital || null)
       console.log('Fetched doctors for booking:', response.data.doctors)
     } catch (error) {
       console.error('Error fetching doctors:', error)
@@ -75,21 +78,58 @@ export default function BookAppointmentPage() {
         return
       }
 
-
-
       // Create appointment datetime string
       const appointment_date = `${selectedDate}T${selectedTime}:00`
 
-      await api.post('/appointments/', {
-        patient_id: userData.patient_profile_id,  // Use the Patient table's primary key
+      // Determine initial status based on payment requirement
+      const requiresPayment = selectedDoctor.consultation_fee > 0 && hospital?.payments_enabled !== false;
+      const initialStatus = requiresPayment ? 'awaiting_payment' : 'requested';
+
+      const response = await api.post('/appointments/', {
+        patient_id: userData.patient_profile_id,
         doctor_id: selectedDoctor.id,
         appointment_date: appointment_date,
         appointment_type: appointmentType,
-        symptoms: symptoms
+        symptoms: symptoms,
+        status: initialStatus
       })
 
-      toast.success('Appointment booked successfully!')
-      router.push('/patient/appointments')
+      const appointment = response.data.appointment
+      
+      // If there's a fee AND payments are enabled for this hospital, process payment
+      if (requiresPayment) {
+        processPayment({
+          amount: selectedDoctor.consultation_fee,
+          paymentType: 'appointment',
+          referenceId: appointment.id,
+          customerInfo: {
+            name: `${user?.first_name} ${user?.last_name}`,
+            email: user?.email,
+          },
+          onSuccess: () => {
+             router.push('/patient/appointments?payment=success')
+          },
+          onFailure: async (error: any) => {
+             if (error?.status === 'cancelled') {
+               try {
+                 await api.delete(`/appointments/${appointment.id}`);
+                 toast.error('Booking cancelled.');
+               } catch (e) {
+                 console.error('Failed to cleanup appointment:', e);
+                 toast.error('Payment cancelled.');
+               }
+               // On cancellation, go back or stay on page
+               setIsBooking(false); // Enable booking button again
+             } else {
+               toast.error('Payment failed. You can retry from your appointments list.');
+               router.push('/patient/appointments')
+             }
+          }
+        })
+      } else {
+        toast.success(hospital?.payments_enabled === false ? 'Appointment requested. Please pay at the hospital.' : 'Appointment booked successfully!')
+        router.push('/patient/appointments')
+      }
     } catch (error: any) {
       console.error('Booking error:', error)
       const errorMsg = error.response?.data?.error || 'Failed to book appointment'

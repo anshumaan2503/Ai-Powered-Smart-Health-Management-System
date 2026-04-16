@@ -30,42 +30,21 @@ def create_app(config_name="default"):
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
-    # ✅ Bullet-proof CORS Fix for Railway deployment
-    # Flask-CORS handles the main setup, but the after_request handler below
-    # guarantees CORS headers are stamped on EVERY response (including errors).
+    # ✅ Consolidated and Robust CORS Configuration
+    # Handles dynamic origins and guarantees support for credentials used in JWT/Auth.
     CORS(
         app,
-        resources={r"/api/*": {"origins": "*"}, r"/static/*": {"origins": "*"}},
-        supports_credentials=False,
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        resources={
+            r"/api/*": {
+                "origins": "*",  # In production with credentials, Flask-CORS will echo the requesting origin
+                "supports_credentials": True,
+                "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+                "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+                "expose_headers": ["Content-Type", "Authorization"]
+            },
+            r"/static/*": {"origins": "*"}
+        }
     )
-
-    @app.after_request
-    def add_cors_headers(response):
-        """Guarantee CORS headers on every response, including errors and OPTIONS."""
-        origin = request.headers.get('Origin', '')
-        if origin:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
-
-    @app.before_request
-    def handle_options_preflight():
-        """Immediately respond to OPTIONS preflight requests."""
-        if request.method == 'OPTIONS':
-            origin = request.headers.get('Origin', '*')
-            resp = make_response('', 204)
-            resp.headers['Access-Control-Allow-Origin'] = origin
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS'
-            resp.headers['Access-Control-Allow-Credentials'] = 'true'
-            resp.headers['Access-Control-Max-Age'] = '86400'
-            return resp
 
     # ✅ Initialize extensions
     db.init_app(app)
@@ -193,10 +172,12 @@ def create_app(config_name="default"):
     from hospital.routes.analytics import analytics_bp
     from hospital.routes.admin_settings import admin_settings_bp
     from hospital.routes.pharmacy import pharmacy_bp
+    from hospital.routes.subscription import subscription_bp
     from hospital.routes.prescription_analyzer import prescription_bp
     from hospital.routes.public_ai import public_ai_bp
     from hospital.routes.db_reset import db_reset_bp
     from hospital.routes.migration import migration_bp
+    from hospital.routes.payments import payments_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(hospital_auth_bp, url_prefix="/api/hospital-auth")
@@ -207,7 +188,8 @@ def create_app(config_name="default"):
     app.register_blueprint(appointments_bp, url_prefix="/api/appointments")
     app.register_blueprint(ai_bp, url_prefix="/api/ai")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
-    app.register_blueprint(admin_settings_bp)
+    app.register_blueprint(subscription_bp, url_prefix="/api")
+    app.register_blueprint(admin_settings_bp, url_prefix="/api/admin")
     app.register_blueprint(import_doctors_bp, url_prefix="/api/hospital")
     app.register_blueprint(import_medicines_bp, url_prefix="/api/hospital/pharmacy")
     app.register_blueprint(patient_import_bp, url_prefix="/api/hospital")
@@ -218,6 +200,7 @@ def create_app(config_name="default"):
     app.register_blueprint(public_ai_bp, url_prefix="/api/public")
     app.register_blueprint(db_reset_bp, url_prefix="/api/setup")
     app.register_blueprint(migration_bp, url_prefix="/api/migration")
+    app.register_blueprint(payments_bp, url_prefix="/api/payments")
 
     # ✅ Catch ALL backend exceptions and show them in Render logs
     @app.errorhandler(Exception)

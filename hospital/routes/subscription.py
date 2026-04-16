@@ -3,7 +3,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from hospital import db
 from hospital.models.hospital_subscription import HospitalSubscription
-from hospital.models import Hospital, User, Patient, Doctor
+from hospital.models.hospital import Hospital
+from hospital.models.user import User
+from hospital.models.patient import Patient
+from hospital.models.doctor import Doctor
+
+from hospital.models.doctor import Doctor
+from hospital.utils.subscription_utils import PLAN_CONFIGS
 
 subscription_bp = Blueprint('subscription', __name__)
 
@@ -12,33 +18,64 @@ subscription_bp = Blueprint('subscription', __name__)
 def get_subscription():
     """Get current hospital subscription details"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
             
-        # Get current subscription
-        subscription = HospitalSubscription.query.filter_by(
+        # Self-healing: Ensure only ONE active subscription exists for this hospital
+        print(f"DEBUG: SYNCING -> hospital_id={user.hospital_id}")
+        active_subscriptions = HospitalSubscription.query.filter_by(
             hospital_id=user.hospital_id,
             is_active=True
-        ).first()
+        ).order_by(HospitalSubscription.created_at.desc()).all()
+        
+        if len(active_subscriptions) > 1:
+            print(f"DEBUG: FOUND {len(active_subscriptions)} ACTIVE SUBS! ID list: {[s.id for s in active_subscriptions]}")
+            # Keep the newest one and deactivate others
+            for old_sub in active_subscriptions[1:]:
+                print(f"DEBUG: Deactivating OLD sub ID={old_sub.id}")
+                old_sub.is_active = False
+            db.session.commit()
+            subscription = active_subscriptions[0]
+            print(f"DEBUG: Kept NEWEST sub ID={subscription.id} ({subscription.plan_name})")
+        elif len(active_subscriptions) == 1:
+            subscription = active_subscriptions[0]
+            print(f"DEBUG: Found SINGLE active sub ID={subscription.id} ({subscription.plan_name})")
+        else:
+            print(f"DEBUG: NO ACTIVE SUBS FOUND for hospital {user.hospital_id}!")
+            subscription = None
         
         if not subscription:
-            # Create default subscription if none exists
-            subscription = HospitalSubscription(
-                hospital_id=user.hospital_id,
-                plan_name='basic',
-                max_patients=25,
-                max_doctors=2,
-                max_staff=5,
-                features=['appointments', 'billing', 'records'],
-                subscription_start=datetime.utcnow().date(),
-                subscription_end=(datetime.utcnow() + timedelta(days=30)).date(),
-                monthly_fee=2999.0
-            )
-            db.session.add(subscription)
-            db.session.commit()
+            # Force search for ANY subscription to reuse instead of creating new basic
+            # This handles cases where admin modified a subscription that wasn't active
+            subscription = HospitalSubscription.query.filter_by(
+                hospital_id=user.hospital_id
+            ).order_by(HospitalSubscription.created_at.desc()).first()
+            
+            if subscription:
+                print(f"DEBUG: Promoting INACTIVE sub ID={subscription.id} ({subscription.plan_name}) to ACTIVE")
+                subscription.is_active = True
+                db.session.commit()
+            else:
+                # Create default trial if absolutely none exists
+                print(f"DEBUG: Creating NEW TRIAL sub from scratch")
+                subscription = HospitalSubscription(
+                    hospital_id=user.hospital_id,
+                    plan_name='trial',
+                    max_patients=10,
+                    max_doctors=1,
+                    max_staff=1,
+                    features=['appointments', 'records', 'email_support'],
+                    subscription_start=datetime.utcnow().date(),
+                    subscription_end=(datetime.utcnow() + timedelta(days=30)).date(),
+                    monthly_fee=0.0
+                )
+                db.session.add(subscription)
+                db.session.commit()
+        
+        print(f"DEBUG: RESOLVED FINAL SUB -> ID={subscription.id}, Plan={subscription.plan_name}")
         
         # Get usage statistics
         usage_stats = subscription.get_usage_stats()
@@ -56,8 +93,8 @@ def get_subscription():
 def upgrade_subscription():
     """Upgrade hospital subscription plan"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
@@ -66,60 +103,7 @@ def upgrade_subscription():
         new_plan = data.get('plan_name')
         billing_cycle = data.get('billing_cycle', 'monthly')  # monthly or annual
         
-        # Plan configurations
-        plan_configs = {
-            'trial': {
-                'max_patients': 10,
-                'max_doctors': 1,
-                'max_staff': 1,
-                'monthly_fee': 0.0,
-                'features': ['appointments', 'records', 'email_support']
-            },
-            'basic': {
-                'max_patients': 25,
-                'max_doctors': 2,
-                'max_staff': 5,
-                'monthly_fee': 2999.0,
-                'features': ['appointments', 'billing', 'records', 'email_support', 'mobile_app']
-            },
-            'standard': {
-                'max_patients': 100,
-                'max_doctors': 10,
-                'max_staff': 20,
-                'monthly_fee': 7499.0,
-                'features': [
-                    'appointments', 'billing', 'records', 'email_support', 'mobile_app',
-                    'analytics', 'whatsapp_notifications', 'data_export', 'priority_support',
-                    'patient_portal', 'inventory'
-                ]
-            },
-            'premium': {
-                'max_patients': 200,
-                'max_doctors': 25,
-                'max_staff': 50,
-                'monthly_fee': 12999.0,
-                'features': [
-                    'appointments', 'billing', 'records', 'analytics', 'whatsapp', 
-                    'priority_support', 'patient_portal', 'advanced_analytics', 
-                    'custom_reports', 'api_access'
-                ]
-            },
-            'enterprise': {
-                'max_patients': -1,
-                'max_doctors': -1,
-                'max_staff': -1,
-                'monthly_fee': 17999.0,
-                'features': [
-                    'appointments', 'billing', 'records', 'email_support', 'mobile_app',
-                    'analytics', 'whatsapp_notifications', 'data_export', 'priority_support',
-                    'patient_portal', 'inventory', 'cloud_backup', '24_7_support',
-                    'role_based_access', 'advanced_analytics', 'api_access',
-                    'multi_location', 'custom_integrations', 'account_manager', 'sla'
-                ]
-            }
-        }
-
-        if new_plan not in plan_configs:
+        if new_plan not in PLAN_CONFIGS:
             return jsonify({'error': 'Invalid plan selected'}), 400
             
         # Get current subscription
@@ -134,7 +118,7 @@ def upgrade_subscription():
             current_subscription.updated_at = datetime.utcnow()
         
         # Create new subscription
-        config = plan_configs[new_plan]
+        config = PLAN_CONFIGS[new_plan]
         monthly_fee = config['monthly_fee']
         
         # Apply annual discount (20% off)
@@ -170,8 +154,8 @@ def upgrade_subscription():
 def get_usage_stats():
     """Get detailed usage statistics"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
@@ -222,8 +206,8 @@ def get_usage_stats():
 def get_billing_history():
     """Get billing history for the hospital"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
@@ -258,8 +242,8 @@ def get_billing_history():
 def check_limits():
     """Check if action is allowed based on subscription limits"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
@@ -314,8 +298,8 @@ def check_limits():
 def get_enabled_features():
     """Get list of enabled features for current subscription"""
     try:
-        current_user = get_jwt_identity()
-        user = User.query.get(current_user['id'])
+        current_user_id = get_jwt_identity()
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404

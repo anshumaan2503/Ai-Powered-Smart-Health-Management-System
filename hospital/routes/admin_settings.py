@@ -132,7 +132,7 @@ def validate_admin_settings(settings):
     
     return errors
 
-@admin_settings_bp.route('/api/admin/settings', methods=['GET'])
+@admin_settings_bp.route('/settings', methods=['GET'])
 @jwt_required()
 def get_admin_settings():
     """Get admin settings"""
@@ -149,7 +149,7 @@ def get_admin_settings():
         current_app.logger.error(f"Error getting admin settings: {str(e)}")
         return jsonify({'error': 'Failed to load settings'}), 500
 
-@admin_settings_bp.route('/api/admin/settings', methods=['PUT'])
+@admin_settings_bp.route('/settings', methods=['PUT'])
 @jwt_required()
 def update_admin_settings():
     """Update admin settings"""
@@ -187,7 +187,7 @@ def update_admin_settings():
         current_app.logger.error(f"Error updating admin settings: {str(e)}")
         return jsonify({'error': 'Failed to update settings'}), 500
 
-@admin_settings_bp.route('/api/admin/settings/export', methods=['GET'])
+@admin_settings_bp.route('/settings/export', methods=['GET'])
 @jwt_required()
 def export_admin_settings():
     """Export admin settings"""
@@ -212,7 +212,7 @@ def export_admin_settings():
         current_app.logger.error(f"Error exporting admin settings: {str(e)}")
         return jsonify({'error': 'Failed to export settings'}), 500
 
-@admin_settings_bp.route('/api/admin/settings/reset', methods=['POST'])
+@admin_settings_bp.route('/settings/reset', methods=['POST'])
 @jwt_required()
 def reset_admin_settings():
     """Reset admin settings to defaults"""
@@ -236,7 +236,7 @@ def reset_admin_settings():
         current_app.logger.error(f"Error resetting admin settings: {str(e)}")
         return jsonify({'error': 'Failed to reset settings'}), 500
 
-@admin_settings_bp.route('/api/admin/settings/validate', methods=['POST'])
+@admin_settings_bp.route('/settings/validate', methods=['POST'])
 @jwt_required()
 def validate_settings():
     """Validate admin settings without saving"""

@@ -111,7 +111,7 @@ export default function AddStaffPage() {
           <h1 className="text-2xl font-bold text-gray-900">Add Staff Member</h1>
           <p className="text-gray-600">Add nurses, receptionists, and administrative staff</p>
           <p className="text-sm text-blue-600 mt-1">
-            👨‍⚕️ To add doctors, use the <Link href="/hospital/dashboard/doctors/add" className="underline">Add Doctor</Link> section
+            👨‍⚕️ To add doctors, use the <Link href="/hospital/dashboard/doctors/new" className="underline">Add Doctor</Link> section
           </p>
         </div>
       </div>

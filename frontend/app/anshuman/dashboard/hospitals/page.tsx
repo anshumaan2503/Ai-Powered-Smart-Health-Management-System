@@ -20,7 +20,10 @@ import {
   FunnelIcon,
   TrashIcon,
   KeyIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  ArrowUpIcon,
+  StarIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -33,12 +36,49 @@ export default function HospitalsManagementPage() {
   const [filterPlan, setFilterPlan] = useState('all')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [selectedHospital, setSelectedHospital] = useState<any>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
+  const [upgrading, setUpgrading] = useState(false)
+
+  const [upgradeData, setUpgradeData] = useState({
+    newPlan: '',
+    billingCycle: 'monthly',
+    effectiveDate: new Date().toISOString().split('T')[0]
+  })
+
+  // Subscription plan configurations
+  const plans = {
+    trial: {
+      name: 'Trial',
+      monthlyPrice: 0,
+      annualPrice: 0,
+    },
+    basic: {
+      name: 'Basic',
+      monthlyPrice: 2999,
+      annualPrice: 28790,
+    },
+    standard: {
+      name: 'Standard',
+      monthlyPrice: 7499,
+      annualPrice: 71990,
+    },
+    premium: {
+      name: 'Premium',
+      monthlyPrice: 12999,
+      annualPrice: 124790,
+    },
+    enterprise: {
+      name: 'Enterprise',
+      monthlyPrice: 17999,
+      annualPrice: 172790,
+    }
+  }
 
   useEffect(() => {
     loadHospitals()
@@ -144,6 +184,16 @@ export default function HospitalsManagementPage() {
     setShowPasswordModal(true)
   }
 
+  const handleUpgradeClick = (hospital: any) => {
+    setSelectedHospital(hospital)
+    setUpgradeData({
+      newPlan: hospital.subscription.plan,
+      billingCycle: 'monthly',
+      effectiveDate: new Date().toISOString().split('T')[0]
+    })
+    setShowUpgradeModal(true)
+  }
+
   const handlePasswordChange = async () => {
     if (!selectedHospital || !newPassword || !confirmPassword) {
       alert('Please fill in all fields')
@@ -195,6 +245,45 @@ export default function HospitalsManagementPage() {
       console.error('Error resetting password:', error)
       const errorMsg = error.response?.data?.error || 'Failed to reset password'
       alert(`Error: ${errorMsg}`)
+    }
+  }
+
+  const handleTogglePayments = async (hospital: any) => {
+    try {
+      const token = localStorage.getItem('admin_token')
+      const response = await api.put(`/admin/hospitals/${hospital.id}/toggle-payments`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (response.status === 200) {
+        setHospitals(prev => prev.map(h => 
+          h.id === hospital.id ? { ...h, payments_enabled: response.data.payments_enabled } : h
+        ))
+        // Show success alert/toast
+        alert(response.data.message)
+      }
+    } catch (error: any) {
+      console.error('Error toggling payments:', error)
+      alert('Failed to toggle payments')
+    }
+  }
+
+  const submitUpgrade = async () => {
+    if (!selectedHospital || !upgradeData.newPlan) return
+
+    setUpgrading(true)
+    try {
+      // ✅ Now using the specialized endpoint that handles both upgrade and creation
+      await adminAPI.upgradeHospitalSubscription(selectedHospital.id, upgradeData)
+      
+      alert(`Successfully updated ${selectedHospital.name} to ${upgradeData.newPlan} plan!`)
+      setShowUpgradeModal(false)
+      loadHospitals() // Reload to show new plan
+    } catch (error: any) {
+      console.error('Error upgrading:', error)
+      alert(`Error: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setUpgrading(false)
     }
   }
 
@@ -328,6 +417,9 @@ export default function HospitalsManagementPage() {
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(hospital.subscription.plan)}`}>
                   {hospital.subscription.plan}
                 </span>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${hospital.payments_enabled ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-500'}`}>
+                  {hospital.payments_enabled ? 'Gateway On' : 'Gateway Off'}
+                </span>
               </div>
             </div>
 
@@ -377,8 +469,8 @@ export default function HospitalsManagementPage() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between">
+            {/* Main Actions */}
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
               <div className="text-xs text-gray-500">
                 Last login: {new Date(hospital.lastLogin).toLocaleDateString()}
               </div>
@@ -386,52 +478,54 @@ export default function HospitalsManagementPage() {
               <div className="flex items-center space-x-2">
                 <Link
                   href={`/anshuman/dashboard/hospitals/${hospital.id}`}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
                   title="View Details"
                 >
-                  <EyeIcon className="h-4 w-4" />
-                </Link>
-
-                <Link
-                  href={`/anshuman/dashboard/subscriptions?hospital=${hospital.id}`}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                  title="Manage Subscription"
-                >
-                  <CreditCardIcon className="h-4 w-4" />
+                  <EyeIcon className="h-5 w-5" />
                 </Link>
 
                 <Link
                   href={`/anshuman/dashboard/hospitals/${hospital.id}/edit`}
-                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors border border-transparent hover:border-purple-200"
                   title="Edit Hospital"
                 >
-                  <PencilIcon className="h-4 w-4" />
+                  <PencilIcon className="h-5 w-5" />
                 </Link>
 
                 <button
-                  onClick={() => handlePasswordClick(hospital)}
-                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                  title="Change Password"
-                >
-                  <KeyIcon className="h-4 w-4" />
-                </button>
-
-                <button
-                  onClick={() => handlePasswordReset(hospital)}
-                  className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                  title="Reset Password to 123"
-                >
-                  <LockClosedIcon className="h-4 w-4" />
-                </button>
-
-                <button
                   onClick={() => handleDeleteClick(hospital)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
                   title="Delete Hospital"
                 >
-                  <TrashIcon className="h-4 w-4" />
+                  <TrashIcon className="h-5 w-5" />
                 </button>
               </div>
+            </div>
+
+            {/* Prominent Payment Gateway Toggle */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => handleTogglePayments(hospital)}
+                className={`w-full flex items-center justify-center space-x-3 py-3 px-4 rounded-xl font-bold transition-all transform active:scale-95 shadow-sm ${
+                  hospital.payments_enabled 
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 ring-4 ring-indigo-50 shadow-indigo-200' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 ring-4 ring-gray-50 shadow-gray-200'
+                }`}
+              >
+                <CreditCardIcon className={`h-6 w-6 ${hospital.payments_enabled ? 'text-white' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <div className="text-sm font-bold uppercase tracking-wider">
+                    Payment Gateway: {hospital.payments_enabled ? 'ENABLED' : 'DISABLED'}
+                  </div>
+                  <div className={`text-[10px] font-medium opacity-80 ${hospital.payments_enabled ? 'text-indigo-100' : 'text-gray-500'}`}>
+                    Click to {hospital.payments_enabled ? 'Turn Off' : 'Turn On'} Razorpay Integration
+                  </div>
+                </div>
+                <div className="flex-1"></div>
+                <div className={`w-10 h-6 rounded-full relative transition-colors ${hospital.payments_enabled ? 'bg-white/30' : 'bg-gray-300'}`}>
+                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${hospital.payments_enabled ? 'right-1' : 'left-1'}`}></div>
+                </div>
+              </button>
             </div>
           </motion.div>
         ))}
@@ -721,6 +815,121 @@ export default function HospitalsManagementPage() {
                   Reset to "123"
                 </button>
               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Upgrade Subscription Modal */}
+      {showUpgradeModal && selectedHospital && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Modify Subscription - {selectedHospital.name}
+              </h2>
+              <p className="text-gray-600 mt-1">Update the subscription plan and billing details</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Current Plan Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 mb-2">Current Plan</h3>
+                <div className="flex items-center justify-between">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPlanColor(selectedHospital.subscription.plan)}`}>
+                    {selectedHospital.subscription.plan}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    Expires: {new Date(selectedHospital.subscription.expiryDate).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Select New Plan */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-4">Select New Plan</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(plans).map(([key, plan]) => (
+                    <div
+                      key={key}
+                      onClick={() => setUpgradeData({ ...upgradeData, newPlan: key })}
+                      className={`cursor-pointer border-2 rounded-xl p-4 transition-all ${upgradeData.newPlan === key
+                        ? 'border-red-600 bg-red-50'
+                        : 'border-gray-200 hover:border-red-200'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900 capitalize">{plan.name}</span>
+                        {upgradeData.newPlan === key && (
+                          <CheckCircleIcon className="h-5 w-5 text-red-600" />
+                        )}
+                      </div>
+                      <div className="text-xl font-bold text-gray-900">
+                        {upgradeData.billingCycle === 'monthly'
+                          ? formatCurrency(plan.monthlyPrice)
+                          : formatCurrency(plan.annualPrice / 12)}
+                        <span className="text-sm font-normal text-gray-500"> / month</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Billing Cycle */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-3">Billing Cycle</h3>
+                <div className="flex p-1 bg-gray-100 rounded-lg w-full max-w-sm">
+                  <button
+                    onClick={() => setUpgradeData({ ...upgradeData, billingCycle: 'monthly' })}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${upgradeData.billingCycle === 'monthly'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setUpgradeData({ ...upgradeData, billingCycle: 'annual' })}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${upgradeData.billingCycle === 'annual'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                  >
+                    Annual
+                    <span className="ml-1 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full uppercase">
+                      -20%
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex items-center justify-end space-x-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                disabled={upgrading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitUpgrade}
+                disabled={!upgradeData.newPlan || upgrading}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
+              >
+                {upgrading ? (
+                   <>
+                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                     Upgrading...
+                   </>
+                ) : (
+                  'Update Subscription'
+                )}
+              </button>
             </div>
           </motion.div>
         </div>

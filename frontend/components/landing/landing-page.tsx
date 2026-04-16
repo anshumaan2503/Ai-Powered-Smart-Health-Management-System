@@ -1,8 +1,5 @@
-'use client'
-
 import Link from 'next/link'
-import { useRef, useState, useEffect } from 'react'
-import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
+import { LandingNavbar } from './LandingNavbar'
 import {
   HeartIcon,
   UserGroupIcon,
@@ -15,71 +12,6 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function LandingPage() {
-  const accessSectionRef = useRef<HTMLDivElement>(null);
-  const [isPatientLoggedIn, setIsPatientLoggedIn] = useState(false);
-  const [isHospitalLoggedIn, setIsHospitalLoggedIn] = useState(false);
-  const [patientName, setPatientName] = useState('');
-  const [hospitalName, setHospitalName] = useState('');
-
-  useEffect(() => {
-    // Fast synchronous check — no network calls, no waiting for backend
-    // Token validation happens on the actual dashboard/protected pages
-
-    // Check patient token
-    const patientToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (patientToken) {
-      setIsPatientLoggedIn(true);
-      try {
-        const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setPatientName(user.first_name || 'Patient');
-        }
-      } catch (e) {
-        setPatientName('Patient');
-      }
-    }
-
-    // Check hospital token
-    const hospitalToken = localStorage.getItem('hospital_access_token');
-    if (hospitalToken) {
-      setIsHospitalLoggedIn(true);
-      try {
-        const hospitalData = localStorage.getItem('hospital_data');
-        if (hospitalData) {
-          const hospital = JSON.parse(hospitalData);
-          setHospitalName(hospital.name || 'Hospital');
-        }
-      } catch (e) {
-        setHospitalName('Hospital');
-      }
-    }
-  }, []);
-
-  const handleLogout = (type: 'patient' | 'hospital') => {
-    if (type === 'patient') {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('access_token');
-      sessionStorage.removeItem('refresh_token');
-      sessionStorage.removeItem('user');
-      setIsPatientLoggedIn(false);
-    } else {
-      localStorage.removeItem('hospital_access_token');
-      localStorage.removeItem('hospital_refresh_token');
-      localStorage.removeItem('hospital_user');
-      localStorage.removeItem('hospital_data');
-      setIsHospitalLoggedIn(false);
-    }
-    // Redirect to homepage after logout
-    window.location.href = '/';
-  };
-
-  const scrollToAccess = () => {
-    accessSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-[#020617] relative overflow-hidden transition-colors duration-300 antialiased font-sans">
       {/* Animated Background */}
@@ -88,50 +20,8 @@ export function LandingPage() {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 dark:bg-indigo-600/[0.03] rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
       </div>
 
-      {/* Navigation */}
-      <nav className="bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/60 sticky top-0 z-50 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center group">
-              <div className="relative">
-                <HeartIcon className="h-8 w-8 text-blue-600 dark:text-blue-500 group-hover:scale-105 transition-transform" />
-              </div>
-              <span className="ml-2.5 text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                MediCare<span className="text-blue-600 dark:text-blue-500">Pro</span>
-              </span>
-            </Link>
-
-            <div className="flex items-center space-x-4">
-              {/* Theme Toggle */}
-              <ThemeToggleButton />
-
-              {isPatientLoggedIn && (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Hi, {patientName}!</span>
-                  <Link href="/patient/dashboard" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold">
-                    Dashboard
-                  </Link>
-                  <button onClick={() => handleLogout('patient')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
-                    Logout
-                  </button>
-                </div>
-              )}
-
-              {isHospitalLoggedIn && (
-                <div className="flex items-center space-x-3 border-l border-gray-300 dark:border-gray-600 pl-4">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{hospitalName}</span>
-                  <Link href="/hospital/dashboard" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold">
-                    Dashboard
-                  </Link>
-                  <button onClick={() => handleLogout('hospital')} className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm">
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Navigation - Client Component */}
+      <LandingNavbar />
 
       {/* Hero Section */}
       <section className="relative py-24 lg:py-32">
@@ -154,13 +44,13 @@ export function LandingPage() {
             <span className="text-purple-600 dark:text-purple-400 font-semibold"> advanced analytics</span>.
           </p>
 
-          <button
-            onClick={scrollToAccess}
+          <a
+            href="#access-section"
             className="group relative inline-flex items-center justify-center px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-xl transition-all duration-300 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 mb-8"
           >
             <span>Get Started</span>
             <ArrowRightIcon className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </a>
 
           {/* AI Chatbot Quick Access */}
           <div className="mt-8 mb-12">
@@ -209,7 +99,7 @@ export function LandingPage() {
       </section>
 
       {/* Access Section - Patient & Hospital */}
-      <section ref={accessSectionRef} className="py-20 relative scroll-mt-20">
+      <section id="access-section" className="py-20 relative scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-gray-100 mb-4">
@@ -409,7 +299,7 @@ export function LandingPage() {
             AI-powered hospital management system for the future of healthcare
           </p>
           <div className="text-center text-gray-500 text-sm">
-            © 2025 MediCare Pro. All rights reserved.
+            © 2026 MediCare Pro. All rights reserved.
           </div>
         </div>
       </footer>

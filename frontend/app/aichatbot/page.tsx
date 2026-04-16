@@ -21,6 +21,7 @@ interface Message {
 export default function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,7 +32,7 @@ export default function AIChatbot() {
     setMessages([
       {
         id: '1',
-        text: "Hello! I'm your AI Health Assistant. I can help you with general health questions, symptom information, and wellness advice. Please note that I'm not a replacement for professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare providers for medical concerns. How can I help you today?",
+        text: "Hello! I'm your AI Health Assistant. I can help you with general health questions, symptom information, and wellness advice in **English, Hindi (हिंदी), and Hinglish**. Please note that I'm not a replacement for professional medical advice. How can I help you today?",
         isUser: false,
         timestamp: new Date()
       }
@@ -65,6 +66,7 @@ export default function AIChatbot() {
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+    setSuggestions([]); // Clear previous suggestions
     setIsLoading(true);
 
     // Add typing indicator
@@ -126,6 +128,11 @@ export default function AIChatbot() {
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiMessage]);
+        
+        // Update suggestions if provided
+        if (responseData && responseData.suggestions && Array.isArray(responseData.suggestions)) {
+          setSuggestions(responseData.suggestions);
+        }
       } else {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -170,7 +177,7 @@ export default function AIChatbot() {
     setMessages([
       {
         id: '1',
-        text: "Hello! I'm your AI Health Assistant. I can help you with general health questions, symptom information, and wellness advice. Please note that I'm not a replacement for professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare providers for medical concerns. How can I help you today?",
+        text: "Hello! I'm your AI Health Assistant. I can help you with general health questions, symptom information, and wellness advice in **English, Hindi (हिंदी), and Hinglish**. Please note that I'm not a replacement for professional medical advice. How can I help you today?",
         isUser: false,
         timestamp: new Date()
       }
@@ -317,9 +324,10 @@ export default function AIChatbot() {
 
               {/* Send Button */}
               <button
+                id="chat-send-button"
                 onClick={sendMessage}
                 disabled={!inputMessage.trim() || isLoading}
-                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors shadow-lg shadow-blue-200 dark:shadow-none"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -336,6 +344,31 @@ export default function AIChatbot() {
             </div>
           </div>
         </div>
+
+        {/* Dynamic Suggestions */}
+        {suggestions.length > 0 && !isLoading && (
+          <div className="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest px-1">Suggested Follow-ups</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setInputMessage(suggestion);
+                    // Minimal delay before sending to allow state update
+                    setTimeout(() => {
+                      const button = document.getElementById('chat-send-button');
+                      button?.click();
+                    }, 50);
+                  }}
+                  className="px-4 py-2 bg-white dark:bg-gray-800 border-2 border-blue-100 dark:border-blue-900/30 hover:border-blue-600 dark:hover:border-blue-400 text-blue-700 dark:text-blue-300 rounded-xl text-sm font-semibold transition-all hover:shadow-lg active:scale-95"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Features */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -358,7 +391,7 @@ export default function AIChatbot() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© 2024 Hospital Management System - AI Health Assistant</p>
+          <p>© 2026 Hospital Management System - AI Health Assistant</p>
           <p className="mt-1">For emergencies, call your local emergency number immediately</p>
         </div>
       </div>

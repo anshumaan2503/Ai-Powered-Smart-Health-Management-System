@@ -125,12 +125,33 @@ export default function AppointmentsPage() {
   }
 
   const updateAppointmentStatus = async (appointmentId: number, newStatus: string) => {
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+    
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { ...a, status: newStatus } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.put(`/hospital/appointments/${appointmentId}`, { status: newStatus })
       toast.success(`Appointment marked as ${newStatus}`)
-      // Refresh appointments
+      // No need to full re-fetch if we're confident, but we re-fetch to ensure sync
       fetchAppointments()
     } catch (err) {
+      // Rollback on error
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to update appointment')
       toast.error('Failed to update status')
     }
@@ -139,16 +160,42 @@ export default function AppointmentsPage() {
   const handleScheduleSubmit = async () => {
     if (!schedulingModal.appointment || !schedulingModal.date || !schedulingModal.time) return
 
+    const appointmentId = schedulingModal.appointment.id
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { 
+                ...a, 
+                status: 'scheduled',
+                appointment_date: `${schedulingModal.date}T${schedulingModal.time}`
+              } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
+    setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
+
     try {
-      await api.put(`/hospital/appointments/${schedulingModal.appointment.id}`, {
+      await api.put(`/hospital/appointments/${appointmentId}`, {
         status: 'scheduled',
         appointment_date: schedulingModal.date,
         appointment_time: schedulingModal.time
       })
       toast.success('Appointment scheduled successfully')
-      setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to schedule appointment')
       toast.error('Failed to schedule appointment')
     }
@@ -183,12 +230,31 @@ export default function AppointmentsPage() {
       return
     }
 
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { ...a, status: 'cancelled' } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.put(`/hospital/appointments/${appointmentId}/cancel`)
       toast.success('Appointment cancelled')
-      // Refresh appointments
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to cancel appointment')
       toast.error('Failed to cancel appointment')
     }
@@ -199,12 +265,30 @@ export default function AppointmentsPage() {
       return
     }
 
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.filter((a: Appointment) => a.id !== appointmentId),
+            total: (prevResponse.data.total || 0) - 1
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.delete(`/hospital/appointments/${appointmentId}`)
       toast.success('Appointment deleted permanently')
-      // Refresh appointments
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to delete appointment')
       toast.error('Failed to delete appointment')
     }
