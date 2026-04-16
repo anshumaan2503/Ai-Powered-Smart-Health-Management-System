@@ -30,6 +30,7 @@ import {
 import Link from 'next/link'
 
 import { api } from '@/lib/api'
+import { processPayment } from '@/lib/razorpay-service'
 
 export default function SubscriptionPage() {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null)
@@ -168,50 +169,30 @@ export default function SubscriptionPage() {
 
   const loadSubscriptionData = async () => {
     try {
-      // Load token for API calls
-      const token = localStorage.getItem('hospital_access_token')
-
-      if (token) {
-        const headers = { 'Authorization': `Bearer ${token}` }
-
-        // 1. Fetch Live Subscription Data from Backend
-        const subResponse = await api.get('/subscription', { headers })
-        if (subResponse.data?.subscription) {
-          const sub = subResponse.data.subscription
-          setCurrentSubscription(sub)
-          localStorage.setItem('subscription', JSON.stringify(sub)) // Keep localStorage in sync
+      // 1. Fetch Subscription & Usage Data from Backend
+      // Added timestamp to bust cache
+      const subResponse = await api.get(`/subscription?t=${new Date().getTime()}`)
+      
+      if (subResponse.data?.subscription) {
+        const sub = subResponse.data.subscription
+        setCurrentSubscription(sub)
+        localStorage.setItem('subscription', JSON.stringify(sub)) 
+        
+        // Use stats from backend
+        if (subResponse.data.usage_stats) {
+          const usage = {
+            patients: subResponse.data.usage_stats.patients?.current || 0,
+            doctors: subResponse.data.usage_stats.doctors?.current || 0,
+            staff: subResponse.data.usage_stats.staff?.current || 0,
+            monthly_appointments: subResponse.data.usage_stats.monthly_appointments || 0,
+            storage_used_gb: subResponse.data.usage_stats.storage_used_gb || 0
+          }
+          setUsageStats(usage)
         }
-
-        // 2. Load usage statistics (Keep existing robust logic)
-        const [patientsRes, doctorsRes, staffRes] = await Promise.all([
-          api.get('/hospital/patients?per_page=1', { headers }).catch(() => null),
-          api.get('/hospital/staff?role=doctor', { headers }).catch(() => null),
-          api.get('/hospital/staff', { headers }).catch(() => null)
-        ])
-
-        const usage = {
-          patients: 0,
-          doctors: 0,
-          staff: 0
-        }
-
-        if (patientsRes?.data) {
-          usage.patients = patientsRes.data.total || 0
-        }
-
-        if (doctorsRes?.data) {
-          usage.doctors = doctorsRes.data.staff?.length || 0
-        }
-
-        if (staffRes?.data) {
-          usage.staff = staffRes.data.staff?.length || 0
-        }
-
-        setUsageStats(usage)
       }
-
     } catch (error) {
       console.error('Error loading subscription data:', error)
+      // Optional: Set some default data or show error state within the page instead of crashing
     } finally {
       setLoading(false)
     }
@@ -237,26 +218,49 @@ export default function SubscriptionPage() {
   }
 
   const getCurrentPlan = () => {
-    if (!currentSubscription) return plans[0] // Default to Basic
-    return plans.find(plan => plan.id === currentSubscription.plan_name) || plans[0]
+    if (!currentSubscription || !currentSubscription.plan_name) return plans[0]
+    const planName = currentSubscription.plan_name.toLowerCase()
+    return plans.find(plan => plan.id.toLowerCase() === planName) || plans[0]
+  }
+
+  const isCurrentPlanSelected = (planId: string) => {
+    if (!currentSubscription || !currentSubscription.plan_name) return false
+    return currentSubscription.plan_name.toLowerCase() === planId.toLowerCase()
   }
 
   const handleUpgrade = async (planId: string) => {
     try {
-      const response = await api.post('/subscription/upgrade', {
-        plan_name: planId,
-        billing_cycle: isAnnual ? 'annual' : 'monthly'
-      })
+      const plan = plans.find(p => p.id === planId)
+      if (!plan) return
 
-      if (response.data.subscription) {
-        const newSubscription = response.data.subscription
-        setCurrentSubscription(newSubscription)
-        localStorage.setItem('subscription', JSON.stringify(newSubscription))
-        alert(`Successfully upgraded to ${planId} plan!`)
+      const price = isAnnual ? plan.annualPrice : plan.monthlyPrice
+      
+      if (price === 0) {
+        // Handle free/trial upgrade directly
+        const response = await api.post('/subscription/upgrade', {
+          plan_name: planId,
+          billing_cycle: isAnnual ? 'annual' : 'monthly'
+        })
+        if (response.data.subscription) {
+          setCurrentSubscription(response.data.subscription)
+          alert(`Successfully activated ${planId} plan!`)
+          loadSubscriptionData()
+        }
+        return
       }
+
+      // Process payment
+      processPayment({
+        amount: price,
+        paymentType: 'subscription',
+        referenceId: planId,
+        onSuccess: () => {
+          loadSubscriptionData()
+        }
+      })
     } catch (error: any) {
       console.error('Error upgrading subscription:', error)
-      const errorMsg = error.response?.data?.error || 'Failed to upgrade subscription.'
+      const errorMsg = error.response?.data?.error || 'Failed to initiate upgrade.'
       alert(`Error: ${errorMsg}`)
     }
   }
@@ -519,7 +523,7 @@ export default function SubscriptionPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
-            const isCurrentPlan = plan.id === currentPlan.id
+            const isCurrentPlan = isCurrentPlanSelected(plan.id)
             const price = isAnnual ? plan.annualPrice : plan.monthlyPrice
 
             return (

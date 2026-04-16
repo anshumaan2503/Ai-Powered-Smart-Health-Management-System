@@ -6,9 +6,9 @@ class Appointment(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
-    appointment_date = db.Column(db.DateTime, nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False, index=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False, index=True)
+    appointment_date = db.Column(db.DateTime, nullable=False, index=True)
     appointment_type = db.Column(db.String(50))  # consultation, follow-up, emergency
     status = db.Column(db.String(20), default='scheduled')  # requested, scheduled, confirmed, completed, cancelled, no-show
     symptoms = db.Column(db.Text)

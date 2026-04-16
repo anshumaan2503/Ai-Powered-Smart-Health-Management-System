@@ -40,12 +40,17 @@ def register_hospital():
             return jsonify({'error': 'Email already registered'}), 409
         
         # Create hospital
+        # Handle empty string or None for license_number
+        license_num = data.get('license_number')
+        if not license_num: # This triggers on both None and empty string
+            license_num = f"LIC{str(uuid.uuid4())[:8].upper()}"
+            
         hospital = Hospital(
             name=data['hospital_name'],
             address=data['hospital_address'],
             phone=data['hospital_phone'],
             email=data.get('hospital_email', data['admin_email']),
-            license_number=data.get('license_number', f"LIC{str(uuid.uuid4())[:8].upper()}")
+            license_number=license_num
         )
         
         db.session.add(hospital)
@@ -97,8 +102,11 @@ def hospital_login():
     try:
         data = request.get_json()
         
-        # Get login identifier (email or username)
+        # Get login identifier (email or username) and strip/lower it
         login_identifier = data.get('email') or data.get('username')
+        if login_identifier:
+            login_identifier = login_identifier.strip().lower()
+            
         password = data.get('password')
         
         if not login_identifier or not password:
@@ -107,14 +115,23 @@ def hospital_login():
         # Find user by email
         user = User.query.filter_by(email=login_identifier).first()
         
+        print(f"DEBUG LOGIN: identifier='{login_identifier}', user_found={user is not None}")
+        
         # If not found by email and it looks like a username, try username lookup
         if not user and '@' not in login_identifier:
             # For demo purposes, allow simple username login
             if login_identifier.lower() == 'admin':
                 user = User.query.filter_by(role='admin').first()
+                print(f"DEBUG LOGIN: matched username 'admin', user_id={user.id if user else 'None'}")
         
         if not user or not user.check_password(password):
+            if user:
+                print(f"DEBUG LOGIN: password check FAILED for user_id={user.id}")
+            else:
+                print(f"DEBUG LOGIN: user NOT FOUND")
             return jsonify({'error': 'Invalid credentials'}), 401
+            
+        print(f"DEBUG LOGIN: login SUCCESS for user_id={user.id}")
         
         # Auto-reactivate account if it was deactivated
         if not user.is_active:
@@ -335,7 +352,7 @@ def get_hospital_doctors(hospital_id):
         return jsonify({
             'success': True,
             'doctors': doctors_data,
-            'hospital_name': hospital.name,
+            'hospital': hospital.to_dict(),
             'total': len(doctors_data)
         }), 200
         

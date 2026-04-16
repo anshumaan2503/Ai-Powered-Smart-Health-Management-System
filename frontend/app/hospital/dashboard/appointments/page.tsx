@@ -19,6 +19,8 @@ import {
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
+import useSWR, { useSWRConfig } from 'swr'
+
 interface Appointment {
   id: number
   appointment_id: string
@@ -46,12 +48,12 @@ interface Appointment {
 }
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
   const [error, setError] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [doctorFilter, setDoctorFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [schedulingModal, setSchedulingModal] = useState<{
     show: boolean;
     appointment: Appointment | null;
@@ -76,51 +78,80 @@ export default function AppointmentsPage() {
     uploading: false,
   })
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [dateFilter, statusFilter, doctorFilter])
+  // Fetch Doctors for filter
+  const { data: doctorsResponse } = useSWR(
+    'hospital-doctors-filter',
+    () => api.get('/hospital/doctors/available').then(res => res.data.doctors),
+    { revalidateOnFocus: false }
+  )
 
-  const fetchAppointments = async () => {
-    try {
-      setError('')
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('No access token found. Please login again.')
-        setLoading(false)
-        return
+  const { data: appointmentsResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage],
+    () => api.get('/hospital/appointments', {
+      params: {
+        date: dateFilter || undefined,
+        status: statusFilter || undefined,
+        doctor_id: doctorFilter || undefined,
+        page: currentPage,
+        per_page: 15
       }
-
-      const response = await api.get('/hospital/appointments', {
-        params: {
-          date: dateFilter || undefined,
-          status: statusFilter || undefined,
-          doctor_id: doctorFilter || undefined,
-          _t: Date.now() // Cache busting
-        }
-      })
-
-      const data = response.data
-      setAppointments(data.appointments || [])
-      setError('') // Clear any previous errors
-    } catch (err) {
-      console.error('Error fetching appointments:', err)
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        setError('Network error: Could not connect to server. Please check if the backend is running.')
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to load appointments')
-      }
-    } finally {
-      setLoading(false)
+    }),
+    { 
+      revalidateOnFocus: true,
+      dedupingInterval: 0,
+      refreshInterval: 10000, // Auto-refresh every 10 seconds when page is visible
+      focus: true
     }
+  )
+
+  const appointments: Appointment[] = appointmentsResponse?.data?.appointments || []
+  const doctorsList = doctorsResponse || []
+  const totalPages = appointmentsResponse?.data?.pages || 1
+  const loading = !appointmentsResponse && !fetchError
+  const errorValue = fetchError?.response?.status === 401 
+    ? 'No access token found. Please login again.' 
+    : (fetchError instanceof TypeError && fetchError.message.includes('fetch'))
+      ? 'Network error: Could not connect to server. Please check if the backend is running.'
+      : (fetchError?.response?.data?.error || fetchError?.message || '')
+
+  useEffect(() => {
+    if (errorValue) setError(errorValue)
+  }, [errorValue])
+
+  const fetchAppointments = () => {
+    mutate()
+    globalMutate('dashboard-analytics')
+    globalMutate('hospital-profile') // In case stats are linked here
   }
 
   const updateAppointmentStatus = async (appointmentId: number, newStatus: string) => {
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+    
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { ...a, status: newStatus } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.put(`/hospital/appointments/${appointmentId}`, { status: newStatus })
       toast.success(`Appointment marked as ${newStatus}`)
-      // Refresh appointments
+      // No need to full re-fetch if we're confident, but we re-fetch to ensure sync
       fetchAppointments()
     } catch (err) {
+      // Rollback on error
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to update appointment')
       toast.error('Failed to update status')
     }
@@ -129,16 +160,42 @@ export default function AppointmentsPage() {
   const handleScheduleSubmit = async () => {
     if (!schedulingModal.appointment || !schedulingModal.date || !schedulingModal.time) return
 
+    const appointmentId = schedulingModal.appointment.id
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { 
+                ...a, 
+                status: 'scheduled',
+                appointment_date: `${schedulingModal.date}T${schedulingModal.time}`
+              } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
+    setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
+
     try {
-      await api.put(`/hospital/appointments/${schedulingModal.appointment.id}`, {
+      await api.put(`/hospital/appointments/${appointmentId}`, {
         status: 'scheduled',
         appointment_date: schedulingModal.date,
         appointment_time: schedulingModal.time
       })
       toast.success('Appointment scheduled successfully')
-      setSchedulingModal({ show: false, appointment: null, date: '', time: '' })
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to schedule appointment')
       toast.error('Failed to schedule appointment')
     }
@@ -173,12 +230,31 @@ export default function AppointmentsPage() {
       return
     }
 
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.map((a: Appointment) =>
+              a.id === appointmentId ? { ...a, status: 'cancelled' } : a
+            )
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.put(`/hospital/appointments/${appointmentId}/cancel`)
       toast.success('Appointment cancelled')
-      // Refresh appointments
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to cancel appointment')
       toast.error('Failed to cancel appointment')
     }
@@ -189,12 +265,30 @@ export default function AppointmentsPage() {
       return
     }
 
+    const currentKey = ['hospital-appointments', dateFilter, statusFilter, doctorFilter, currentPage]
+
+    // Optimistic Update
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.appointments) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            appointments: prevResponse.data.appointments.filter((a: Appointment) => a.id !== appointmentId),
+            total: (prevResponse.data.total || 0) - 1
+          }
+        }
+      },
+      false
+    )
+
     try {
       await api.delete(`/hospital/appointments/${appointmentId}`)
       toast.success('Appointment deleted permanently')
-      // Refresh appointments
       fetchAppointments()
     } catch (err) {
+      mutate()
       setError(err instanceof Error ? err.message : 'Failed to delete appointment')
       toast.error('Failed to delete appointment')
     }
@@ -230,16 +324,17 @@ export default function AppointmentsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Loading appointments...</p>
-        </div>
-      </div>
-    )
-  }
+  // Skeleton row component for loading state
+  const SkeletonRow = () => (
+    <tr className="animate-pulse">
+      <td className="px-6 py-4"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div><div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-16"></div></td>
+      <td className="px-6 py-4"><div className="flex items-center"><div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 mr-3"></div><div><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-28 mb-1"></div><div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-20"></div></div></div></td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-1"></div><div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-20"></div></td>
+      <td className="px-6 py-4"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-1"></div><div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-14"></div></td>
+      <td className="px-6 py-4"><div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full w-20"></div></td>
+      <td className="px-6 py-4"><div className="flex space-x-2"><div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded"></div><div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded"></div></div></td>
+    </tr>
+  )
 
   return (
     <div className="space-y-6">
@@ -309,7 +404,9 @@ export default function AppointmentsPage() {
               className="input-field"
             >
               <option value="">All Doctors</option>
-              {/* We'll populate this dynamically later */}
+              {doctorsList.map((doc: any) => (
+                <option key={doc.id} value={doc.id}>Dr. {doc.name}</option>
+              ))}
             </select>
           </div>
           <div className="flex items-end">
@@ -329,57 +426,45 @@ export default function AppointmentsPage() {
 
       {/* Appointments List */}
       <div className="bg-card rounded-lg shadow-sm">
-        {appointments.length === 0 ? (
-          <div className="p-8 text-center">
-            <CalendarIcon className="h-12 w-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-primary mb-2">No appointments found</h3>
-            <p className="text-secondary mb-4">Start by booking your first appointment.</p>
-            <Link
-              href="/hospital/dashboard/appointments/book"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 inline-flex items-center space-x-2"
-            >
-              <PlusIcon className="h-5 w-5" />
-              <span>Book Appointment</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="table-header">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="table-header">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Appointment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date &amp; Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-primary divide-y divide-slate-200 dark:divide-slate-800">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : appointments.length === 0 ? (
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Appointment
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Patient
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Doctor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <CalendarIcon className="h-12 w-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-primary mb-2">No appointments found</h3>
+                    <p className="text-secondary mb-4">Start by booking your first appointment.</p>
+                    <Link
+                      href="/hospital/dashboard/appointments/book"
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 inline-flex items-center space-x-2"
+                    >
+                      <PlusIcon className="h-5 w-5" />
+                      <span>Book Appointment</span>
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-primary divide-y divide-slate-200 dark:divide-slate-800">
-                {appointments.map((appointment) => {
+              ) : (
+                appointments.map((appointment) => {
                   const { date, time } = formatDateTime(appointment.appointment_date)
                   return (
                     <tr key={appointment.id} className="table-row">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {appointment.appointment_id}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {appointment.appointment_type}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{appointment.appointment_id}</div>
+                          <div className="text-sm text-gray-500">{appointment.appointment_type}</div>
                           <div className="mt-1">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityBadge(appointment.priority)}`}>
                               {appointment.priority}
@@ -393,12 +478,8 @@ export default function AppointmentsPage() {
                             <UserIcon className="h-6 w-6 text-gray-500" />
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {appointment.patient.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {appointment.patient.age}y, {appointment.patient.gender}
-                            </div>
+                            <div className="text-sm font-medium text-gray-900">{appointment.patient.name}</div>
+                            <div className="text-sm text-gray-500">{appointment.patient.age}y, {appointment.patient.gender}</div>
                             <div className="text-sm text-gray-500 flex items-center">
                               <PhoneIcon className="h-3 w-3 mr-1" />
                               {appointment.patient.phone}
@@ -407,24 +488,13 @@ export default function AppointmentsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            Dr. {appointment.doctor.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {appointment.doctor.specialization}
-                          </div>
-                        </div>
+                        <div className="text-sm font-medium text-gray-900">Dr. {appointment.doctor.name}</div>
+                        <div className="text-sm text-gray-500">{appointment.doctor.specialization}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {date}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <ClockIcon className="h-3 w-3 mr-1" />
-                            {time}
-                          </div>
+                        <div className="text-sm font-medium text-gray-900">{date}</div>
+                        <div className="text-sm text-gray-500 flex items-center">
+                          <ClockIcon className="h-3 w-3 mr-1" />{time}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -437,79 +507,87 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {/* Action Buttons based on Status */}
                           {appointment.status === 'requested' && (
-                            <button
-                              onClick={() => {
-                                const dt = new Date(appointment.appointment_date)
-                                setSchedulingModal({
-                                  show: true,
-                                  appointment: appointment,
-                                  date: dt.toISOString().split('T')[0],
-                                  time: dt.toTimeString().split(' ')[0].substring(0, 5)
-                                })
-                              }}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                              title="Schedule Appointment"
-                            >
+                            <button onClick={() => { const dt = new Date(appointment.appointment_date); setSchedulingModal({ show: true, appointment, date: dt.toISOString().split('T')[0], time: dt.toTimeString().split(' ')[0].substring(0, 5) }) }} className="text-blue-600 hover:text-blue-900 p-1 rounded" title="Schedule Appointment">
                               <ClockIcon className="h-4 w-4" />
                             </button>
                           )}
-
-                          {/* Confirm Button for Scheduled */}
                           {appointment.status === 'scheduled' && (
-                            <button
-                              onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
-                              className="text-green-600 hover:text-green-900 p-1 rounded transition-transform hover:scale-125"
-                              title="Confirm Appointment: Verify and validate this scheduled appointment"
-                            >
+                            <button onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')} className="text-green-600 hover:text-green-900 p-1 rounded transition-transform hover:scale-125" title="Confirm Appointment">
                               <CheckCircleIcon className="h-5 w-5" />
                             </button>
                           )}
-
-                          {/* Complete Button for Scheduled or Confirmed */}
                           {(appointment.status === 'scheduled' || appointment.status === 'confirmed') && (
-                            <button
-                              onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded transition-transform hover:scale-125"
-                              title="Mark as Completed: Successfully finish the consultation and close the record"
-                            >
+                            <button onClick={() => updateAppointmentStatus(appointment.id, 'completed')} className="text-blue-600 hover:text-blue-900 p-1 rounded transition-transform hover:scale-125" title="Mark as Completed">
                               <CheckBadgeIcon className="h-5 w-5" />
                             </button>
                           )}
-
                           {appointment.status === 'completed' && (
-                            <button
-                              onClick={() => setReportModal({ ...reportModal, show: true, appointment: appointment })}
-                              className={`${appointment.report_url ? 'text-green-600 hover:text-green-900' : 'text-indigo-600 hover:text-indigo-900'} p-1 rounded transition-transform hover:scale-125`}
-                              title={appointment.report_url ? "Update Medical Report: Upload a revised version of the medical document" : "Upload Medical Report: Add clinical results and reports for the patient"}
-                            >
+                            <button onClick={() => setReportModal({ ...reportModal, show: true, appointment })} className={`${appointment.report_url ? 'text-green-600 hover:text-green-900' : 'text-indigo-600 hover:text-indigo-900'} p-1 rounded transition-transform hover:scale-125`} title={appointment.report_url ? 'Update Medical Report' : 'Upload Medical Report'}>
                               <ArrowUpTrayIcon className="h-5 w-5" />
                             </button>
                           )}
                           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                            <button
-                              onClick={() => cancelAppointment(appointment.id)}
-                              className="text-yellow-600 hover:text-yellow-900 p-1 rounded transition-transform hover:scale-125"
-                              title="Cancel Appointment: Stop this appointment and notify stakeholders"
-                            >
+                            <button onClick={() => cancelAppointment(appointment.id)} className="text-yellow-600 hover:text-yellow-900 p-1 rounded transition-transform hover:scale-125" title="Cancel Appointment">
                               <XCircleIcon className="h-5 w-5" />
                             </button>
                           )}
-                          <button
-                            onClick={() => deleteAppointment(appointment.id)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded transition-transform hover:scale-125"
-                            title="Delete Permanently: Completely remove this appointment from the database"
-                          >
+                          <button onClick={() => deleteAppointment(appointment.id)} className="text-red-600 hover:text-red-900 p-1 rounded transition-transform hover:scale-125" title="Delete Permanently">
                             <TrashIcon className="h-5 w-5" />
                           </button>
                         </div>
                       </td>
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="bg-primary px-4 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-700 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-700 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-slate-700 dark:text-slate-400">
+                  Showing page <span className="font-medium text-indigo-600 dark:text-indigo-400">{currentPage}</span> of{' '}
+                  <span className="font-medium text-indigo-600 dark:text-indigo-400">{totalPages}</span>
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

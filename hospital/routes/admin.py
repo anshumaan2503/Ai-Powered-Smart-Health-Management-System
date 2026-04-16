@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from hospital import db
-from hospital.models import Hospital, User, Doctor
+from hospital.models.hospital import Hospital
+from hospital.models.user import User
+from hospital.models.doctor import Doctor
 from hospital.models.hospital_subscription import HospitalSubscription
 from hospital.models.appointment import Appointment
 
@@ -123,6 +125,7 @@ def get_all_hospitals():
                 'email': hospital.email,
                 'phone': hospital.phone,
                 'address': hospital.address,
+                'payments_enabled': hospital.payments_enabled,
                 'registeredDate': hospital.created_at.isoformat() if hospital.created_at else None,
                 'lastLogin': (last_user_login.last_login.isoformat() if hasattr(last_user_login, 'last_login') and last_user_login.last_login 
                              else last_user_login.created_at.isoformat() if last_user_login and last_user_login.created_at 
@@ -233,24 +236,30 @@ def get_all_subscriptions():
         plan_filter = request.args.get('plan', 'all')
         
         # Base query with hospital join - exclude deleted hospitals
-        query = db.session.query(HospitalSubscription, Hospital)\
-            .join(Hospital, HospitalSubscription.hospital_id == Hospital.id)\
-            .filter(~Hospital.name.like('[DELETED]%'))
+        query = db.session.query(HospitalSubscription, Hospital).join(
+            Hospital, HospitalSubscription.hospital_id == Hospital.id
+        ).filter(~Hospital.name.like('[DELETED]%'))\
+         .order_by(HospitalSubscription.created_at.desc())
         
         # Apply search filter
         if search:
             query = query.filter(Hospital.name.ilike(f'%{search}%'))
         
         # Apply status filter
-        if status_filter != 'all':
+        if status_filter == 'active' or status_filter == 'all':
+            # Note: By default in many views we'd show active only, 
+            # but since "Delete" is requested, showing all might be better.
+            # Let's show active as the primary if requested, otherwise everything.
             if status_filter == 'active':
                 query = query.filter(HospitalSubscription.is_active == True)
-            elif status_filter == 'expired':
-                query = query.filter(
-                    HospitalSubscription.subscription_end < datetime.utcnow().date()
-                )
-            elif status_filter == 'trial':
-                query = query.filter(HospitalSubscription.monthly_fee == 0)
+        elif status_filter == 'inactive':
+            query = query.filter(HospitalSubscription.is_active == False)
+        elif status_filter == 'expired':
+            query = query.filter(
+                HospitalSubscription.subscription_end < datetime.utcnow().date()
+            )
+        elif status_filter == 'trial':
+            query = query.filter(HospitalSubscription.monthly_fee == 0)
         
         # Apply plan filter
         if plan_filter != 'all':
@@ -304,6 +313,120 @@ def get_all_subscriptions():
         }), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/hospitals/<int:hospital_id>/upgrade', methods=['POST', 'PUT'])
+def admin_upgrade_hospital_subscription(hospital_id):
+    """Admin endpoint to upgrade/create subscription for a specific hospital"""
+    try:
+        if not verify_admin_token():
+            return jsonify({'error': 'Unauthorized access'}), 401
+        
+        data = request.get_json()
+        new_plan = data.get('newPlan')
+        billing_cycle = data.get('billingCycle', 'monthly')
+        
+        # Check if subscription exists
+        subscription = HospitalSubscription.query.filter_by(
+            hospital_id=hospital_id,
+            is_active=True
+        ).order_by(HospitalSubscription.created_at.desc()).first()
+        
+        # Plan configurations (matched with frontend)
+        plan_configs = {
+            'trial': {
+                'max_patients': 10,
+                'max_doctors': 1,
+                'max_staff': 1,
+                'monthly_fee': 0.0,
+                'features': ['appointments', 'records', 'email_support']
+            },
+            'basic': {
+                'max_patients': 25,
+                'max_doctors': 2,
+                'max_staff': 5,
+                'monthly_fee': 2999.0,
+                'features': ['appointments', 'billing', 'records', 'email_support', 'mobile_app']
+            },
+            'standard': {
+                'max_patients': 100,
+                'max_doctors': 10,
+                'max_staff': 20,
+                'monthly_fee': 7499.0,
+                'features': [
+                    'appointments', 'billing', 'records', 'email_support', 'mobile_app',
+                    'analytics', 'whatsapp_notifications', 'data_export', 'priority_support',
+                    'patient_portal'
+                ]
+            },
+            'premium': {
+                'max_patients': 200,
+                'max_doctors': 25,
+                'max_staff': 50,
+                'monthly_fee': 12999.0,
+                'features': [
+                    'appointments', 'billing', 'records', 'email_support', 'mobile_app',
+                    'analytics', 'whatsapp_notifications', 'data_export', 'priority_support',
+                    'patient_portal', 'advanced_analytics', 'custom_reports', 'api_access',
+                    'voice_bot'
+                ]
+            },
+            'enterprise': {
+                'max_patients': -1, # Unlimited
+                'max_doctors': -1,
+                'max_staff': -1,
+                'monthly_fee': 17999.0,
+                'features': [
+                    'appointments', 'billing', 'records', 'email_support', 'mobile_app',
+                    'analytics', 'whatsapp_notifications', 'data_export', 'priority_support',
+                    'patient_portal', 'advanced_analytics', 'custom_reports', 'api_access',
+                    'voice_bot', 'custom_integrations', 'dedicated_manager', 'sla'
+                ]
+            }
+        }
+        
+        config = plan_configs.get(new_plan.lower() if new_plan else 'basic')
+        if not config:
+            return jsonify({'error': 'Invalid plan name'}), 400
+            
+        fee = config['monthly_fee']
+        if billing_cycle == 'annual':
+            fee = fee * 12 * 0.8 / 12  # 20% discount applied to monthly average
+            
+        if subscription:
+            # Update existing
+            subscription.plan_name = new_plan.lower()
+            subscription.max_patients = config['max_patients']
+            subscription.max_doctors = config['max_doctors']
+            subscription.max_staff = config['max_staff']
+            subscription.monthly_fee = fee
+            subscription.features = config['features']
+            subscription.updated_at = datetime.utcnow()
+            subscription.is_active = True # Force reactive
+        else:
+            # Create new
+            subscription = HospitalSubscription(
+                hospital_id=hospital_id,
+                plan_name=new_plan.lower(),
+                max_patients=config['max_patients'],
+                max_doctors=config['max_doctors'],
+                max_staff=config['max_staff'],
+                features=config['features'],
+                subscription_start=datetime.utcnow().date(),
+                subscription_end=(datetime.utcnow() + timedelta(days=365 if billing_cycle == 'annual' else 30)).date(),
+                monthly_fee=fee,
+                is_active=True
+            )
+            db.session.add(subscription)
+            
+        db.session.commit()
+        return jsonify({
+            'message': 'Subscription updated successfully',
+            'status': 'success'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/subscriptions/<int:subscription_id>/upgrade', methods=['POST', 'PUT'])
@@ -377,6 +500,12 @@ def admin_upgrade_subscription(subscription_id):
         # Get current subscription
         subscription = HospitalSubscription.query.get_or_404(subscription_id)
         
+        # 1. DEACTIVATE ALL OTHER SUBSCRIPTIONS for this hospital
+        # This prevents the "Sync" issue where multiple active subscriptions exist
+        HospitalSubscription.query.filter_by(
+            hospital_id=subscription.hospital_id
+        ).update({'is_active': False})
+        
         # Update subscription
         config = plan_configs[new_plan]
         monthly_fee = config['monthly_fee']
@@ -391,6 +520,7 @@ def admin_upgrade_subscription(subscription_id):
         subscription.max_staff = config['max_staff']
         subscription.features = config['features']
         subscription.monthly_fee = monthly_fee
+        subscription.is_active = True
         subscription.updated_at = datetime.utcnow()
         
         # Update dates if provided
@@ -475,11 +605,28 @@ def update_hospital(hospital_id):
         if 'name' in data:
             hospital.name = data['name']
         if 'email' in data:
-            hospital.email = data['email']
+            new_email = data['email']
+            old_email = hospital.email
+            
+            # Check if this email is already in use by another user WHO IS NOT an admin of this hospital
+            # (Emails must be universally unique in User table)
+            existing_user = User.query.filter(User.email == new_email, User.hospital_id != hospital_id).first()
+            if existing_user:
+                return jsonify({'error': f'The email "{new_email}" is already in use by another account.'}), 400
+                
+            hospital.email = new_email
+            
+            # CRITICAL: Sync with hospital admin user(s) so they can login with the NEW email
+            # This fixes the lockout issue when changing hospital email credentials
+            hospital_admins = User.query.filter_by(hospital_id=hospital_id, email=old_email).all()
+            for admin_user in hospital_admins:
+                admin_user.email = new_email
         if 'phone' in data:
             hospital.phone = data['phone']
         if 'address' in data:
             hospital.address = data['address']
+        if 'payments_enabled' in data:
+            hospital.payments_enabled = data['payments_enabled']
         
         hospital.updated_at = datetime.utcnow()
         db.session.commit()
@@ -578,6 +725,27 @@ def reset_hospital_password(hospital_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@admin_bp.route('/hospitals/<int:hospital_id>/toggle-payments', methods=['PUT'])
+def toggle_hospital_payments(hospital_id):
+    """Toggle payment gateway for a specific hospital"""
+    try:
+        if not verify_admin_token():
+            return jsonify({'error': 'Unauthorized access'}), 401
+        
+        hospital = Hospital.query.get_or_404(hospital_id)
+        hospital.payments_enabled = not hospital.payments_enabled
+        hospital.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': f"Payments {'enabled' if hospital.payments_enabled else 'disabled'} for {hospital.name}",
+            'payments_enabled': hospital.payments_enabled
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/hospitals/<int:hospital_id>/delete', methods=['DELETE'])
 def delete_hospital(hospital_id):
     """Delete a hospital (soft delete by deactivating)"""
@@ -622,7 +790,59 @@ def delete_hospital(hospital_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/analytics/overview', methods=['GET'])
+@admin_bp.route('/subscriptions/<int:subscription_id>', methods=['DELETE'])
+def admin_delete_subscription(subscription_id):
+    """Permanently delete a specific subscription record (Admin only)"""
+    try:
+        if not verify_admin_token():
+            return jsonify({'error': 'Unauthorized access'}), 401
+            
+        subscription = HospitalSubscription.query.get_or_404(subscription_id)
+        hospital_name = subscription.hospital.name if subscription.hospital else "Unknown Hospital"
+        
+        db.session.delete(subscription)
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Subscription #{subscription_id} for "{hospital_name}" has been permanently deleted.'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/subscriptions/sync-all', methods=['POST'])
+def admin_sync_all_subscriptions():
+    """Global cleanup: Ensure every hospital has ONLY ONE active subscription (the latest one)"""
+    try:
+        if not verify_admin_token():
+            return jsonify({'error': 'Unauthorized access'}), 401
+            
+        hospitals = Hospital.query.all()
+        fixed_count = 0
+        
+        for hospital in hospitals:
+            # Find all active subscriptions for this hospital
+            active_subs = HospitalSubscription.query.filter_by(
+                hospital_id=hospital.id,
+                is_active=True
+            ).order_by(HospitalSubscription.created_at.desc()).all()
+            
+            if len(active_subs) > 1:
+                # Keep the latest, deactivate others
+                for old_sub in active_subs[1:]:
+                    old_sub.is_active = False
+                fixed_count += 1
+                
+        db.session.commit()
+        return jsonify({
+            'message': f'Global sync complete. Cleaned up {fixed_count} hospitals with redundant active subscriptions.'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 def get_admin_analytics():
     """Get comprehensive analytics for admin dashboard"""
     try:

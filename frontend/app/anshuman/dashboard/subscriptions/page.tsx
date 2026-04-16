@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { adminAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
@@ -16,18 +17,32 @@ import {
   BuildingOffice2Icon,
   ClockIcon,
   StarIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 
 export default function SubscriptionManagementPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SubscriptionManagementContent />
+    </Suspense>
+  )
+}
+
+function SubscriptionManagementContent() {
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [filteredSubscriptions, setFilteredSubscriptions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPlan, setFilterPlan] = useState('all')
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  
+  const searchParams = useSearchParams()
+  const hospitalIdParam = searchParams.get('hospital')
+
   const [upgradeData, setUpgradeData] = useState({
     newPlan: '',
     billingCycle: 'monthly',
@@ -89,6 +104,36 @@ export default function SubscriptionManagementPage() {
       setSubscriptions([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSyncAll = async () => {
+    if (!confirm('This will ensure every hospital has only ONE active subscription (the latest one). Proceed?')) return
+    
+    setIsProcessing(true)
+    try {
+      await adminAPI.syncAllSubscriptions()
+      alert('Global sync complete. Redundant subscriptions deactivated.')
+      await loadSubscriptions()
+    } catch (error: any) {
+      alert(`Error syncing: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleDelete = async (subscriptionId: number, hospitalName: string) => {
+    if (!confirm(`Are you SURE you want to PERMANENTLY delete subscription #${subscriptionId} for "${hospitalName}"? This cannot be undone.`)) return
+    
+    setIsProcessing(true)
+    try {
+      await adminAPI.deleteSubscription(subscriptionId)
+      alert('Subscription deleted successfully.')
+      await loadSubscriptions()
+    } catch (error: any) {
+      alert(`Error deleting: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -211,6 +256,14 @@ export default function SubscriptionManagementPage() {
           <p className="text-gray-600">Manually manage hospital subscriptions and billing</p>
         </div>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleSyncAll}
+            disabled={isProcessing}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-lg transform hover:scale-105"
+          >
+            <ShieldCheckIcon className="h-5 w-5 mr-2" />
+            Sync All Subscriptions
+          </button>
           <span className="text-sm text-gray-600">
             Total: {subscriptions.length} subscriptions
           </span>
@@ -417,6 +470,15 @@ export default function SubscriptionManagementPage() {
                   <button className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     Extend Date
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(subscription.id, subscription.hospitalName)}
+                    disabled={isProcessing}
+                    className="w-full bg-red-50 text-red-600 py-2 px-4 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center border border-red-200 mt-6"
+                  >
+                    <TrashIcon className="h-4 w-4 mr-2" />
+                    Delete Subscription
                   </button>
                 </div>
               </div>

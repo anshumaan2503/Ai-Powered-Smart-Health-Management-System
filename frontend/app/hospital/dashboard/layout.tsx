@@ -42,23 +42,20 @@ export default function HospitalDashboardLayout({
   const [hospital, setHospital] = useState<any>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => {
-    // Check authentication — login always writes to localStorage
+    // Instant read from localStorage (< 1ms) — no blocking spinner
+    const token = localStorage.getItem('hospital_access_token')
     const userData = localStorage.getItem('hospital_user')
     const hospitalData = localStorage.getItem('hospital_data')
-    const token = localStorage.getItem('hospital_access_token')
 
-    if (!userData || !token) {
+    if (!token || !userData) {
       router.push('/hospital/login')
       return
     }
 
-    setUser(JSON.parse(userData))
-    if (hospitalData) {
-      setHospital(JSON.parse(hospitalData))
-    }
+    try { setUser(JSON.parse(userData)) } catch { router.push('/hospital/login'); return }
+    try { if (hospitalData) setHospital(JSON.parse(hospitalData)) } catch { /* ignore */ }
   }, [router])
 
   const handleLogout = () => {
@@ -78,11 +75,8 @@ export default function HospitalDashboardLayout({
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <BuildingOffice2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -114,23 +108,7 @@ export default function HospitalDashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
-                ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <item.icon className="h-5 w-5 mr-3" />
-              {item.name}
-            </Link>
-          )
-        })}
+        <NavLinks setIsMobileMenuOpen={setIsMobileMenuOpen} />
       </nav>
 
       {/* User Info & Logout */}
@@ -245,5 +223,32 @@ export default function HospitalDashboardLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+function NavLinks({ setIsMobileMenuOpen }: { setIsMobileMenuOpen: (o: boolean) => void }) {
+  const pathname = usePathname()
+  
+  return (
+    <>
+      {navigation.map((item) => {
+        const isActive = pathname === item.href
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            prefetch={true}
+            className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
+              ? 'bg-blue-100 dark:bg-blue-900/70 text-blue-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <item.icon className="h-5 w-5 mr-3" />
+            {item.name}
+          </Link>
+        )
+      })}
+    </>
   )
 }

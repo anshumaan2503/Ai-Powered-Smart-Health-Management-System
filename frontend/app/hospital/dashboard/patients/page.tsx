@@ -1,27 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { patientsAPI, hospitalAPI } from '@/lib/api'
-import { motion } from 'framer-motion'
-import {
-  UserGroupIcon,
-  MagnifyingGlassIcon,
-  PlusIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  FunnelIcon,
-  UserIcon,
-  ExclamationTriangleIcon,
-  CloudArrowUpIcon,
-  DocumentArrowDownIcon,
-  XMarkIcon,
-  CheckCircleIcon
-} from '@heroicons/react/24/outline'
+import { m, LazyMotion, domAnimation } from 'framer-motion'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import useSWR, { useSWRConfig } from 'swr'
+import { debounce } from 'lodash'
+
+// 🚀 Dynamic Islands: These modules are ONLY loaded when needed
+const ImportPatientsModal = dynamic(() => import('@/components/hospital/patients/ImportModal').then(mod => mod.ImportPatientsModal), { ssr: false })
+const DeletePatientModal = dynamic(() => import('@/components/hospital/patients/DeleteModal').then(mod => mod.DeletePatientModal), { ssr: false })
+const BulkDeleteModal = dynamic(() => import('@/components/hospital/patients/BulkDeleteModal').then(mod => mod.BulkDeleteModal), { ssr: false })
+
+// ⚡ Direct Path Icons: Reduces graph from 300+ modules to 11
+import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon'
+import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon'
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon'
+import EyeIcon from '@heroicons/react/24/outline/EyeIcon'
+import PencilIcon from '@heroicons/react/24/outline/PencilIcon'
+import TrashIcon from '@heroicons/react/24/outline/TrashIcon'
+import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon'
+import UserIcon from '@heroicons/react/24/outline/UserIcon'
+import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon'
+import CheckCircleIcon from '@heroicons/react/24/outline/CheckCircleIcon'
 
 interface Patient {
   id: number
@@ -39,13 +44,22 @@ interface Patient {
 }
 
 export default function HospitalPatientsPage() {
-  const [patients, setPatients] = useState<Patient[]>([])
-  const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterGender, setFilterGender] = useState('')
   const [filterBloodGroup, setFilterBloodGroup] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+
+  // Debounce search term to prevent excessive API calls
+  const debouncedSetSearch = useCallback(
+    debounce((value: string) => {
+      setDebouncedSearchTerm(value)
+      setCurrentPage(1)
+    }, 400),
+    []
+  )
+
   const [showFilters, setShowFilters] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; patient: Patient | null }>({
     show: false,
@@ -67,39 +81,40 @@ export default function HospitalPatientsPage() {
 
   const router = useRouter()
 
-  useEffect(() => {
-    fetchPatients()
-  }, [currentPage, searchTerm, filterGender, filterBloodGroup])
-
-  const fetchPatients = async () => {
-    try {
-      setLoading(true)
-
-      const params = {
-        page: currentPage,
-        per_page: 10,
-        search: searchTerm,
-        gender: filterGender,
-        blood_group: filterBloodGroup
-      }
-
-      const response = await hospitalAPI.getPatients(params)
-      setPatients(response.data.patients || [])
-      setTotalPages(response.data.pages || 1)
-    } catch (error: any) {
-      console.error('Error fetching patients:', error)
-      if (error.response?.status === 401) {
-        router.push('/hospital/login')
-      }
-      setPatients([])
-    } finally {
-      setLoading(false)
+  const { data: patientsResponse, error: fetchError, mutate } = useSWR(
+    ['hospital-patients', currentPage, debouncedSearchTerm, filterGender, filterBloodGroup],
+    () => hospitalAPI.getPatients({
+      page: currentPage,
+      per_page: 10,
+      search: debouncedSearchTerm,
+      gender: filterGender,
+      blood_group: filterBloodGroup
+    }),
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
+      revalidateOnReconnect: true
     }
+  )
+
+  const patients: Patient[] = patientsResponse?.data?.patients || []
+  const totalPages = patientsResponse?.data?.pages || 1
+  const loading = !patientsResponse && !fetchError
+
+  useEffect(() => {
+    if (fetchError?.response?.status === 401) {
+      router.push('/hospital/login')
+    }
+  }, [fetchError, router])
+
+  const fetchPatients = () => {
+    mutate()
+    globalMutate('dashboard-analytics')
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    setCurrentPage(1)
+    debouncedSetSearch(e.target.value)
   }
 
   const handleFilterChange = (type: string, value: string) => {
@@ -124,14 +139,35 @@ export default function HospitalPatientsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.patient) return
+    const patientId = deleteModal.patient.id
+    const currentKey = ['hospital-patients', currentPage, debouncedSearchTerm, filterGender, filterBloodGroup]
+
+    // Optimistic Update: Remove from local cache immediately
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.patients) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            patients: prevResponse.data.patients.filter((p: Patient) => p.id !== patientId),
+            total: (prevResponse.data.total || 0) - 1
+          }
+        }
+      },
+      false
+    )
+
+    setDeleteModal({ show: false, patient: null })
 
     try {
       setDeleting(true)
-      await patientsAPI.deletePatient(deleteModal.patient.id)
+      await patientsAPI.deletePatient(patientId)
       toast.success('Patient deleted successfully')
-      setDeleteModal({ show: false, patient: null })
       fetchPatients()
     } catch (error: any) {
+      // Rollback on error
+      mutate()
       console.error('Error deleting patient:', error)
       toast.error(error.response?.data?.error || 'Failed to delete patient')
     } finally {
@@ -165,18 +201,39 @@ export default function HospitalPatientsPage() {
   }
 
   const handleBulkDeleteConfirm = async () => {
+    const currentKey = ['hospital-patients', currentPage, debouncedSearchTerm, filterGender, filterBloodGroup]
+    const idsToDelete = [...selectedPatients]
+
+    // Optimistic Update: Remove from local cache immediately
+    mutate(
+      (prevResponse: any) => {
+        if (!prevResponse?.data?.patients) return prevResponse
+        return {
+          ...prevResponse,
+          data: {
+            ...prevResponse.data,
+            patients: prevResponse.data.patients.filter((p: Patient) => !idsToDelete.includes(p.id)),
+            total: (prevResponse.data.total || 0) - idsToDelete.length
+          }
+        }
+      },
+      false
+    )
+
+    setBulkDeleteModal(false)
+    setSelectedPatients([])
+
     try {
       setBulkDeleting(true)
 
-      for (const patientId of selectedPatients) {
-        await patientsAPI.deletePatient(patientId)
-      }
+      // Use the new bulk delete endpoint for performance
+      await hospitalAPI.bulkDeletePatients(idsToDelete)
 
-      toast.success(`${selectedPatients.length} patient(s) deleted successfully`)
-      setBulkDeleteModal(false)
-      setSelectedPatients([])
+      toast.success(`${idsToDelete.length} patient(s) deleted successfully`)
       fetchPatients()
     } catch (error: any) {
+      // Rollback on error
+      mutate()
       console.error('Error deleting patients:', error)
       toast.error(error.response?.data?.error || error.message || 'Failed to delete patients')
     } finally {
@@ -289,7 +346,8 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
   }
 
   return (
-    <div className="space-y-6">
+    <LazyMotion features={domAnimation}>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -316,10 +374,10 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="btn-secondary flex items-center"
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-white text-blue-700 border border-blue-200 rounded-lg font-medium hover:bg-blue-50 transition-all shadow-sm active:scale-95"
           >
-            <CloudArrowUpIcon className="h-5 w-5 mr-2" />
-            Import CSV
+            <PlusIcon className="h-5 w-5" />
+            <span>Import CSV</span>
           </button>
           <Link
             href="/hospital/dashboard/patients/new"
@@ -367,7 +425,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
         </div>
 
         {showFilters && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -411,13 +469,13 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                 </select>
               </div>
             </div>
-          </motion.div>
+        </m.div>
         )}
       </div>
 
       {/* Bulk Actions Bar */}
       {selectedPatients.length > 0 && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between"
@@ -442,7 +500,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
               Delete Selected
             </button>
           </div>
-        </motion.div>
+        </m.div>
       )}
 
       {/* Patients List */}
@@ -499,84 +557,16 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {patients.map((patient, index) => (
-                    <motion.tr
+                    <PatientRow
                       key={patient.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedPatients.includes(patient.id)}
-                          onChange={() => handleSelectPatient(patient.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <UserIcon className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {patient.full_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {patient.patient_id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{patient.email}</div>
-                        <div className="text-sm text-gray-500">{patient.phone}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
-                            {patient.gender}
-                          </span>
-                          {patient.blood_group && (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
-                              {patient.blood_group}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          Age: {patient.age}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(patient.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </Link>
-                          <Link
-                            href={`/hospital/dashboard/patients/${patient.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit Patient"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(patient)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Patient"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
+                      patient={patient}
+                      index={index}
+                      isSelected={selectedPatients.includes(patient.id)}
+                      onSelect={handleSelectPatient}
+                      onDelete={handleDeleteClick}
+                      getGenderColor={getGenderColor}
+                      getBloodGroupColor={getBloodGroupColor}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -585,7 +575,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
             {/* Mobile Cards */}
             <div className="lg:hidden">
               {patients.map((patient, index) => (
-                <motion.div
+                <m.div
                   key={patient.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -653,7 +643,7 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
                       <p className="text-sm text-gray-600 mt-1">Age: {patient.age}</p>
                     </div>
                   </div>
-                </motion.div>
+              </m.div>
               ))}
             </div>
 
@@ -708,262 +698,137 @@ Jane,Smith,25-12-1985,Female,9876543211,jane.smith@example.com,"456 Oak Ave, Tow
         )}
       </div>
 
-      {/* Import CSV Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Import Patients from CSV</h3>
-                <button
-                  onClick={() => {
-                    setShowImportModal(false)
-                    setImportFile(null)
-                    setImportResults(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-
-              {!importResults ? (
-                <>
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-3">
-                      Upload a CSV file with patient data. Required columns: first_name, last_name, phone
-                    </p>
-
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <div className="text-sm text-gray-600">
-                        <label htmlFor="csv-upload" className="cursor-pointer">
-                          <span className="text-blue-600 hover:text-blue-500">Click to upload</span>
-                          <span> or drag and drop</span>
-                          <input
-                            id="csv-upload"
-                            type="file"
-                            accept=".csv"
-                            className="sr-only"
-                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                          />
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">CSV files only</p>
-                    </div>
-
-                    {importFile && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          Selected: {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-4">
-                    <button
-                      onClick={() => downloadTemplate()}
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                    >
-                      <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
-                      Download CSV Template
-                    </button>
-                  </div>
-
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => {
-                        setShowImportModal(false)
-                        setImportFile(null)
-                      }}
-                      disabled={importing}
-                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleImport}
-                      disabled={!importFile || importing}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
-                    >
-                      {importing ? (
-                        <>
-                          <LoadingSpinner size="sm" />
-                          <span className="ml-2">Importing...</span>
-                        </>
-                      ) : (
-                        'Import Patients'
-                      )}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <div className="text-center">
-                      <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                        <CloudArrowUpIcon className="h-6 w-6 text-green-600" />
-                      </div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">Import Complete</h4>
-                      <div className="space-y-2">
-                        <p className="text-sm text-green-600">
-                          ✅ {importResults.success} patients imported successfully
-                        </p>
-                        {importResults.failed > 0 && (
-                          <p className="text-sm text-red-600">
-                            ❌ {importResults.failed} patients failed to import
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {importResults.errors.length > 0 && (
-                      <div className="mt-4 p-3 bg-red-50 rounded-lg">
-                        <h5 className="text-sm font-medium text-red-800 mb-2">Errors:</h5>
-                        <ul className="text-xs text-red-700 space-y-1">
-                          {importResults.errors.slice(0, 5).map((error, index) => (
-                            <li key={index}>• {error}</li>
-                          ))}
-                          {importResults.errors.length > 5 && (
-                            <li>• ... and {importResults.errors.length - 5} more errors</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setShowImportModal(false)
-                      setImportFile(null)
-                      setImportResults(null)
-                      fetchPatients() // Refresh the list
-                    }}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700"
-                  >
-                    Close
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Import CSV Modal - Refactored for performance */}
+      <ImportPatientsModal 
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImport}
+        importFile={importFile}
+        setImportFile={setImportFile}
+        importing={importing}
+        importResults={importResults}
+        setImportResults={setImportResults}
+      />
 
       {/* Delete Confirmation Modal */}
-      {deleteModal.show && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mt-4">
-                Delete Patient
-              </h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  Are you sure you want to delete{' '}
-                  <span className="font-medium text-gray-900">
-                    {deleteModal.patient?.full_name}
-                  </span>
-                  ? This action cannot be undone and will permanently remove all patient data including:
-                </p>
-                <ul className="text-sm text-gray-500 mt-2 text-left list-disc list-inside">
-                  <li>Personal information</li>
-                  <li>Medical history</li>
-                  <li>Appointment records</li>
-                  <li>AI diagnoses</li>
-                  <li>Medical records</li>
-                </ul>
-              </div>
-              <div className="items-center px-4 py-3">
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleDeleteCancel}
-                    disabled={deleting}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteConfirm}
-                    disabled={deleting}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {deleting ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span className="ml-2">Deleting...</span>
-                      </>
-                    ) : (
-                      'Delete Patient'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeletePatientModal 
+        isOpen={deleteModal.show}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        patientName={deleteModal.patient?.full_name || ''}
+        deleting={deleting}
+      />
 
       {/* Bulk Delete Confirmation Modal */}
-      {bulkDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mt-4">
-                Delete Multiple Patients
-              </h3>
-              <div className="mt-2 px-7 py-3">
-                <p className="text-sm text-gray-500">
-                  Are you sure you want to delete{' '}
-                  <span className="font-medium text-gray-900">
-                    {selectedPatients.length} patient(s)
-                  </span>
-                  ? This action cannot be undone and will permanently remove all data for these patients including:
-                </p>
-                <ul className="text-sm text-gray-500 mt-2 text-left list-disc list-inside">
-                  <li>Personal information</li>
-                  <li>Medical history</li>
-                  <li>Appointment records</li>
-                  <li>AI diagnoses</li>
-                  <li>Medical records</li>
-                </ul>
-              </div>
-              <div className="items-center px-4 py-3">
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleBulkDeleteCancel}
-                    disabled={bulkDeleting}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleBulkDeleteConfirm}
-                    disabled={bulkDeleting}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {bulkDeleting ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span className="ml-2">Deleting...</span>
-                      </>
-                    ) : (
-                      `Delete ${selectedPatients.length} Patient(s)`
-                    )}
-                  </button>
-                </div>
-              </div>
+      <BulkDeleteModal 
+        isOpen={bulkDeleteModal}
+        onClose={handleBulkDeleteCancel}
+        onConfirm={handleBulkDeleteConfirm}
+        selectedCount={selectedPatients.length}
+        deleting={bulkDeleting}
+      />
+    </div>
+    </LazyMotion>
+  )
+}
+
+// Memoized Row component to prevent unnecessary re-renders
+const PatientRow = memo(({ 
+  patient, 
+  index, 
+  isSelected, 
+  onSelect, 
+  onDelete, 
+  getGenderColor, 
+  getBloodGroupColor 
+}: { 
+  patient: any; 
+  index: number; 
+  isSelected: boolean; 
+  onSelect: (id: number) => void; 
+  onDelete: (p: any) => void;
+  getGenderColor: (g: string) => string;
+  getBloodGroupColor: (bg: string) => string;
+}) => {
+  return (
+    <m.tr
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.1, delay: Math.min(index * 0.02, 0.2) }}
+      className="hover:bg-gray-50 transition-colors"
+    >
+      <td className="px-6 py-4 whitespace-nowrap">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onSelect(patient.id)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <UserIcon className="h-6 w-6 text-blue-600" />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {patient.full_name}
+            </div>
+            <div className="text-sm text-gray-500 font-mono text-xs">
+              ID: {patient.patient_id}
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        <div className="text-gray-900">{patient.email}</div>
+        <div className="text-gray-500">{patient.phone}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center space-x-2">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGenderColor(patient.gender)}`}>
+            {patient.gender}
+          </span>
+          {patient.blood_group && (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBloodGroupColor(patient.blood_group)}`}>
+              {patient.blood_group}
+            </span>
+          )}
+        </div>
+        <div className="text-sm text-gray-500 mt-1">
+          Age: {patient.age}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {new Date(patient.created_at).toLocaleDateString()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end space-x-2">
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}`}
+            className="text-blue-600 hover:text-blue-900 transition-colors"
+            title="View Details"
+          >
+            <EyeIcon className="h-5 w-5" />
+          </Link>
+          <Link
+            href={`/hospital/dashboard/patients/${patient.id}/edit`}
+            className="text-green-600 hover:text-green-900 transition-colors"
+            title="Edit Patient"
+          >
+            <PencilIcon className="h-5 w-5" />
+          </Link>
+          <button
+            onClick={() => onDelete(patient)}
+            className="text-red-600 hover:text-red-900 transition-colors"
+            title="Delete Patient"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </td>
+    </m.tr>
   )
-}
+})
+
+PatientRow.displayName = 'PatientRow'

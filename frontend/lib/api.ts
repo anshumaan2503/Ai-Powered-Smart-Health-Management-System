@@ -212,6 +212,12 @@ export const adminAPI = {
   getSubscriptions: () => api.get('/admin/subscriptions'),
   upgradeSubscription: (id: number, data: any) =>
     api.put(`/admin/subscriptions/${id}/upgrade`, data),
+  upgradeHospitalSubscription: (hospitalId: number, data: any) =>
+    api.put(`/admin/hospitals/${hospitalId}/upgrade`, data),
+  deleteSubscription: (id: number) =>
+    api.delete(`/admin/subscriptions/${id}`),
+  syncAllSubscriptions: () =>
+    api.post('/admin/subscriptions/sync-all'),
 
   // Settings
   getSettings: () => api.get('/admin/settings'),
@@ -248,4 +254,12 @@ export const hospitalAPI = {
   importPatients: (data: FormData) => api.post('/hospital/patients/import', data),
   addSamplePatients: () => api.post('/hospital/patients/add-sample-data'),
   getPatients: (params?: any) => api.get('/hospital/patients', { params }),
+  bulkDeletePatients: (patientIds: number[]) => api.post('/hospital/patients/bulk-delete', { patient_ids: patientIds }),
+}
+
+export const paymentsAPI = {
+  createOrder: (amount: number, paymentType: string, referenceId?: string | number) =>
+    api.post('/payments/create-order', { amount, payment_type: paymentType, reference_id: referenceId }),
+  verifyPayment: (data: any) =>
+    api.post('/payments/verify-payment', data),
 }

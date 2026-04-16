@@ -65,7 +65,7 @@ def create_appointment():
             priority=data.get('priority', 'normal'),
             estimated_duration=data.get('estimated_duration', 30),
             consultation_fee=doctor.consultation_fee,
-            status='requested',
+            status=data.get('status', 'requested'),
             hospital_id=doctor.hospital_id
         )
 
@@ -99,24 +99,27 @@ def get_appointments():
         date_to = request.args.get('date_to')
         
         query = Appointment.query.options(
-            joinedload(Appointment.patient),
+            joinedload(Appointment.patient).joinedload(Patient.user),
             joinedload(Appointment.doctor).joinedload(Doctor.user),
             joinedload(Appointment.hospital)
         )
         
         # ✅ Role-based auto-filtering
+        # Get current user with their profile in one go to avoid extra DB roundtrips
         current_identity = get_jwt_identity()
-        user = User.query.get(int(current_identity))
+        user = User.query.options(
+            joinedload(User.patient_profile),
+            joinedload(User.doctor_profile)
+        ).get(int(current_identity))
         
         if user:
-            if user.role == 'patient':
-                patient = Patient.query.filter_by(user_id=user.id).first()
-                if patient:
-                    query = query.filter(Appointment.patient_id == patient.id)
-            elif user.role == 'doctor':
-                doctor = Doctor.query.filter_by(user_id=user.id).first()
-                if doctor:
-                    query = query.filter(Appointment.doctor_id == doctor.id)
+            if user.role == 'patient' and user.patient_profile:
+                # Handle backref being a list or scalar
+                patient = user.patient_profile[0] if isinstance(user.patient_profile, list) else user.patient_profile
+                query = query.filter(Appointment.patient_id == patient.id)
+            elif user.role == 'doctor' and user.doctor_profile:
+                doctor = user.doctor_profile[0] if isinstance(user.doctor_profile, list) else user.doctor_profile
+                query = query.filter(Appointment.doctor_id == doctor.id)
             elif user.role in ['admin', 'receptionist', 'nurse']:
                 if user.hospital_id:
                     query = query.filter(Appointment.hospital_id == user.hospital_id)
@@ -130,6 +133,8 @@ def get_appointments():
         
         if patient_id and user.role != 'patient': # Prevent bypassing patient filter
             query = query.filter(Appointment.patient_id == patient_id)
+
+        if date_from:
             try:
                 date_from_obj = datetime.fromisoformat(date_from)
                 query = query.filter(Appointment.appointment_date >= date_from_obj)
@@ -182,6 +187,41 @@ def update_appointment(appointment_id):
             'appointment': appointment.to_dict()
         }), 200
         
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@appointments_bp.route('/<int:appointment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_appointment(appointment_id):
+    """Delete an appointment"""
+    try:
+        appointment = Appointment.query.get(appointment_id)
+        if not appointment:
+            return jsonify({'error': 'Appointment not found'}), 404
+
+        current_identity = get_jwt_identity()
+        user = User.query.get(int(current_identity))
+
+        # Check permission: Patient can only delete their own appointments
+        if user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=user.id).first()
+            if not patient or appointment.patient_id != patient.id:
+                return jsonify({'error': 'Access denied'}), 403
+            
+            # Additional safety: patients can only delete 'awaiting_payment' or 'requested'
+            if appointment.status not in ['awaiting_payment', 'requested', 'cancelled']:
+                 return jsonify({'error': 'Cannot delete confirmed or completed appointments. Please contact the hospital.'}), 400
+        
+        # Admin can delete any (already handled in hospital_appointments but good to have here too)
+        elif user.role != 'admin' and appointment.hospital_id != user.hospital_id:
+             return jsonify({'error': 'Access denied'}), 403
+
+        db.session.delete(appointment)
+        db.session.commit()
+
+        return jsonify({'message': 'Appointment deleted successfully'}), 200
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

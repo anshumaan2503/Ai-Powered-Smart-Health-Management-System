@@ -11,11 +11,9 @@ from datetime import datetime, timedelta
 import base64
 from io import BytesIO
 
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
+# AI library will be imported lazily to prevent startup crashes
+GEMINI_AVAILABLE = True 
+genai = None
 
 try:
     from PIL import Image
@@ -44,11 +42,22 @@ class PrescriptionAnalyzer:
     """AI-powered prescription analysis service"""
     
     def __init__(self):
+        global genai, GEMINI_AVAILABLE
         self.api_key = os.getenv('GEMINI_API_KEY')
         self.model = None
         self.init_error = None
         
-        if GEMINI_AVAILABLE and self.api_key:
+        # Lazy import to prevent server crash during startup if library is broken
+        if genai is None:
+            try:
+                import google.generativeai as genai_lib
+                genai = genai_lib
+                GEMINI_AVAILABLE = True
+            except Exception as e:
+                GEMINI_AVAILABLE = False
+                self.init_error = f"Gemini library error: {str(e)}"
+        
+        if GEMINI_AVAILABLE and self.api_key and self.init_error is None:
             try:
                 genai.configure(api_key=self.api_key)
                 self.model = genai.GenerativeModel('gemini-1.5-flash')

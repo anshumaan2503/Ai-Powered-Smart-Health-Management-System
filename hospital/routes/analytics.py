@@ -326,24 +326,21 @@ def get_patients_analytics():
         
         hospital_id = user.hospital_id
         
-        # Age groups - Optimized with CASE in SQL
-        age_stats = db.session.query(
-            db.case(
-                (extract('year', func.age(Patient.date_of_birth)) <= 18, '0-18'),
-                (extract('year', func.age(Patient.date_of_birth)) <= 35, '19-35'),
-                (extract('year', func.age(Patient.date_of_birth)) <= 50, '36-50'),
-                (extract('year', func.age(Patient.date_of_birth)) <= 65, '51-65'),
-                else_='65+'
-            ).label('age_group'),
-            func.count(Patient.id)
-        ).filter_by(hospital_id=hospital_id).group_by('age_group').all()
+        # Age groups - Use Python processing for compatibility with SQLite/Postgres
+        patients_dob = db.session.query(Patient.date_of_birth).filter_by(hospital_id=hospital_id).all()
+        age_map = {'0-18': 0, '19-35': 0, '36-50': 0, '51-65': 0, '65+': 0}
+        today = date.today()
         
-        age_map = {
-            '0-18': 0, '19-35': 0, '36-50': 0, '51-65': 0, '65+': 0
-        }
-        for group, count in age_stats:
-            if group in age_map:
-                age_map[group] = count
+        for dob_row in patients_dob:
+            dob = dob_row[0]
+            if dob:
+                # Calculate age accurately
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                if age <= 18: age_map['0-18'] += 1
+                elif age <= 35: age_map['19-35'] += 1
+                elif age <= 50: age_map['36-50'] += 1
+                elif age <= 65: age_map['51-65'] += 1
+                else: age_map['65+'] += 1
                 
         age_groups_data = [
             {'group': group, 'count': count}
@@ -417,7 +414,7 @@ def get_patients_analytics():
         ]
         
         # If no data, return fake data
-        if total_patients == 0:
+        if total_patients_count == 0:
             age_groups_data = [
                 {'group': '0-18', 'count': 85},
                 {'group': '19-35', 'count': 120},

@@ -8,16 +8,16 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    phone = db.Column(db.String(15))
-    role = db.Column(db.String(20), nullable=False)  # admin, doctor, nurse, receptionist, patient
+    first_name = db.Column(db.String(50), nullable=False, index=True)
+    last_name = db.Column(db.String(50), nullable=False, index=True)
+    phone = db.Column(db.String(15), index=True)
+    role = db.Column(db.String(20), nullable=False, index=True)  # admin, doctor, nurse, receptionist, patient
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), index=True)
     
     def set_password(self, password):
         """Hash and set password"""
