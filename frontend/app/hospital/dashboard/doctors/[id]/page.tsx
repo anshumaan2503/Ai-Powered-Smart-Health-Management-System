@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { hospitalAPI } from '@/lib/api'
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -52,34 +53,18 @@ export default function DoctorViewPage() {
 
   const fetchDoctor = async () => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('No access token found')
-        return
-      }
+      const response = await hospitalAPI.getStaff()
+      const foundDoctor = response.data.staff.find((s: Doctor) => s.id === parseInt(params.id as string))
 
-      const response = await fetch(`http://localhost:5000/api/hospital/staff`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch doctor')
-      }
-
-      const data = await response.json()
-      const foundDoctor = data.staff.find((s: Doctor) => s.id === parseInt(params.id as string))
-      
       if (!foundDoctor) {
         setError('Doctor not found')
         return
       }
 
       setDoctor(foundDoctor)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load doctor')
+    } catch (err: any) {
+      console.error('Fetch doctor error:', err)
+      setError(err.response?.data?.error || err.message || 'Failed to load doctor')
     } finally {
       setLoading(false)
     }
@@ -196,11 +181,10 @@ export default function DoctorViewPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
-                  doctor.is_active 
-                    ? 'bg-green-100 text-green-800' 
+                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${doctor.is_active
+                    ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
-                }`}>
+                  }`}>
                   {doctor.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>

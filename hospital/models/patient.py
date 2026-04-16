@@ -15,7 +15,7 @@ class Patient(db.Model):
     emergency_contact_phone = db.Column(db.String(15))
     medical_history = db.Column(db.Text)
     allergies = db.Column(db.Text)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'), index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -29,6 +29,26 @@ class Patient(db.Model):
             today = date.today()
             return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
         return None
+
+    @property
+    def full_name(self):
+        return self.user.full_name if self.user else ''
+
+    @property
+    def email(self):
+        return self.user.email if self.user else ''
+
+    @property
+    def phone(self):
+        return self.user.phone if self.user else ''
+
+    @property
+    def first_name(self):
+        return self.user.first_name if self.user else ''
+
+    @property
+    def last_name(self):
+        return self.user.last_name if self.user else ''
     
     def to_dict(self):
         return {
@@ -45,6 +65,11 @@ class Patient(db.Model):
             'medical_history': self.medical_history,
             'allergies': self.allergies,
             'hospital_id': self.hospital_id,
+            'first_name': self.user.first_name if self.user else '',
+            'last_name': self.user.last_name if self.user else '',
+            'full_name': self.user.full_name if self.user else '',
+            'email': self.user.email if self.user else '',
+            'phone': self.user.phone if self.user else '',
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -40,12 +40,17 @@ def register_hospital():
             return jsonify({'error': 'Email already registered'}), 409
         
         # Create hospital
+        # Handle empty string or None for license_number
+        license_num = data.get('license_number')
+        if not license_num: # This triggers on both None and empty string
+            license_num = f"LIC{str(uuid.uuid4())[:8].upper()}"
+            
         hospital = Hospital(
             name=data['hospital_name'],
             address=data['hospital_address'],
             phone=data['hospital_phone'],
             email=data.get('hospital_email', data['admin_email']),
-            license_number=data.get('license_number', f"LIC{str(uuid.uuid4())[:8].upper()}")
+            license_number=license_num
         )
         
         db.session.add(hospital)
@@ -97,8 +102,11 @@ def hospital_login():
     try:
         data = request.get_json()
         
-        # Get login identifier (email or username)
+        # Get login identifier (email or username) and strip/lower it
         login_identifier = data.get('email') or data.get('username')
+        if login_identifier:
+            login_identifier = login_identifier.strip().lower()
+            
         password = data.get('password')
         
         if not login_identifier or not password:
@@ -107,17 +115,28 @@ def hospital_login():
         # Find user by email
         user = User.query.filter_by(email=login_identifier).first()
         
+        print(f"DEBUG LOGIN: identifier='{login_identifier}', user_found={user is not None}")
+        
         # If not found by email and it looks like a username, try username lookup
         if not user and '@' not in login_identifier:
             # For demo purposes, allow simple username login
             if login_identifier.lower() == 'admin':
                 user = User.query.filter_by(role='admin').first()
+                print(f"DEBUG LOGIN: matched username 'admin', user_id={user.id if user else 'None'}")
         
         if not user or not user.check_password(password):
+            if user:
+                print(f"DEBUG LOGIN: password check FAILED for user_id={user.id}")
+            else:
+                print(f"DEBUG LOGIN: user NOT FOUND")
             return jsonify({'error': 'Invalid credentials'}), 401
+            
+        print(f"DEBUG LOGIN: login SUCCESS for user_id={user.id}")
         
+        # Auto-reactivate account if it was deactivated
         if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
+            user.is_active = True
+            db.session.commit()
         
         # Check hospital subscription status
         if user.hospital_id:
@@ -225,7 +244,19 @@ def get_subscription_status():
 def get_all_hospitals():
     """Get all active hospitals for patient dashboard"""
     try:
-        # Filter out deleted hospitals (those with [DELETED] in name) and inactive hospitals
+        from sqlalchemy import func
+        # Get hospitals and doctor counts in a single query
+        # Join Hospital with User (filtered for doctors) to get counts
+        doctor_counts = db.session.query(
+            User.hospital_id,
+            func.count(User.id).label('count')
+        ).filter(
+            User.role == 'doctor',
+            User.is_active == True
+        ).group_by(User.hospital_id).all()
+        
+        doctor_counts_map = {h_id: count for h_id, count in doctor_counts if h_id}
+        
         hospitals = Hospital.query.filter(
             Hospital.is_active == True,
             ~Hospital.name.like('%[DELETED]%')
@@ -233,19 +264,12 @@ def get_all_hospitals():
         
         hospitals_data = []
         for hospital in hospitals:
-            # Skip hospitals with [DELETED] in name as extra safety check
+            # Skip hospitals with [DELETED] in name (already filtered but just in case)
             if '[DELETED]' in hospital.name:
                 continue
                 
-            # Get doctor count for this hospital
-            doctor_count = User.query.filter_by(
-                hospital_id=hospital.id, 
-                role='doctor', 
-                is_active=True
-            ).count()
-            
             hospital_data = hospital.to_dict()
-            hospital_data['total_doctors'] = doctor_count
+            hospital_data['total_doctors'] = doctor_counts_map.get(hospital.id, 0)
             hospital_data['rating'] = 4.5  # Mock rating
             hospital_data['specializations'] = ['General Medicine', 'Cardiology', 'Neurology']  # Mock specializations
             
@@ -317,8 +341,8 @@ def get_hospital_doctors(hospital_id):
             doctor_data['name'] = user.full_name
             doctor_data['email'] = user.email
             doctor_data['phone'] = user.phone
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)  # Dynamic fee based on experience
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))  # Rating based on experience
@@ -328,7 +352,7 @@ def get_hospital_doctors(hospital_id):
         return jsonify({
             'success': True,
             'doctors': doctors_data,
-            'hospital_name': hospital.name,
+            'hospital': hospital.to_dict(),
             'total': len(doctors_data)
         }), 200
         
@@ -368,8 +392,8 @@ def get_all_doctors():
             doctor_data['phone'] = user.phone
             doctor_data['hospital_name'] = hospital.name
             doctor_data['hospital_id'] = hospital.id
-            # Add mock data for patient view
-            doctor_data['consultation_fee'] = 150 + (doctor.experience_years * 10)
+            # Use actual consultation fee from doctor profile
+            doctor_data['consultation_fee'] = doctor.consultation_fee
             doctor_data['available_days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
             doctor_data['available_times'] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
             doctor_data['rating'] = min(5.0, 4.0 + (doctor.experience_years * 0.05))

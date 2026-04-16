@@ -29,6 +29,9 @@ import {
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
+import { api } from '@/lib/api'
+import { processPayment } from '@/lib/razorpay-service'
+
 export default function SubscriptionPage() {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null)
   const [hospitalData, setHospitalData] = useState<any>(null)
@@ -38,11 +41,31 @@ export default function SubscriptionPage() {
 
   const plans = [
     {
+      id: 'trial',
+      name: 'Trial',
+      subtitle: 'Basic health tech experience',
+      monthlyPrice: 0,
+      annualPrice: 0,
+      description: 'Experience core features for a limited time',
+      limits: {
+        patients: 10,
+        doctors: 1,
+        storage: 1
+      },
+      features: [
+        { name: 'Appointment scheduling', included: true },
+        { name: 'Patient records', included: true },
+        { name: 'Email support', included: true },
+        { name: 'Basic billing', included: false },
+        { name: 'Mobile app', included: false }
+      ]
+    },
+    {
       id: 'basic',
       name: 'Basic',
       subtitle: 'Perfect for small clinics',
-      monthlyPrice: 1999,
-      annualPrice: Math.round(1999 * 12 * 0.8),
+      monthlyPrice: 2999,
+      annualPrice: Math.round(2999 * 12 * 0.8),
       description: 'Essential features for small healthcare practices',
       limits: {
         patients: 25,
@@ -66,8 +89,8 @@ export default function SubscriptionPage() {
       id: 'standard',
       name: 'Standard',
       subtitle: 'Best for growing hospitals',
-      monthlyPrice: 3999,
-      annualPrice: Math.round(3999 * 12 * 0.8),
+      monthlyPrice: 7499,
+      annualPrice: Math.round(7499 * 12 * 0.8),
       description: 'Advanced features for mid-size healthcare facilities',
       limits: {
         patients: 100,
@@ -89,11 +112,36 @@ export default function SubscriptionPage() {
       popular: true
     },
     {
+      id: 'premium',
+      name: 'Premium',
+      subtitle: 'Premium healthcare solution',
+      monthlyPrice: 12999,
+      annualPrice: Math.round(12999 * 12 * 0.8),
+      description: 'High-end features for specialized medical centers',
+      limits: {
+        patients: 200,
+        doctors: 25,
+        storage: 100
+      },
+      features: [
+        { name: 'All Standard features', included: true },
+        { name: 'Advanced analytics', included: true },
+        { name: 'Custom reports', included: true },
+        { name: 'API access', included: true },
+        { name: 'Priority support', included: true },
+        { name: 'WhatsApp notifications', included: true },
+        { name: 'Patient portal', included: true },
+        { name: 'Inventory management', included: true },
+        { name: 'Cloud backup', included: true },
+        { name: '24/7 support', included: true }
+      ]
+    },
+    {
       id: 'enterprise',
       name: 'Enterprise',
       subtitle: 'For large hospital networks',
-      monthlyPrice: 9999,
-      annualPrice: Math.round(9999 * 12 * 0.8),
+      monthlyPrice: 17999,
+      annualPrice: Math.round(17999 * 12 * 0.8),
       description: 'Complete solution for large healthcare organizations',
       limits: {
         patients: -1, // Unlimited
@@ -121,54 +169,30 @@ export default function SubscriptionPage() {
 
   const loadSubscriptionData = async () => {
     try {
-      // Load from localStorage first
-      const hospital = localStorage.getItem('hospital')
-      const subscription = localStorage.getItem('subscription')
+      // 1. Fetch Subscription & Usage Data from Backend
+      // Added timestamp to bust cache
+      const subResponse = await api.get(`/subscription?t=${new Date().getTime()}`)
       
-      if (hospital) setHospitalData(JSON.parse(hospital))
-      if (subscription) setCurrentSubscription(JSON.parse(subscription))
-
-      // Load usage statistics
-      const token = localStorage.getItem('hospital_access_token')
-      if (token) {
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      if (subResponse.data?.subscription) {
+        const sub = subResponse.data.subscription
+        setCurrentSubscription(sub)
+        localStorage.setItem('subscription', JSON.stringify(sub)) 
+        
+        // Use stats from backend
+        if (subResponse.data.usage_stats) {
+          const usage = {
+            patients: subResponse.data.usage_stats.patients?.current || 0,
+            doctors: subResponse.data.usage_stats.doctors?.current || 0,
+            staff: subResponse.data.usage_stats.staff?.current || 0,
+            monthly_appointments: subResponse.data.usage_stats.monthly_appointments || 0,
+            storage_used_gb: subResponse.data.usage_stats.storage_used_gb || 0
+          }
+          setUsageStats(usage)
         }
-
-        // Get usage stats from backend
-        const [patientsRes, doctorsRes, staffRes] = await Promise.all([
-          fetch('http://localhost:5000/api/hospital/patients?per_page=1', { headers }),
-          fetch('http://localhost:5000/api/hospital/staff?role=doctor', { headers }),
-          fetch('http://localhost:5000/api/hospital/staff', { headers })
-        ])
-
-        const usage = {
-          patients: 0,
-          doctors: 0,
-          staff: 0
-        }
-
-        if (patientsRes.ok) {
-          const patientsData = await patientsRes.json()
-          usage.patients = patientsData.total || 0
-        }
-
-        if (doctorsRes.ok) {
-          const doctorsData = await doctorsRes.json()
-          usage.doctors = doctorsData.staff?.length || 0
-        }
-
-        if (staffRes.ok) {
-          const staffData = await staffRes.json()
-          usage.staff = staffData.staff?.length || 0
-        }
-
-        setUsageStats(usage)
       }
-
     } catch (error) {
       console.error('Error loading subscription data:', error)
+      // Optional: Set some default data or show error state within the page instead of crashing
     } finally {
       setLoading(false)
     }
@@ -194,13 +218,51 @@ export default function SubscriptionPage() {
   }
 
   const getCurrentPlan = () => {
-    if (!currentSubscription) return plans[0] // Default to Basic
-    return plans.find(plan => plan.id === currentSubscription.plan_name) || plans[0]
+    if (!currentSubscription || !currentSubscription.plan_name) return plans[0]
+    const planName = currentSubscription.plan_name.toLowerCase()
+    return plans.find(plan => plan.id.toLowerCase() === planName) || plans[0]
   }
 
-  const handleUpgrade = (planId: string) => {
-    // In a real app, this would integrate with payment gateway
-    alert(`Upgrade to ${planId} plan - Payment integration would be implemented here`)
+  const isCurrentPlanSelected = (planId: string) => {
+    if (!currentSubscription || !currentSubscription.plan_name) return false
+    return currentSubscription.plan_name.toLowerCase() === planId.toLowerCase()
+  }
+
+  const handleUpgrade = async (planId: string) => {
+    try {
+      const plan = plans.find(p => p.id === planId)
+      if (!plan) return
+
+      const price = isAnnual ? plan.annualPrice : plan.monthlyPrice
+      
+      if (price === 0) {
+        // Handle free/trial upgrade directly
+        const response = await api.post('/subscription/upgrade', {
+          plan_name: planId,
+          billing_cycle: isAnnual ? 'annual' : 'monthly'
+        })
+        if (response.data.subscription) {
+          setCurrentSubscription(response.data.subscription)
+          alert(`Successfully activated ${planId} plan!`)
+          loadSubscriptionData()
+        }
+        return
+      }
+
+      // Process payment
+      processPayment({
+        amount: price,
+        paymentType: 'subscription',
+        referenceId: planId,
+        onSuccess: () => {
+          loadSubscriptionData()
+        }
+      })
+    } catch (error: any) {
+      console.error('Error upgrading subscription:', error)
+      const errorMsg = error.response?.data?.error || 'Failed to initiate upgrade.'
+      alert(`Error: ${errorMsg}`)
+    }
   }
 
   if (loading) {
@@ -262,7 +324,7 @@ export default function SubscriptionPage() {
           {/* Usage Statistics */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-900">Usage Statistics</h4>
-            
+
             {usageStats && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Patients Usage */}
@@ -276,20 +338,18 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.patients !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 70 
-                                ? 'bg-yellow-500' 
-                                : 'bg-green-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 90
+                            ? 'bg-red-500'
+                            : getUsagePercentage(usageStats.patients, currentPlan.limits.patients) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                            }`}
                           style={{ width: `${getUsagePercentage(usageStats.patients, currentPlan.limits.patients)}%` }}
                         />
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        getUsageColor(getUsagePercentage(usageStats.patients, currentPlan.limits.patients))
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getUsageColor(getUsagePercentage(usageStats.patients, currentPlan.limits.patients))
+                        }`}>
                         {getUsagePercentage(usageStats.patients, currentPlan.limits.patients).toFixed(0)}% used
                       </span>
                     </>
@@ -307,20 +367,18 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.doctors !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 90 
-                              ? 'bg-red-500' 
-                              : getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 70 
-                                ? 'bg-yellow-500' 
-                                : 'bg-green-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full ${getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 90
+                            ? 'bg-red-500'
+                            : getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors) >= 70
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                            }`}
                           style={{ width: `${getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors)}%` }}
                         />
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        getUsageColor(getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors))
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getUsageColor(getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors))
+                        }`}>
                         {getUsagePercentage(usageStats.doctors, currentPlan.limits.doctors).toFixed(0)}% used
                       </span>
                     </>
@@ -338,7 +396,7 @@ export default function SubscriptionPage() {
                   {currentPlan.limits.storage !== -1 && (
                     <>
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
+                        <div
                           className="h-2 rounded-full bg-blue-500"
                           style={{ width: `${(2.3 / currentPlan.limits.storage) * 100}%` }}
                         />
@@ -411,7 +469,7 @@ export default function SubscriptionPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <Link 
+              <Link
                 href="/pricing"
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-center block"
               >
@@ -436,7 +494,7 @@ export default function SubscriptionPage() {
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Available Plans</h2>
           <p className="text-gray-600">Choose the plan that best fits your hospital's needs</p>
-          
+
           {/* Annual/Monthly Toggle */}
           <div className="flex items-center justify-center mt-6">
             <span className={`text-sm ${!isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
@@ -444,14 +502,12 @@ export default function SubscriptionPage() {
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
-              className={`mx-3 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isAnnual ? 'bg-blue-600' : 'bg-gray-200'
-              }`}
+              className={`mx-3 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAnnual ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isAnnual ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className={`text-sm ${isAnnual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
@@ -467,22 +523,21 @@ export default function SubscriptionPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
-            const isCurrentPlan = plan.id === currentPlan.id
+            const isCurrentPlan = isCurrentPlanSelected(plan.id)
             const price = isAnnual ? plan.annualPrice : plan.monthlyPrice
-            
+
             return (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`relative bg-white rounded-xl border-2 p-6 ${
-                  isCurrentPlan 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : plan.popular 
-                      ? 'border-purple-200 shadow-lg' 
-                      : 'border-gray-200'
-                } hover:shadow-lg transition-all`}
+                className={`relative bg-white rounded-xl border-2 p-6 ${isCurrentPlan
+                  ? 'border-blue-500 bg-blue-50'
+                  : plan.popular
+                    ? 'border-purple-200 shadow-lg'
+                    : 'border-gray-200'
+                  } hover:shadow-lg transition-all`}
               >
                 {plan.popular && !isCurrentPlan && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -505,7 +560,7 @@ export default function SubscriptionPage() {
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                   <p className="text-sm text-gray-600 mb-4">{plan.subtitle}</p>
-                  
+
                   <div className="mb-4">
                     <div className="text-3xl font-bold text-gray-900">
                       {formatPrice(price)}
@@ -536,11 +591,10 @@ export default function SubscriptionPage() {
                   <ul className="space-y-2">
                     {plan.features.slice(0, 5).map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center text-sm">
-                        <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mr-3 ${
-                          feature.included 
-                            ? 'bg-green-100 text-green-600' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mr-3 ${feature.included
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-gray-100 text-gray-400'
+                          }`}>
                           {feature.included ? (
                             <CheckIcon className="h-3 w-3" />
                           ) : (
@@ -564,13 +618,12 @@ export default function SubscriptionPage() {
                 <button
                   onClick={() => handleUpgrade(plan.id)}
                   disabled={isCurrentPlan}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${
-                    isCurrentPlan
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : plan.popular
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
-                  }`}
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${isCurrentPlan
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : plan.popular
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
+                    }`}
                 >
                   {isCurrentPlan ? 'Current Plan' : 'Upgrade to ' + plan.name}
                 </button>

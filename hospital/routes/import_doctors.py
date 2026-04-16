@@ -19,7 +19,12 @@ def import_doctors():
     """Import doctors from CSV/Excel file"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404
@@ -173,8 +178,15 @@ def import_doctors():
         }), 201
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': error_trace,
+            'message': 'Internal Server Error during doctor import'
+        }), 500
 
 @import_doctors_bp.route('/import-staff', methods=['POST'])
 @jwt_required()
@@ -182,7 +194,12 @@ def import_staff():
     """Import staff from CSV/Excel file"""
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = None
+        try:
+            user = User.query.get(int(current_user_id))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user_id))
         
         if not user or not user.hospital_id:
             return jsonify({'error': 'User not associated with any hospital'}), 404
@@ -298,8 +315,15 @@ def import_staff():
         }), 201
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': error_trace,
+            'message': 'Internal Server Error during staff import'
+        }), 500
 
 @import_doctors_bp.route('/import-staff-template', methods=['GET'])
 @jwt_required()

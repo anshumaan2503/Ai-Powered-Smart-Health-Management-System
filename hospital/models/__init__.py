@@ -8,8 +8,11 @@ from .medical_record import MedicalRecord
 from .prescription import Prescription
 from .ai_diagnosis import AIDiagnosis
 from .medicine import Medicine, StockMovement
+from .hospital_subscription import HospitalSubscription
+from .payment import Payment
 
 __all__ = [
     'db', 'Hospital', 'User', 'Patient', 'Doctor', 'Appointment', 
-    'MedicalRecord', 'Prescription', 'AIDiagnosis', 'Medicine', 'StockMovement'
+    'MedicalRecord', 'Prescription', 'AIDiagnosis', 'Medicine', 'StockMovement',
+    'HospitalSubscription', 'Payment'
 ]

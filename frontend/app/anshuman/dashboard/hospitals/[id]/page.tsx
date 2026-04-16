@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { adminAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   ArrowLeftIcon,
@@ -22,7 +23,7 @@ export default function HospitalDetailsPage() {
   const [hospital, setHospital] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  
+
   const params = useParams()
   const hospitalId = params.id
 
@@ -32,23 +33,9 @@ export default function HospitalDetailsPage() {
 
   const loadHospital = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch(`http://localhost:5000/api/admin/hospitals/${hospitalId}`, { headers })
-
-      if (response.ok) {
-        const data = await response.json()
-        setHospital(data.hospital)
-      } else {
-        setError('Failed to load hospital details')
-      }
-    } catch (error) {
+      const response = await adminAPI.getHospitalById(Number(hospitalId))
+      setHospital(response.data.hospital)
+    } catch (error: any) {
       console.error('Error loading hospital:', error)
       setError('Error loading hospital details')
     } finally {
@@ -104,7 +91,7 @@ export default function HospitalDetailsPage() {
             <p className="text-gray-600">Hospital Details & Management</p>
           </div>
         </div>
-        
+
         <Link
           href={`/anshuman/dashboard/hospitals/${hospital.id}/edit`}
           className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -135,7 +122,7 @@ export default function HospitalDetailsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Hospital Name</label>
                   <p className="text-gray-900 font-medium">{hospital.name}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                   <div className="flex items-center">
@@ -143,7 +130,7 @@ export default function HospitalDetailsPage() {
                     <p className="text-gray-900">{hospital.email}</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                   <div className="flex items-center">
@@ -163,17 +150,17 @@ export default function HospitalDetailsPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Login</label>
                   <p className="text-gray-900">
-                    {hospital.lastLogin ? 
-                      new Date(hospital.lastLogin).toLocaleDateString() : 
+                    {hospital.lastLogin ?
+                      new Date(hospital.lastLogin).toLocaleDateString() :
                       'Never'
                     }
                   </p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Hospital ID</label>
                   <p className="text-gray-900 font-mono">#{hospital.id}</p>
@@ -193,26 +180,26 @@ export default function HospitalDetailsPage() {
           {/* Statistics */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Hospital Statistics</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <UserGroupIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-gray-900">{hospital.stats?.totalPatients || 0}</div>
                 <div className="text-sm text-gray-600">Total Patients</div>
               </div>
-              
+
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <UserGroupIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-gray-900">{hospital.stats?.totalDoctors || 0}</div>
                 <div className="text-sm text-gray-600">Total Doctors</div>
               </div>
-              
+
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <UserGroupIcon className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-gray-900">{hospital.stats?.totalStaff || 0}</div>
                 <div className="text-sm text-gray-600">Total Staff</div>
               </div>
-              
+
               <div className="text-center p-4 bg-yellow-50 rounded-lg">
                 <ChartBarIcon className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-gray-900">{hospital.stats?.totalAppointments || 0}</div>
@@ -225,7 +212,7 @@ export default function HospitalDetailsPage() {
           {hospital.recentActivity && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent Activity</h2>
-              
+
               <div className="space-y-4">
                 {hospital.recentActivity.patients?.length > 0 && (
                   <div>
@@ -260,11 +247,10 @@ export default function HospitalDetailsPage() {
                             <p className="text-sm text-gray-900">
                               {new Date(appointment.appointment_date).toLocaleDateString()}
                             </p>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                              }`}>
                               {appointment.status}
                             </span>
                           </div>
@@ -283,48 +269,46 @@ export default function HospitalDetailsPage() {
           {/* Subscription Details */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Subscription Details</h3>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Current Plan</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  hospital.subscription?.plan === 'enterprise' ? 'bg-purple-100 text-purple-800' :
-                  hospital.subscription?.plan === 'standard' ? 'bg-green-100 text-green-800' :
-                  hospital.subscription?.plan === 'premium' ? 'bg-blue-100 text-blue-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${hospital.subscription?.plan === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                    hospital.subscription?.plan === 'standard' ? 'bg-green-100 text-green-800' :
+                      hospital.subscription?.plan === 'premium' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                  }`}>
                   {hospital.subscription?.plan || 'trial'}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Status</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  hospital.subscription?.status === 'active' ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${hospital.subscription?.status === 'active' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
                   {hospital.subscription?.status || 'inactive'}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Monthly Fee</span>
                 <span className="text-sm font-semibold text-gray-900">
                   {formatCurrency(hospital.subscription?.monthlyFee || 0)}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Expires</span>
                 <span className="text-sm text-gray-900">
-                  {hospital.subscription?.expiryDate ? 
-                    new Date(hospital.subscription.expiryDate).toLocaleDateString() : 
+                  {hospital.subscription?.expiryDate ?
+                    new Date(hospital.subscription.expiryDate).toLocaleDateString() :
                     'N/A'
                   }
                 </span>
               </div>
             </div>
-            
+
             <Link
               href={`/anshuman/dashboard/subscriptions?hospital=${hospital.id}`}
               className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-center block"
@@ -336,7 +320,7 @@ export default function HospitalDetailsPage() {
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            
+
             <div className="space-y-3">
               <Link
                 href={`/anshuman/dashboard/hospitals/${hospital.id}/edit`}
@@ -345,7 +329,7 @@ export default function HospitalDetailsPage() {
                 <PencilIcon className="h-4 w-4 mr-2" />
                 Edit Hospital
               </Link>
-              
+
               <Link
                 href={`/anshuman/dashboard/subscriptions?hospital=${hospital.id}`}
                 className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -359,7 +343,7 @@ export default function HospitalDetailsPage() {
           {/* Revenue Summary */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Summary</h3>
-            
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Monthly Revenue</span>
@@ -367,7 +351,7 @@ export default function HospitalDetailsPage() {
                   {formatCurrency(hospital.stats?.monthlyRevenue || 0)}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Annual Projection</span>
                 <span className="text-sm font-medium text-gray-900">

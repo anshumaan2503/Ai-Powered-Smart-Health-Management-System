@@ -171,8 +171,8 @@ export default function AdminAccessPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-400 text-xs">
-          <p>Smart Hospital Management System</p>
-          <p>Administrative Control Panel v1.0</p>
+          <p>MediCare Pro - Hospital Management System</p>
+          <p>Super Admin Control Panel v1.0</p>
         </div>
       </motion.div>
     </div>

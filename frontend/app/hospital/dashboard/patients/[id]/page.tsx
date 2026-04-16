@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { patientsAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
-import { 
+import {
   UserIcon,
   ArrowLeftIcon,
   PencilIcon,
@@ -46,7 +47,7 @@ export default function PatientDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [deleteModal, setDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  
+
   const router = useRouter()
   const params = useParams()
   const patientId = params.id
@@ -60,31 +61,16 @@ export default function PatientDetailsPage() {
   const fetchPatient = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      if (!token) {
+      const response = await patientsAPI.getById(Number(patientId))
+      setPatient(response.data.patient)
+    } catch (error: any) {
+      console.error('Error fetching patient:', error)
+      if (error.response?.status === 401) {
         router.push('/hospital/login')
-        return
-      }
-
-      const response = await fetch(`http://localhost:5000/api/patients/${patientId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPatient(data.patient)
       } else {
         toast.error('Failed to load patient details')
         router.push('/hospital/dashboard/patients')
       }
-    } catch (error) {
-      console.error('Error fetching patient:', error)
-      toast.error('Failed to load patient details')
-      router.push('/hospital/dashboard/patients')
     } finally {
       setLoading(false)
     }
@@ -95,26 +81,12 @@ export default function PatientDetailsPage() {
 
     try {
       setDeleting(true)
-      const token = localStorage.getItem('hospital_access_token')
-      
-      const response = await fetch(`http://localhost:5000/api/patients/${patient.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        toast.success('Patient deleted successfully')
-        router.push('/hospital/dashboard/patients')
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to delete patient')
-      }
+      await patientsAPI.delete(patient.id)
+      toast.success('Patient deleted successfully')
+      router.push('/hospital/dashboard/patients')
     } catch (error: any) {
       console.error('Error deleting patient:', error)
-      toast.error('Failed to delete patient')
+      toast.error(error.response?.data?.error || 'Failed to delete patient')
     } finally {
       setDeleting(false)
       setDeleteModal(false)
@@ -122,8 +94,8 @@ export default function PatientDetailsPage() {
   }
 
   const getGenderColor = (gender: string) => {
-    return gender.toLowerCase() === 'male' 
-      ? 'bg-blue-100 text-blue-800' 
+    return gender.toLowerCase() === 'male'
+      ? 'bg-blue-100 text-blue-800'
       : 'bg-pink-100 text-pink-800'
   }
 
@@ -182,7 +154,7 @@ export default function PatientDetailsPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Link
             href={`/hospital/dashboard/patients/${patient.id}/edit`}

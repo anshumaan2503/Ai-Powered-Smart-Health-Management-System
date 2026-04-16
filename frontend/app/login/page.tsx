@@ -7,11 +7,13 @@ import { HeartIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useAuth } from '@/lib/auth-context'
 import toast from 'react-hot-toast'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
@@ -21,8 +23,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Always remember the user (save to localStorage)
-      const success = await login(email, password, true)
+      const success = await login(email, password, rememberMe)
       if (success) {
         toast.success('Login successful!')
         router.push('/patient/dashboard')
@@ -35,27 +36,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      <div className="absolute top-4 right-4">
+        <ThemeToggleButton />
+      </div>
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center">
-            <HeartIcon className="h-12 w-12 text-blue-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">MediCare Pro</span>
+            <HeartIcon className="h-12 w-12 text-blue-600 dark:text-blue-500" />
+            <span className="ml-2 text-2xl font-bold text-gray-900 dark:text-white">MediCare Pro</span>
           </Link>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Welcome back
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Sign in to your account to continue
           </p>
         </div>
 
+        {/* Backend Warning */}
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="text-xl">⚠️</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                First-time login may take up to 30–60 seconds.
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Our backend may be waking up from idle. Please wait — no action is required.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-100 dark:border-gray-700 transition-colors duration-300">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
               <input
@@ -72,7 +93,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -101,10 +122,24 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+
               <div className="text-sm">
                 <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  Forgot your password?
+                  Forgot password?
                 </a>
               </div>
             </div>
@@ -138,13 +173,13 @@ export default function LoginPage() {
             <div className="mt-6 space-y-3">
               <Link
                 href="/hospital/login"
-                className="w-full flex justify-center py-3 px-4 border border-green-300 rounded-lg shadow-sm bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors duration-200"
+                className="w-full flex justify-center py-3 px-4 border border-green-300 dark:border-green-600 rounded-lg shadow-sm bg-green-50 dark:bg-green-900/20 text-sm font-medium text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors duration-200"
               >
                 🏥 Hospital Login
               </Link>
               <Link
                 href="/register"
-                className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                className="w-full flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200"
               >
                 Create Patient Account
               </Link>
@@ -152,22 +187,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Patient Credentials</h3>
-          <div className="text-xs text-blue-700 space-y-2">
-            <div className="font-medium">Sample Patients (Password: 123 for all):</div>
-            <div className="ml-2 grid grid-cols-2 gap-1">
-              <div><strong>arjun@patient.com</strong></div>
-              <div><strong>priya@patient.com</strong></div>
-              <div><strong>rahul@patient.com</strong></div>
-              <div><strong>sneha@patient.com</strong></div>
-              <div><strong>vikram@patient.com</strong></div>
-              <div><strong>anita@patient.com</strong></div>
-            </div>
-            <div className="font-medium mt-2">All patients use password: <strong>123</strong></div>
-          </div>
-        </div>
+
       </div>
     </div>
   )

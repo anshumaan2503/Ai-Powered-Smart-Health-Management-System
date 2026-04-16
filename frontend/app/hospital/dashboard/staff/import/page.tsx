@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { api } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -43,15 +44,15 @@ export default function ImportStaffPage() {
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       ]
-      
-      if (!allowedTypes.includes(selectedFile.type) && 
-          !selectedFile.name.toLowerCase().endsWith('.csv') &&
-          !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
-          !selectedFile.name.toLowerCase().endsWith('.xls')) {
+
+      if (!allowedTypes.includes(selectedFile.type) &&
+        !selectedFile.name.toLowerCase().endsWith('.csv') &&
+        !selectedFile.name.toLowerCase().endsWith('.xlsx') &&
+        !selectedFile.name.toLowerCase().endsWith('.xls')) {
         setError('Please select a CSV or Excel file (.csv, .xlsx, .xls)')
         return
       }
-      
+
       setFile(selectedFile)
       setError('')
     }
@@ -59,30 +60,14 @@ export default function ImportStaffPage() {
 
   const downloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('hospital_access_token')
-      if (!token) {
-        setError('Please login first')
-        return
-      }
+      const response = await api.get('/hospital/import-staff-template')
+      const data = response.data
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-staff-template', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to get template')
-      }
-
-      const data = await response.json()
-      
       // Create CSV content
       const headers = ['first_name', 'last_name', 'role', 'phone']
       const csvContent = [
         headers.join(','),
-        ...data.template.first_name.map((_: any, index: number) => 
+        ...data.template.first_name.map((_: any, index: number) =>
           headers.map(header => data.template[header][index] || '').join(',')
         )
       ].join('\n')
@@ -124,25 +109,15 @@ export default function ImportStaffPage() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:5000/api/hospital/import-staff', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import staff')
-      }
+      const response = await api.post('/hospital/import-staff', formData)
+      const data = response.data
 
       setImportResult(data)
       setSuccess(data.message)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import staff')
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to import staff'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -155,11 +130,11 @@ export default function ImportStaffPage() {
 
   const copyAllCredentials = () => {
     if (!importResult) return
-    
-    const allCredentials = importResult.imported_staff.map(staff => 
+
+    const allCredentials = importResult.imported_staff.map(staff =>
       `Name: ${staff.name}\nEmail: ${staff.email}\nPassword: ${staff.password}\nRole: ${staff.role}`
     ).join('\n\n')
-    
+
     navigator.clipboard.writeText(allCredentials)
   }
 
@@ -214,7 +189,7 @@ export default function ImportStaffPage() {
         </div>
         <div className="mt-4 p-3 bg-blue-100 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Email and password will be automatically generated for each staff member. 
+            <strong>Note:</strong> Email and password will be automatically generated for each staff member.
             All passwords will be set to "123". You can modify them later from the staff member's profile page.
           </p>
         </div>

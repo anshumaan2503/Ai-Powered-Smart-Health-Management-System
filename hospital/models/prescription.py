@@ -6,7 +6,7 @@ class Prescription(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     prescription_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    # patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)  # Disabled for now
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
     medical_record_id = db.Column(db.Integer, db.ForeignKey('medical_records.id'))
     medications = db.Column(db.JSON, nullable=False)  # List of medications with dosage
@@ -21,17 +21,17 @@ class Prescription(db.Model):
     
     # Relationships
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
-    # patient = db.relationship('Patient', backref='prescriptions')  # Disabled for now
+    patient = db.relationship('Patient', backref='prescriptions')
     doctor = db.relationship('Doctor', backref='prescriptions')
     
     def to_dict(self):
         return {
             'id': self.id,
             'prescription_id': self.prescription_id,
-            # 'patient_id': self.patient_id,  # Disabled for now
+            'patient_id': self.patient_id,
             'doctor_id': self.doctor_id,
             'medical_record_id': self.medical_record_id,
-            # 'patient_name': self.patient.full_name if self.patient else None,  # Disabled for now
+            'patient_name': self.patient.full_name if self.patient else None,
             'doctor_name': self.doctor.user.full_name if self.doctor and self.doctor.user else None,
             'medications': self.medications,
             'instructions': self.instructions,

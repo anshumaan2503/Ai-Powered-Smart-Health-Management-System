@@ -87,8 +87,42 @@ instance/
 
 # Uploads
 uploads/
+hospital/static/uploads/*.pdf
+hospital/static/uploads/**/*.pdf
 
 # Python cache (comprehensive)
 **/__pycache__/
 *.py[cod]
 *$py.class
+
+# Archives and compressed files
+*.zip
+*.7z
+*.tar.gz
+*.rar
+
+# Test outputs
+build_output*.txt
+*_test_output.txt
+test_output*.txt
+
+# Sensitive Data (Local Lists)
+all_emails.txt
+full_hospital_list.txt
+full_user_list.txt
+instance_emails.txt
+jwt_test_output.txt
+postgres_data_full.txt
+postgres_emails.txt
+users_list.txt
+all_emails.txt
+instance_emails.txt
+jwt_test_output.txt
+postgres_data_full.txt
+postgres_emails.txt
+users_list.txt
+
+# Large files
+*.docx
+*.pdf
+!frontend/public/*.pdf

@@ -45,7 +45,10 @@ class HospitalSubscription(db.Model):
     
     def get_usage_stats(self):
         """Get current usage statistics for the hospital"""
-        from hospital.models import Doctor, User
+        # Using db.Model._decl_class_registry to avoid circular imports at runtime
+        # but simpler is to just import here if it works, or use the model registry
+        from hospital.models.doctor import Doctor
+        from hospital.models.user import User
         
         current_patients = 0  # Patient functionality disabled
         current_doctors = Doctor.query.filter_by(hospital_id=self.hospital_id).count()

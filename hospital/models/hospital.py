@@ -11,13 +11,14 @@ class Hospital(db.Model):
     email = db.Column(db.String(120))
     license_number = db.Column(db.String(50), unique=True)
     is_active = db.Column(db.Boolean, default=True)
+    payments_enabled = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     users = db.relationship('User', backref='hospital', lazy=True)
     doctors = db.relationship('Doctor', backref='hospital', lazy=True)
-    # appointments = db.relationship('Appointment', backref='hospital', lazy=True)  # Disabled for now
+    # appointments = db.relationship('Appointment', backref='hospital', lazy=True) # Already added backref in Appointment model
     
     def to_dict(self):
         return {
@@ -28,5 +29,6 @@ class Hospital(db.Model):
             'email': self.email,
             'license_number': self.license_number,
             'is_active': self.is_active,
+            'payments_enabled': self.payments_enabled,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

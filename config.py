@@ -3,33 +3,57 @@ from datetime import timedelta
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///hospital.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///hospital.db')
+    if SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace("postgres://", "postgresql://", 1)
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-string'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
-    
+
+    # ✅ CORS Configuration (FIXED)
+    # Default should NOT be localhost in production.
+    FRONTEND_URL = os.environ.get('FRONTEND_URL') or "https://hospital-management-frontend-0421.onrender.com"
+
+    # Comma-separated list (works for local + production)
+    CORS_ORIGINS = os.environ.get(
+        'CORS_ORIGINS',
+        "https://hospital-management-frontend-0421.onrender.com,"
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000"
+    )
+
     # Mail settings
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    
+
     # Redis for caching and Celery
     REDIS_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL') or 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0'
-    
+
     # AI Model settings
     AI_MODEL_PATH = os.environ.get('AI_MODEL_PATH') or 'models/'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
+    
+    # Razorpay Configuration
+    RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+    RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+    RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
 
+
 class ProductionConfig(Config):
     DEBUG = False
+
 
 config = {
     'development': DevelopmentConfig,

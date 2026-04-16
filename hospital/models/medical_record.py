@@ -5,7 +5,7 @@ class MedicalRecord(db.Model):
     __tablename__ = 'medical_records'
     
     id = db.Column(db.Integer, primary_key=True)
-    # patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)  # Disabled for now
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'))
     visit_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -23,14 +23,15 @@ class MedicalRecord(db.Model):
     
     # Relationships
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospitals.id'))
+    patient = db.relationship('Patient', backref='medical_records', lazy=True)
     
     def to_dict(self):
         return {
             'id': self.id,
-            # 'patient_id': self.patient_id,  # Disabled for now
+            'patient_id': self.patient_id,
             'doctor_id': self.doctor_id,
             'appointment_id': self.appointment_id,
-            # 'patient_name': self.patient.full_name if self.patient else None,  # Disabled for now
+            'patient_name': self.patient.full_name if self.patient else None,
             'doctor_name': self.doctor.user.full_name if self.doctor and self.doctor.user else None,
             'visit_date': self.visit_date.isoformat() if self.visit_date else None,
             'chief_complaint': self.chief_complaint,

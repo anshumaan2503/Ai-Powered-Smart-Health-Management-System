@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { adminAPI } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   UserGroupIcon,
@@ -40,24 +41,8 @@ export default function UsersManagementPage() {
 
   const loadUsers = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Fetch users from backend
-      const response = await fetch('http://localhost:5000/api/admin/users', { headers })
-
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data.users)
-      } else {
-        // Fallback to mock data if API fails
-        setUsers(getMockUsers())
-      }
+      const response = await adminAPI.getUsers()
+      setUsers(response.data.users)
     } catch (error) {
       console.error('Error loading users:', error)
       setUsers(getMockUsers())
@@ -68,19 +53,8 @@ export default function UsersManagementPage() {
 
   const loadHospitals = async () => {
     try {
-      const token = localStorage.getItem('admin_token')
-      if (!token) return
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await fetch('http://localhost:5000/api/admin/hospitals', { headers })
-      if (response.ok) {
-        const data = await response.json()
-        setHospitals(data.hospitals)
-      }
+      const response = await adminAPI.getHospitals()
+      setHospitals(response.data.hospitals)
     } catch (error) {
       console.error('Error loading hospitals:', error)
     }
@@ -201,7 +175,7 @@ export default function UsersManagementPage() {
         {['admin', 'doctor', 'nurse', 'staff'].map((role, index) => {
           const count = users.filter(user => user.role === role).length
           const RoleIcon = getRoleIcon(role)
-          
+
           return (
             <motion.div
               key={role}
@@ -215,16 +189,14 @@ export default function UsersManagementPage() {
                   <h3 className="text-2xl font-bold text-gray-900">{count}</h3>
                   <p className="text-sm text-gray-600 capitalize">{role}s</p>
                 </div>
-                <div className={`p-3 rounded-lg ${
-                  role === 'admin' ? 'bg-red-50' :
-                  role === 'doctor' ? 'bg-blue-50' :
-                  role === 'nurse' ? 'bg-green-50' : 'bg-purple-50'
-                }`}>
-                  <RoleIcon className={`h-6 w-6 ${
-                    role === 'admin' ? 'text-red-600' :
-                    role === 'doctor' ? 'text-blue-600' :
-                    role === 'nurse' ? 'text-green-600' : 'text-purple-600'
-                  }`} />
+                <div className={`p-3 rounded-lg ${role === 'admin' ? 'bg-red-50' :
+                    role === 'doctor' ? 'bg-blue-50' :
+                      role === 'nurse' ? 'bg-green-50' : 'bg-purple-50'
+                  }`}>
+                  <RoleIcon className={`h-6 w-6 ${role === 'admin' ? 'text-red-600' :
+                      role === 'doctor' ? 'text-blue-600' :
+                        role === 'nurse' ? 'text-green-600' : 'text-purple-600'
+                    }`} />
                 </div>
               </div>
             </motion.div>
@@ -355,9 +327,8 @@ export default function UsersManagementPage() {
                       {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
                         {user.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>

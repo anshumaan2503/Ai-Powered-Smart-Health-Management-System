@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { 
+import {
   BuildingOffice2Icon,
   UserIcon,
   EnvelopeIcon,
@@ -18,6 +18,7 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import { ThemeToggleButton } from '@/components/ui/ThemeToggle'
 
 export default function HospitalRegisterPage() {
   const [formData, setFormData] = useState({
@@ -33,14 +34,14 @@ export default function HospitalRegisterPage() {
     admin_password: '',
     confirmPassword: ''
   })
-  
+
   const [errors, setErrors] = useState<any>({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3
-  
+
   const router = useRouter()
 
   const validateStep = (step: number) => {
@@ -89,7 +90,7 @@ export default function HospitalRegisterPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev: any) => ({ ...prev, [name]: '' }))
@@ -108,7 +109,7 @@ export default function HospitalRegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateStep(currentStep)) return
 
     setIsLoading(true)
@@ -135,7 +136,10 @@ export default function HospitalRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      <div className="absolute top-4 right-4">
+        <ThemeToggleButton />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -145,33 +149,32 @@ export default function HospitalRegisterPage() {
         {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center">
-            <BuildingOffice2Icon className="h-12 w-12 text-blue-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">MediCare Pro</span>
+            <BuildingOffice2Icon className="h-12 w-12 text-blue-600 dark:text-blue-500" />
+            <span className="ml-2 text-2xl font-bold text-gray-900 dark:text-white">MediCare Pro</span>
           </Link>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Register Your Hospital
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Join thousands of hospitals using our management system
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
           <div className="flex items-center justify-between mb-8">
             {[1, 2, 3].map((step) => {
               const isActive = step === currentStep
               const isCompleted = step < currentStep
-              
+
               return (
                 <div key={step} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                    isCompleted 
-                      ? 'bg-green-500 border-green-500 text-white' 
-                      : isActive 
-                        ? 'bg-blue-500 border-blue-500 text-white' 
-                        : 'bg-gray-100 border-gray-300 text-gray-500'
-                  }`}>
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${isCompleted
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : isActive
+                        ? 'bg-blue-500 border-blue-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+                    }`}>
                     {isCompleted ? (
                       <CheckCircleIcon className="h-6 w-6" />
                     ) : (
@@ -179,21 +182,18 @@ export default function HospitalRegisterPage() {
                     )}
                   </div>
                   <div className="ml-3">
-                    <p className={`text-sm font-medium ${
-                      isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
-                    }`}>
+                    <p className={`text-sm font-medium ${isActive ? 'text-blue-600 dark:text-blue-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+                      }`}>
                       Step {step}
                     </p>
-                    <p className={`text-xs ${
-                      isActive ? 'text-blue-500' : isCompleted ? 'text-green-500' : 'text-gray-400'
-                    }`}>
+                    <p className={`text-xs ${isActive ? 'text-blue-500 dark:text-blue-400' : isCompleted ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
+                      }`}>
                       {getStepTitle(step)}
                     </p>
                   </div>
                   {step < totalSteps && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      step < currentStep ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
+                    <div className={`w-16 h-0.5 mx-4 ${step < currentStep ? 'bg-green-500' : 'bg-gray-300'
+                      }`} />
                   )}
                 </div>
               )
@@ -212,13 +212,13 @@ export default function HospitalRegisterPage() {
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div className="text-center mb-6">
-                    <BuildingOffice2Icon className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900">Hospital Information</h3>
-                    <p className="text-gray-600">Tell us about your hospital</p>
+                    <BuildingOffice2Icon className="h-12 w-12 text-blue-600 dark:text-blue-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Hospital Information</h3>
+                    <p className="text-gray-600 dark:text-gray-400">Tell us about your hospital</p>
                   </div>
 
                   <div>
-                    <label htmlFor="hospital_name" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="hospital_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Hospital Name *
                     </label>
                     <input
@@ -235,7 +235,7 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="hospital_address" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="hospital_address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Hospital Address *
                     </label>
                     <textarea
@@ -253,7 +253,7 @@ export default function HospitalRegisterPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="hospital_phone" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="hospital_phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Hospital Phone *
                       </label>
                       <div className="relative">
@@ -273,7 +273,7 @@ export default function HospitalRegisterPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="hospital_email" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="hospital_email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Hospital Email
                       </label>
                       <div className="relative">
@@ -292,7 +292,7 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="license_number" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="license_number" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       License Number (Optional)
                     </label>
                     <input
@@ -312,14 +312,14 @@ export default function HospitalRegisterPage() {
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div className="text-center mb-6">
-                    <UserIcon className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900">Admin Account</h3>
-                    <p className="text-gray-600">Create the main administrator account</p>
+                    <UserIcon className="h-12 w-12 text-blue-600 dark:text-blue-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Admin Account</h3>
+                    <p className="text-gray-600 dark:text-gray-400">Create the main administrator account</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="admin_first_name" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="admin_first_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Admin First Name *
                       </label>
                       <input
@@ -336,7 +336,7 @@ export default function HospitalRegisterPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="admin_last_name" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="admin_last_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Admin Last Name *
                       </label>
                       <input
@@ -354,7 +354,7 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="admin_email" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="admin_email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Admin Email *
                     </label>
                     <div className="relative">
@@ -374,7 +374,7 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="admin_phone" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="admin_phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Admin Phone
                     </label>
                     <div className="relative">
@@ -397,13 +397,13 @@ export default function HospitalRegisterPage() {
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div className="text-center mb-6">
-                    <LockClosedIcon className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900">Security Setup</h3>
-                    <p className="text-gray-600">Create a password for the admin account (any length, any characters)</p>
+                    <LockClosedIcon className="h-12 w-12 text-blue-600 dark:text-blue-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Security Setup</h3>
+                    <p className="text-gray-600 dark:text-gray-400">Create a password for the admin account (any length, any characters)</p>
                   </div>
 
                   <div>
-                    <label htmlFor="admin_password" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="admin_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Admin Password *
                     </label>
                     <div className="relative">
@@ -434,7 +434,7 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Confirm Password *
                     </label>
                     <div className="relative">
@@ -465,9 +465,9 @@ export default function HospitalRegisterPage() {
                   </div>
 
                   {/* Trial Information */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-blue-800 mb-2">🎉 30-Day Free Trial</h4>
-                    <ul className="text-xs text-blue-700 space-y-1">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">🎉 30-Day Free Trial</h4>
+                    <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
                       <li>• Up to 50 patients</li>
                       <li>• Up to 3 doctors</li>
                       <li>• Up to 5 staff members</li>
@@ -480,7 +480,7 @@ export default function HospitalRegisterPage() {
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
                 <div>
                   {currentStep > 1 && (
                     <button
@@ -497,7 +497,7 @@ export default function HospitalRegisterPage() {
                   <span className="text-sm text-gray-500">
                     Step {currentStep} of {totalSteps}
                   </span>
-                  
+
                   {currentStep < totalSteps ? (
                     <button
                       type="button"
@@ -533,9 +533,9 @@ export default function HospitalRegisterPage() {
 
         {/* Login Link */}
         <div className="text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Already have a hospital account?{' '}
-            <Link href="/hospital/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/hospital/login" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
               Sign in here
             </Link>
           </p>

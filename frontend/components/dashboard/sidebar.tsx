@@ -87,7 +87,7 @@ export function DashboardSidebar() {
       {/* Footer */}
       <div className="px-6 py-4 border-t border-gray-200">
         <p className="text-xs text-gray-500">
-          © 2024 MediCare Pro
+          © 2026 MediCare Pro
         </p>
       </div>
     </div>

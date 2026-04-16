@@ -18,11 +18,13 @@ def get_medicines():
     """Get all medicines for a hospital with filtering and pagination"""
     try:
         current_user = get_jwt_identity()
-        print(f"Current user ID: {current_user}")
-        user = User.query.get(current_user)
-        print(f"User found: {user.full_name if user else 'None'}")
-        print(f"User hospital ID: {user.hospital_id if user else 'None'}")
-        
+        user = None
+        try:
+            user = User.query.get(int(current_user))
+        except:
+            db.session.rollback()
+            user = User.query.get(int(current_user))
+            
         if not user or not user.hospital_id:
             return jsonify({'error': 'Hospital not found'}), 404
         
@@ -117,8 +119,13 @@ def get_medicines():
         }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Error getting medicines: {str(e)}")
-        return jsonify({'error': 'Failed to fetch medicines'}), 500
+        import traceback
+        current_app.logger.error(f"Error getting medicines: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'message': 'Failed to fetch medicines'
+        }), 500
 
 @pharmacy_bp.route('/medicines', methods=['POST'])
 @jwt_required()
@@ -201,9 +208,14 @@ def add_medicine():
         }), 201
         
     except Exception as e:
+        import traceback
         db.session.rollback()
-        current_app.logger.error(f"Error adding medicine: {str(e)}")
-        return jsonify({'error': 'Failed to add medicine'}), 500
+        current_app.logger.error(f"Error adding medicine: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'message': 'Failed to add medicine'
+        }), 500
 
 @pharmacy_bp.route('/medicines/<int:medicine_id>', methods=['GET'])
 @jwt_required()
@@ -284,9 +296,14 @@ def update_medicine(medicine_id):
         }), 200
         
     except Exception as e:
+        import traceback
         db.session.rollback()
-        current_app.logger.error(f"Error updating medicine: {str(e)}")
-        return jsonify({'error': 'Failed to update medicine'}), 500
+        current_app.logger.error(f"Error updating medicine: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'message': 'Failed to update medicine'
+        }), 500
 
 @pharmacy_bp.route('/medicines/<int:medicine_id>/stock', methods=['POST'])
 @jwt_required()
